@@ -21,6 +21,11 @@ namespace REA
 		PixelGrid,
 	};
 
+	enum class Texture
+	{
+		Carsten,
+	};
+
 	enum class Sprite
 	{
 		Floppa,

@@ -1,5 +1,5 @@
 {
-  "name" : "split-engine-showcase",
+  "name" : "rea",
   "version-string" : "1.0.0",
   "builtin-baseline" : "000d1bda1ffa95a73e0b40334fa4103d6f4d3d48",
   "overrides": [
@@ -7,6 +7,6 @@
   ],
   "dependencies" : [ {
     "name" : "split-engine",
-    "version>=" : "1.0.0"
+    "version>=" : "1.1.2"
   } ]
 }

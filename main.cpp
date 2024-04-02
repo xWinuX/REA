@@ -5,6 +5,9 @@
 #include "SplitEngine/ECS/System.hpp"
 #include "SplitEngine/Tools/ImagePacker.hpp"
 #include "SplitEngine/Tools/ImageSlicer.hpp"
+#include <SplitEngine/IO/ImageLoader.hpp>
+#include <SplitEngine/Rendering/Texture2D.hpp>
+
 
 #include <glm/gtc/random.hpp>
 
@@ -20,9 +23,13 @@
 #include "REA/System/Debug.hpp"
 #include "REA/System/Physics.hpp"
 #include "REA/System/PixelGridRenderer.hpp"
+#include "REA/System/PixelGridSimulation.hpp"
 #include "REA/System/PlayerController.hpp"
 #include "REA/System/RenderingPreparation.hpp"
 #include "REA/System/SpriteRenderer.hpp"
+#include "include/REA/System/PixelGridDrawing.hpp"
+#include "REA/System/GameOfLifeSimulation.hpp"
+
 
 using namespace SplitEngine;
 using namespace REA;
@@ -31,7 +38,7 @@ int main()
 {
 	Application application = Application({});
 
-	application.GetWindow().SetSize(1500, 1000);
+	application.GetWindow().SetSize(1000, 1000);
 
 	Input::RegisterAxis2D(InputAction::Move, { KeyCode::A, KeyCode::D }, { KeyCode::S, KeyCode::W });
 	Input::RegisterButtonAction(InputAction::Fire, KeyCode::MOUSE_LEFT);
@@ -60,6 +67,9 @@ int main()
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
+
+	AssetHandle<Rendering::Texture2D> carstenTexture = assetDatabase.CreateAsset<Rendering::Texture2D>(Texture::Carsten, {IO::ImageLoader::Load("res/textures/Carsten.png")});
+
 	// Setup ECS
 	ECS::Registry& ecs = application.GetECSRegistry();
 
@@ -73,6 +83,7 @@ int main()
 	ecs.RegisterComponent<Component::AudioSource>();
 	ecs.RegisterComponent<Component::Player>();
 	ecs.RegisterComponent<Component::Camera>();
+	ecs.RegisterComponent<Component::PixelGrid>();
 
 	/**
 	 * 	Each system can either be registered as a gameplay system or as a render system
@@ -82,21 +93,26 @@ int main()
 	 * 	Systems can be registered as the game is running, so no need to preregister all at the start if you don't want to
 	 */
 	ecs.AddSystem<System::Debug>(ECS::Stage::Gameplay, -1);
-	ecs.AddSystem<System::Physics>(ECS::Stage::Gameplay, 0);
-	ecs.AddSystem<System::AudioSourcePlayer>(ECS::Stage::Gameplay, 0);
-	ecs.AddSystem<System::PlayerController>(ECS::Stage::Gameplay, 0, blueBulletSprite);
+	ecs.AddSystem<System::PixelGridDrawing>(ECS::Stage::Gameplay,0);
 	ecs.AddSystem<System::Camera>(ECS::Stage::Gameplay, 1);
+	ecs.AddSystem<System::AudioSourcePlayer>(ECS::Stage::Gameplay, 999);
+
+	ecs.AddSystem<System::PixelGridSimulation>(ECS::Stage::Gameplay, 999);
+	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	ecs.AddSystem<System::RenderingPreparation>(ECS::Stage::Rendering, 0);
-	ecs.AddSystem<System::PixelGridRenderer>(ECS::Stage::Rendering, 1, pixelGridMaterial);
-	ecs.AddSystem<System::SpriteRenderer>(ECS::Stage::Rendering, 2, spriteMaterial, packingData);
+	ecs.AddSystem<System::PixelGridRenderer>(ECS::Stage::Rendering, 1, pixelGridMaterial, carstenTexture);
+	//ecs.AddSystem<System::SpriteRenderer>(ECS::Stage::Rendering, 2, spriteMaterial, packingData);
 
 	// Create entities
-	for (int i = 0; i < 1'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
-
 	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Physics, Component::Player, Component::SpriteRenderer>({}, {}, {}, { floppaSprite, 1.0f });
 
+
 	ecs.CreateEntity<Component::Transform, Component::Camera>({}, { playerEntity });
+
+
+	Component::PixelGrid pixelGrid = {};
+	uint64_t pixelGridEntity = ecs.CreateEntity<Component::PixelGrid>(std::move(pixelGrid));
 
 	// Run Game
 	application.Run();

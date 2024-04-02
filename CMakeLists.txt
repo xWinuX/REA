@@ -37,6 +37,15 @@ add_executable(
         src/System/PixelGridRenderer.cpp
         src/System/RenderingPreparation.cpp
         include/REA/System/RenderingPreparation.hpp
+        include/REA/Component/PixelGrid.hpp
+        src/System/PixelGridSimulation.cpp
+        include/REA/System/PixelGridSimulation.hpp
+        include/REA/Pixel.hpp
+        src/System/GameOfLifeSimulation.cpp
+        include/REA/System/GameOfLifeSimulation.hpp
+        src/System/PixelGridDrawing.cpp
+        include/REA/System/PixelGridDrawing.hpp
+        include/REA/BitSet.hpp
 )
 
 target_include_directories(REA PRIVATE include)

@@ -17,10 +17,17 @@ namespace REA::System
 			void Execute(Component::Transform* transformComponents, Component::Camera* cameraComponents, std::vector<uint64_t>& entities, ECS::Context& context) override;
 
 		private:
+
+			glm::vec3 eye;
+			glm::vec3 center;
+			glm::vec3 up;
+
 			struct CameraUBO
 			{
 				glm::mat4 view;
+				glm::mat4 viewIdentity;
 				glm::mat4 proj;
+				glm::mat4 orthoProj;
 				glm::mat4 viewProj;
 			};
 	};
