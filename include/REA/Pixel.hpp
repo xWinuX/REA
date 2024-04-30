@@ -15,11 +15,11 @@ namespace REA
 
 	struct Pixel
 	{
-		typedef uint32_t ID;
+		typedef uint8_t ID;
 
 		ID              PixelID         = 0;
 		BitSet<uint8_t> Flags           = BitSet<uint8_t>(Gravity);
-		int8_t          Density         = 0;
+		uint8_t         Density         = 0;
 		uint8_t         SpreadingFactor = 0;
 	};
 }

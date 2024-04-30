@@ -36,7 +36,7 @@ using namespace REA;
 
 int main()
 {
-	Application application = Application({});
+	Application application = Application({{}, {.UseVulkanValidationLayers=false}});
 
 	application.GetWindow().SetSize(1000, 1000);
 
@@ -67,8 +67,8 @@ int main()
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
+	AssetHandle<Rendering::Shader> pixelGridCompute = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid, { "res/shaders/PixelGridCompute" });
 
-	AssetHandle<Rendering::Texture2D> carstenTexture = assetDatabase.CreateAsset<Rendering::Texture2D>(Texture::Carsten, {IO::ImageLoader::Load("res/textures/Carsten.png")});
 
 	// Setup ECS
 	ECS::Registry& ecs = application.GetECSRegistry();
@@ -93,15 +93,15 @@ int main()
 	 * 	Systems can be registered as the game is running, so no need to preregister all at the start if you don't want to
 	 */
 	ecs.AddSystem<System::Debug>(ECS::Stage::Gameplay, -1);
-	ecs.AddSystem<System::PixelGridDrawing>(ECS::Stage::Gameplay,0, 10);
+	ecs.AddSystem<System::PixelGridDrawing>(ECS::Stage::Gameplay,0, 50);
 	ecs.AddSystem<System::Camera>(ECS::Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(ECS::Stage::Gameplay, 999);
 
-	ecs.AddSystem<System::PixelGridSimulation>(ECS::Stage::Gameplay, 999);
+	ecs.AddSystem<System::PixelGridSimulation>(ECS::Stage::Gameplay, 999, pixelGridCompute);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	ecs.AddSystem<System::RenderingPreparation>(ECS::Stage::Rendering, 0);
-	ecs.AddSystem<System::PixelGridRenderer>(ECS::Stage::Rendering, 1, pixelGridMaterial, carstenTexture);
+	ecs.AddSystem<System::PixelGridRenderer>(ECS::Stage::Rendering, 1, pixelGridMaterial);
 	//ecs.AddSystem<System::SpriteRenderer>(ECS::Stage::Rendering, 2, spriteMaterial, packingData);
 
 	// Create entities

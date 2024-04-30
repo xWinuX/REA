@@ -14,7 +14,7 @@ namespace REA::System
 	class PixelGridRenderer final : public ECS::System<Component::PixelGrid>
 	{
 		public:
-			explicit PixelGridRenderer(AssetHandle<Rendering::Material> material, AssetHandle<Rendering::Texture2D> texture);
+			explicit PixelGridRenderer(AssetHandle<Rendering::Material> material);
 
 			void Execute(Component::PixelGrid*, std::vector<uint64_t>& entities, ECS::Context& context) override;
 		private:

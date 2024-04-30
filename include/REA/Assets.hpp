@@ -13,6 +13,7 @@ namespace REA
 	{
 		Sprite,
 		PixelGrid,
+		Comp_PixelGrid
 	};
 
 	enum class Material

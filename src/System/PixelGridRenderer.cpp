@@ -7,7 +7,7 @@
 
 namespace REA::System
 {
-	PixelGridRenderer::PixelGridRenderer(AssetHandle<Rendering::Material> material, AssetHandle<Rendering::Texture2D> texture) :
+	PixelGridRenderer::PixelGridRenderer(AssetHandle<Rendering::Material> material) :
 		_material(material)
 	{
 		SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
@@ -50,8 +50,6 @@ namespace REA::System
 
 		_material->GetShader()->Bind(commandBuffer);
 
-
-
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			const Component::PixelGrid& pixelGrid = pixelGrids[i];
@@ -59,13 +57,6 @@ namespace REA::System
 
 			tileData->width  = pixelGrid.Width;
 			tileData->height = pixelGrid.Height;
-
-			SSBO_GridData* gridData = _material->GetProperties().GetBufferData<SSBO_GridData>(0);
-
-			for (int i = 0; i < pixelGrid.Pixels.size(); ++i)
-			{
-				gridData->tileIDs[i] = pixelGrid.Pixels[i].PixelID;
-			}
 
 			//pixelGrid.Pixels
 

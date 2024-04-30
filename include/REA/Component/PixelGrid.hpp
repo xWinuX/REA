@@ -9,7 +9,7 @@ namespace REA::Component
 {
 	struct PixelGrid
 	{
-		std::vector<Pixel> Pixels = std::vector<Pixel>(1'000'000, Pixel());
+		Pixel* Pixels = nullptr;
 
 		int32_t Width  = 1000;
 		int32_t Height = 1000;

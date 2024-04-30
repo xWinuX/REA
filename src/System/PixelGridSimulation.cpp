@@ -2,269 +2,105 @@
 
 #include <execution>
 #include <SplitEngine/Input.hpp>
+#include <SplitEngine/Rendering/Renderer.hpp>
+#include <SplitEngine/Rendering/Vulkan/Device.hpp>
 
 namespace REA::System
 {
-	PixelGridSimulation::PixelGridSimulation()
+	PixelGridSimulation::PixelGridSimulation(AssetHandle<Rendering::Shader> pixelGridComputeShader):
+		_shader(pixelGridComputeShader)
 	{
-		/*
-		for (uint32_t& tileID: _gridData->tileIDs)
+		auto&                      properties = _shader->GetProperties();
+		Rendering::Vulkan::Device* device     = _shader->GetPipeline().GetDevice();
+
+		_commandBuffer = std::move(device->GetQueueFamily(Rendering::Vulkan::QueueType::Compute).AllocateCommandBuffer(Rendering::Vulkan::QueueType::Compute));
+
+		_commandBuffer.GetVkCommandBufferRaw().SetFramePtr(&_fif);
+
+		Rendering::Vulkan::Buffer& writeBuffer = properties.GetBuffer(2);
+
+		for (int i = 0; i < device->MAX_FRAMES_IN_FLIGHT; ++i)
 		{
-			tileID = glm::linearRand(0u, 1u);
-		}*/
+			uint32_t fifIndex    = (i + 1) % device->MAX_FRAMES_IN_FLIGHT;
+			auto&    bufferInfos = properties.GetBufferInfo(2, fifIndex);
+			properties.SetBuffer(1, writeBuffer, bufferInfos.offset, bufferInfos.range, i);
+		}
+
+		//	properties.OverrideBufferPtrs(1, writeBuffer);
+
+		_shader->Update();
+
+		SSBO_Pixels* inputPixels = _shader->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
+
+		for (Pixel& pixel: inputPixels->Pixels)
+		{
+			pixel.PixelID = std::numeric_limits<int8_t>::max();
+			pixel.Flags.Set(Gravity);
+			pixel.Density         = std::numeric_limits<uint8_t>::min();
+			pixel.SpreadingFactor = 0;
+		}
+
+		inputPixels->Pixels[500'550] = { static_cast<uint8_t>(1), BitSet<uint8_t>(Gravity), 3, 0 };
+
+		// Set solid pixel
+		Pixel solidPixel = { std::numeric_limits<Pixel::ID>::max(), BitSet<uint8_t>(Solid), std::numeric_limits<uint8_t>::min(), 0 };
+		for (int i = 0; i < device->MAX_FRAMES_IN_FLIGHT; ++i) { _shader->GetProperties().GetBufferData<UBO_SimulationData>(0, i)->solidPixel = solidPixel; }
+
+
+		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
+		_computeFence                       = _shader->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
 	}
 
 	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
 	{
-		for (int entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
+		Rendering::Vulkan::Device&     device       = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
+		Rendering::Vulkan::QueueFamily computeQueue = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
+
+		device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
+		device.GetVkDevice().resetFences(_computeFence);
+
+
+		UBO_SimulationData* simulationData = _shader->GetProperties().GetBufferData<UBO_SimulationData>(0, _fif);
+
+		simulationData->deltaTime = context.DeltaTime;
+		simulationData->timer++;
+
+		SSBO_Pixels* inputPixels = _shader->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
+
+		if (Input::GetDown(KeyCode::SPACE))
 		{
-			Component::PixelGrid& pixelGrid = pixelGrids[entityIndex];
-
-
-			//memcpy(_tempGrid.Pixels.data(), pixelGrid.Pixels.data(), pixelGrid.Pixels.size() * sizeof(Pixel));
-
-
-			std::vector<Pixel>& readOnlyPixels  = pixelGrid.Pixels;
-			std::vector<Pixel>& writeOnlyPixels = _tempGrid.Pixels;
-
-			const int width  = pixelGrid.Width;
-			const int height = pixelGrid.Height;
-
-
-			size_t divider   = 64;
-			size_t chunkSize = readOnlyPixels.size() / divider;
-
-			_indexes = std::ranges::iota_view((size_t)0, divider);
-
-			//std::ranges::fill(_swapList, -1);
-
-			Pixel solidPixel = { 99, BitSet<uint8_t>(Solid), std::numeric_limits<int8_t>::max(), 0 };
-
-
-			// Falling
-			std::for_each(std::execution::par_unseq,
-			              _indexes.begin(),
-			              _indexes.end(),
-			              [this, readOnlyPixels, chunkSize, solidPixel, width, height](size_t chunkIndex)
-			              {
-				              size_t start = chunkIndex * chunkSize;
-				              size_t limit = std::min((chunkSize * (chunkIndex + 1)), readOnlyPixels.size());
-				              for (size_t j = start; j < limit; ++j)
-				              {
-					              const int y = j / width;
-					              const int x = j % height;
-
-					              Pixel currentPixel = readOnlyPixels[j];
-
-					              if (currentPixel.Flags.Has(Gravity))
-					              {
-						              bool atTheBottom = y == 0;
-						              bool atTheTop    = y == height - 1;
-
-						              int topIndex    = (y + 1) * width + x;
-						              int bottomIndex = (y - 1) * width + x;
-
-						              // Middle
-						              Pixel topPixel = solidPixel;
-						              if (!atTheTop) { topPixel = readOnlyPixels[topIndex]; }
-
-						              Pixel bottomPixel = solidPixel;
-						              if (!atTheBottom) { bottomPixel = readOnlyPixels[bottomIndex]; }
-
-						              Pixel rightPixel       = solidPixel;
-						              Pixel topRightPixel    = solidPixel;
-						              Pixel bottomRightPixel = solidPixel;
-
-
-						              Pixel leftPixel       = solidPixel;
-						              Pixel topLeftPixel    = solidPixel;
-						              Pixel bottomLeftPixel = solidPixel;
-
-						              // Right
-						              if (x + 1 < width)
-						              {
-							              rightPixel = readOnlyPixels[j + 1];
-
-							              if (!atTheTop) { topRightPixel = readOnlyPixels[topIndex + 1]; }
-
-							              if (!atTheBottom) { bottomRightPixel = readOnlyPixels[bottomIndex + 1]; }
-						              }
-
-						              // Left
-						              if (x - 1 >= 0)
-						              {
-							              leftPixel = readOnlyPixels[j - 1];
-
-							              if (!atTheTop) { topLeftPixel = readOnlyPixels[topIndex - 1]; }
-
-							              if (!atTheBottom) { bottomLeftPixel = readOnlyPixels[bottomIndex - 1]; }
-						              }
-
-
-						              if (_timer % 2 == 0)
-						              {
-							              if (!topPixel.Flags.Has(Solid) && currentPixel.Density < topPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = topPixel;
-								              continue;
-							              }
-
-							              if (!bottomPixel.Flags.Has(Solid) && currentPixel.Density > bottomPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = bottomPixel;
-								              continue;
-							              }
-
-							              if (!topLeftPixel.Flags.Has(Solid) && !leftPixel.Flags.Has(Solid) && leftPixel.Density >= topLeftPixel.Density && currentPixel.Density <
-							                  topLeftPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = topLeftPixel;
-								              continue;
-							              }
-
-							              if (!bottomRightPixel.Flags.Has(Solid) && currentPixel.Density > bottomRightPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = bottomRightPixel;
-								              continue;
-							              }
-						              }
-						              else
-						              {
-							              if (!topPixel.Flags.Has(Solid) && currentPixel.Density < topPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = topPixel;
-								              continue;
-							              }
-
-							              if (!topRightPixel.Flags.Has(Solid) && !rightPixel.Flags.Has(Solid) && rightPixel.Density >= topRightPixel.Density && currentPixel.Density
-							                  < topRightPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = topRightPixel;
-								              continue;
-							              }
-
-							              if (!bottomPixel.Flags.Has(Solid) && currentPixel.Density > bottomPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = bottomPixel;
-								              continue;
-							              }
-
-							              if (!bottomLeftPixel.Flags.Has(Solid) && currentPixel.Density > bottomLeftPixel.Density)
-							              {
-								              _tempGrid.Pixels[j] = bottomLeftPixel;
-								              continue;
-							              }
-						              }
-
-						              _tempGrid.Pixels[j] = currentPixel;
-					              }
-				              }
-			              });
-
-
-			float rng = glm::linearRand(0, 1);
-
-			for (int flowIteration = 0; flowIteration < 1; ++flowIteration)
+			for (int i = 0; i < 500; ++i)
 			{
-				std::swap(_tempGrid.Pixels, pixelGrid.Pixels);
-
-				//readOnlyPixels  = pixelGrid.Pixels;
-				//writeOnlyPixels = _tempGrid.Pixels;
-
-
-				// Flow
-				std::for_each(std::execution::par_unseq,
-				              _indexes.begin(),
-				              _indexes.end(),
-				              [this, readOnlyPixels, rng, chunkSize, solidPixel, width, height](size_t chunkIndex)
-				              {
-					              size_t start = chunkIndex * chunkSize;
-					              size_t limit = std::min((chunkSize * (chunkIndex + 1)), readOnlyPixels.size());
-					              for (size_t j = start; j < limit; ++j)
-					              {
-						              const int y = j / width;
-						              const int x = j % height;
-
-						              Pixel currentPixel = readOnlyPixels[j];
-
-						              if (currentPixel.Flags.Has(Gravity))
-						              {
-							              bool atTheBottom = y == 0;
-							              bool atTheTop    = y == height - 1;
-
-							              int topIndex    = (y + 1) * width + x;
-							              int bottomIndex = (y - 1) * width + x;
-
-
-							              Pixel bottomPixel = solidPixel;
-							              if (!atTheBottom) { bottomPixel = readOnlyPixels[bottomIndex]; }
-
-							              Pixel rightPixel       = solidPixel;
-							              Pixel bottomRightPixel = solidPixel;
-
-
-							              Pixel leftPixel       = solidPixel;
-							              Pixel bottomLeftPixel = solidPixel;
-
-							              // Right
-							              if (x + 1 < width)
-							              {
-								              rightPixel = readOnlyPixels[j + 1];
-
-								              if (!atTheBottom) { bottomRightPixel = readOnlyPixels[bottomIndex + 1]; }
-							              }
-
-							              // Left
-							              if (x - 1 >= 0)
-							              {
-								              leftPixel = readOnlyPixels[j - 1];
-
-								              if (!atTheBottom) { bottomLeftPixel = readOnlyPixels[bottomIndex - 1]; }
-							              }
-
-							              if (rng > 0.5)
-							              {
-								              if (!leftPixel.Flags.Has(Solid) && bottomLeftPixel.Density >= leftPixel.Density && leftPixel.SpreadingFactor > 0 && currentPixel.
-								                  Density < leftPixel.Density)
-								              {
-									              _tempGrid.Pixels[j] = leftPixel;
-									              continue;
-								              }
-
-								              if (!rightPixel.Flags.Has(Solid) && bottomPixel.Density >= currentPixel.Density && currentPixel.SpreadingFactor > 0 && currentPixel.
-								                  Density >= rightPixel.Density)
-								              {
-									              _tempGrid.Pixels[j] = rightPixel;
-									              continue;
-								              }
-							              }
-							              else
-							              {
-								              if (!rightPixel.Flags.Has(Solid) && bottomRightPixel.Density >= rightPixel.Density && rightPixel.SpreadingFactor > 0 && currentPixel.
-								                  Density < rightPixel.Density)
-								              {
-									              _tempGrid.Pixels[j] = rightPixel;
-									              continue;
-								              }
-
-								              if (!leftPixel.Flags.Has(Solid) && bottomPixel.Density >= currentPixel.Density && currentPixel.SpreadingFactor > 0 && currentPixel.
-								                  Density >= leftPixel.Density)
-								              {
-									              _tempGrid.Pixels[j] = leftPixel;
-									              continue;
-								              }
-							              }
-
-
-							              _tempGrid.Pixels[j] = currentPixel;
-						              }
-					              }
-				              });
+				if (i % 2 == 0) { continue; }
+				inputPixels->Pixels[500'250 + i] = { static_cast<uint8_t>(1), BitSet<uint8_t>(Gravity), 3, 0 };
 			}
-
-			std::swap(_tempGrid.Pixels, pixelGrid.Pixels);
 		}
 
-		_timer++;
+		_commandBuffer.GetVkCommandBuffer().reset({});
+
+		constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+
+		auto& properties = _shader->GetProperties();
+
+		_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
+
+		_shader->Update();
+
+		_shader->Bind(_commandBuffer.GetVkCommandBuffer(), _fif);
+
+		_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
+
+		_commandBuffer.GetVkCommandBuffer().end();
+
+		vk::SubmitInfo submitInfo;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers    = &_commandBuffer.GetVkCommandBuffer();
+
+		computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
+
+		_fif = (_fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+
+		Component::PixelGrid& pixelGrid = pixelGrids[0];
+		pixelGrid.Pixels = _shader->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
 	}
 }

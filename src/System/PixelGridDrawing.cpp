@@ -13,17 +13,14 @@ namespace REA::System
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::PixelGrid& pixelGrid = pixelGrids[i];
-			std::vector<Pixel>&   pixels    = pixelGrid.Pixels;
+			Pixel*                pixels    = pixelGrid.Pixels;
+
+			if (pixels == nullptr) { continue; }
 
 			Pixel drawPixel;
-			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Gravity), 2, 0 }; }
+			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Gravity), 3, 0 }; }
 
-			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 1, 1 }; }
-
-			if (Input::GetDown(N1)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), -1, 1 }; }
-
-			if (Input::GetPressed(KeyCode::F)) { for (Pixel& pixel: pixels) { pixel.PixelID = 2; } }
-
+			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 2, 1 }; }
 
 			if (drawPixel.PixelID != 0)
 			{
@@ -55,7 +52,7 @@ namespace REA::System
 							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
 							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
 							const int index = yy * pixelGrid.Width + xx;
-							if (index < pixels.size()) { pixels[index] = drawPixel; }
+							if (index < pixelGrid.Width * pixelGrid.Height) { pixels[index] = drawPixel; }
 						}
 					}
 				}
