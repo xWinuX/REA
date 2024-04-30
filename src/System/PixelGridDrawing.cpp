@@ -5,44 +5,31 @@
 
 namespace REA::System
 {
+	PixelGridDrawing::PixelGridDrawing(int radius):
+		_radius(radius) {}
 
 	void PixelGridDrawing::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
 	{
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::PixelGrid& pixelGrid = pixelGrids[i];
-			std::vector<Pixel>& pixels = pixelGrid.Pixels;
+			std::vector<Pixel>&   pixels    = pixelGrid.Pixels;
 
 			Pixel drawPixel;
-			if (Input::GetPressed(MOUSE_LEFT))
-			{
-				drawPixel = {1, BitSet<uint8_t>(Gravity), 2, 0};
-			}
+			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Gravity), 2, 0 }; }
 
-			if (Input::GetPressed(MOUSE_RIGHT))
-			{
-				drawPixel = {2, BitSet<uint8_t>(Gravity), 1, 1};
-			}
+			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 1, 1 }; }
 
-			if (Input::GetDown(N1))
-			{
-				drawPixel = {3, BitSet<uint8_t>(Gravity), -1, 1};
-			}
+			if (Input::GetDown(N1)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), -1, 1 }; }
 
-			if (Input::GetPressed(KeyCode::F))
-			{
-				for (Pixel& pixel : pixels)
-				{
-					pixel.PixelID = 2;
-				}
-			}
+			if (Input::GetPressed(KeyCode::F)) { for (Pixel& pixel: pixels) { pixel.PixelID = 2; } }
 
 
 			if (drawPixel.PixelID != 0)
 			{
 				glm::ivec2 windowSize = context.Application->GetWindow().GetSize();
 
-				glm::ivec2 mousePosition = Input::GetMousePosition() + windowSize/2;
+				glm::ivec2 mousePosition = Input::GetMousePosition() + windowSize / 2;
 
 
 				// Calculate normalized mouse position
@@ -52,33 +39,26 @@ namespace REA::System
 				int gridX = static_cast<int>(normalizedMousePos.x * pixelGrid.Width);
 				int gridY = pixelGrid.Height - static_cast<int>(normalizedMousePos.y * pixelGrid.Height);
 
-				LOG("x: {0}, y: {1}", mousePosition.x, mousePosition.y);
-				LOG("x: {0}, y: {1}", gridX, gridY);
-
-				const int radius = 10;
-
-
-				const int xx    = std::clamp<int>(gridX, 0, pixelGrid.Width);
-				const int yy    = std::clamp<int>(gridY, 0, pixelGrid.Height);
-				const int index = yy * pixelGrid.Width + xx;
-				pixels[index] = drawPixel;
-
-
-/*
-				for (int x = -radius; x < radius; ++x)
+				if (_radius == 1)
 				{
-					for (int y = -radius; y < radius; ++y)
+					const int xx    = std::clamp<int>(gridX, 0, pixelGrid.Width);
+					const int yy    = std::clamp<int>(gridY, 0, pixelGrid.Height);
+					const int index = yy * pixelGrid.Width + xx;
+					pixels[index]   = drawPixel;
+				}
+				else
+				{
+					for (int x = -_radius; x < _radius; ++x)
 					{
-						const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
-						const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
-						const int index = yy * pixelGrid.Width + xx;
-						if (index < pixels.size())
+						for (int y = -_radius; y < _radius; ++y)
 						{
-							pixels[index] = drawPixel;
+							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
+							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
+							const int index = yy * pixelGrid.Width + xx;
+							if (index < pixels.size()) { pixels[index] = drawPixel; }
 						}
 					}
-				}*/
-
+				}
 			}
 		}
 	}

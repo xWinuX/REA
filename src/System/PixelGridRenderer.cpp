@@ -2,6 +2,7 @@
 
 #include <execution>
 #include <glm/gtc/random.hpp>
+#include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Shader.hpp>
 
 namespace REA::System
@@ -9,7 +10,7 @@ namespace REA::System
 	PixelGridRenderer::PixelGridRenderer(AssetHandle<Rendering::Material> material, AssetHandle<Rendering::Texture2D> texture) :
 		_material(material)
 	{
-		SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBuffer<SSBO_GridInfo>(0);
+		SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
 		tileData->colorLookup[0] = glm::vec4((1.0f/255.0f) * 0x07, (1.0f/255.0f) * 0x1F, (1.0f/255.0f) * 0x16, 1.0f); // Black
 		tileData->colorLookup[1] = glm::vec4((1.0f/255.0f) * 0xE6, (1.0f/255.0f) * 0xB0, (1.0f/255.0f) * 0x45, 1.0f); // Black
@@ -42,7 +43,7 @@ namespace REA::System
 
 	void PixelGridRenderer::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
 	{
-		vk::CommandBuffer commandBuffer = context.RenderingContext->GetPhysicalDevice().GetDevice().GetCommandBuffer();
+		vk::CommandBuffer commandBuffer = context.Renderer->GetCommandBuffer().GetVkCommandBuffer();
 		_material->GetShader()->BindGlobal(commandBuffer);
 
 		_material->GetShader()->Update();
@@ -54,12 +55,12 @@ namespace REA::System
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			const Component::PixelGrid& pixelGrid = pixelGrids[i];
-			SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBuffer<SSBO_GridInfo>(0);
+			SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
 			tileData->width  = pixelGrid.Width;
 			tileData->height = pixelGrid.Height;
 
-			SSBO_GridData* gridData = _material->GetProperties().GetBuffer<SSBO_GridData>(0);
+			SSBO_GridData* gridData = _material->GetProperties().GetBufferData<SSBO_GridData>(0);
 
 			for (int i = 0; i < pixelGrid.Pixels.size(); ++i)
 			{

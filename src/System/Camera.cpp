@@ -4,6 +4,7 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <SplitEngine/Input.hpp>
+#include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Shader.hpp>
 
 namespace REA::System
@@ -11,7 +12,7 @@ namespace REA::System
 	void Camera::Execute(Component::Transform* transformComponents, Component::Camera* cameraComponents, std::vector<uint64_t>& entities, ECS::Context& context)
 	{
 
-		CameraUBO* cameraUBO = Rendering::Shader::GetGlobalProperties().GetBuffer<CameraUBO>(0);
+		CameraUBO* cameraUBO = Rendering::Shader::GetGlobalProperties().GetBufferData<CameraUBO>(0);
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::Transform& transformComponent = transformComponents[i];
@@ -21,8 +22,8 @@ namespace REA::System
 			{
 				transformComponent.Position = context.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity).Position - glm::vec3(0.0f, 0.0f, 10.0f);
 
-				const uint32_t width  = context.RenderingContext->GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().width;
-				const uint32_t height = context.RenderingContext->GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
+				const uint32_t width  = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().width;
+				const uint32_t height = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
 
 				cameraUBO->view = glm::lookAt(transformComponent.Position, transformComponent.Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 				cameraUBO->viewIdentity = glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));

@@ -12,7 +12,7 @@ namespace REA::System
 		_material(material)
 	{
 		// Get buffers
-		TextureStore* textureStore = _material->GetShader()->GetProperties().GetBuffer<TextureStore>(0);
+		TextureStore* textureStore = _material->GetShader()->GetProperties().GetBufferData<TextureStore>(0);
 
 		float limit = std::numeric_limits<float>::max();
 
@@ -67,7 +67,7 @@ namespace REA::System
 	{
 		size_t numEntities = 0;
 
-		ObjectBuffer* objectBuffer = _material->GetProperties().GetBuffer<ObjectBuffer>(0);
+		ObjectBuffer* objectBuffer = _material->GetProperties().GetBufferData<ObjectBuffer>(0);
 
 		for (const auto& archetype: archetypes)
 		{
@@ -110,7 +110,7 @@ namespace REA::System
 
 		objectBuffer->numObjects = numEntities;
 
-		vk::CommandBuffer commandBuffer = context.RenderingContext->GetPhysicalDevice().GetDevice().GetCommandBuffer();
+		vk::CommandBuffer commandBuffer = context.Renderer->GetCommandBuffer().GetVkCommandBuffer();
 
 		_material->GetShader()->BindGlobal(commandBuffer);
 

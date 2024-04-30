@@ -10,8 +10,11 @@ namespace REA::System
 	class PixelGridDrawing final : public ECS::System<Component::PixelGrid>
 	{
 		public:
-			PixelGridDrawing() = default;
+			PixelGridDrawing(int radius = 1);
 
 			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context) override;
+
+		private:
+			int _radius = 1;
 	};
 }

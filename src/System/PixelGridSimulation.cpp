@@ -64,7 +64,6 @@ namespace REA::System
 						              int topIndex    = (y + 1) * width + x;
 						              int bottomIndex = (y - 1) * width + x;
 
-
 						              // Middle
 						              Pixel topPixel = solidPixel;
 						              if (!atTheTop) { topPixel = readOnlyPixels[topIndex]; }
@@ -262,12 +261,6 @@ namespace REA::System
 					              }
 				              });
 			}
-			/*for (int i = 0; i < _swapList.size(); ++i)
-			{
-				int32_t swapIndex = _swapList[i];
-
-				if (swapIndex >= 0) { std::swap(pixelGrid.Pixels[i], pixelGrid.Pixels[swapIndex]); }
-			}*/
 
 			std::swap(_tempGrid.Pixels, pixelGrid.Pixels);
 		}

@@ -93,7 +93,7 @@ int main()
 	 * 	Systems can be registered as the game is running, so no need to preregister all at the start if you don't want to
 	 */
 	ecs.AddSystem<System::Debug>(ECS::Stage::Gameplay, -1);
-	ecs.AddSystem<System::PixelGridDrawing>(ECS::Stage::Gameplay,0);
+	ecs.AddSystem<System::PixelGridDrawing>(ECS::Stage::Gameplay,0, 10);
 	ecs.AddSystem<System::Camera>(ECS::Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(ECS::Stage::Gameplay, 999);
 
