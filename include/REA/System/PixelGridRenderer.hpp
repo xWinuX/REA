@@ -26,11 +26,6 @@ namespace REA::System
 				alignas(16) glm::vec4 colorLookup[16];
 			};
 
-			struct SSBO_GridData
-			{
-				std::array<uint32_t, 1'000'000> tileIDs;
-			};
-
 			AssetHandle<Rendering::Material>       _material;
 			std::unique_ptr<Rendering::Model>      _model;
 			std::ranges::iota_view<size_t, size_t> _indexes;

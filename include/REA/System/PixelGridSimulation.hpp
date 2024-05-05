@@ -11,7 +11,14 @@ namespace REA::System
 	class PixelGridSimulation final : public ECS::System<Component::PixelGrid>
 	{
 		public:
-			PixelGridSimulation(AssetHandle<Rendering::Shader> pixelGridComputeShader);
+			struct SimulationShaders
+			{
+				AssetHandle<Rendering::Shader> FallingSimulation;
+				AssetHandle<Rendering::Shader> FlowSimulation;
+			};
+
+			PixelGridSimulation(SimulationShaders simulationShaders);
+			void CmdWaitForPreviousComputeShader(uint32_t fif);
 
 			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, SplitEngine::ECS::Context& context) override;
 
@@ -20,6 +27,7 @@ namespace REA::System
 			{
 				float    deltaTime = 0.0f;
 				uint32_t timer     = 0;
+				float    rng       = 0.0f;
 				Pixel    solidPixel{};
 			};
 
@@ -33,6 +41,6 @@ namespace REA::System
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;
 
-			AssetHandle<Rendering::Shader> _shader;
+			SimulationShaders _shaders;
 	};
 }

@@ -65,6 +65,7 @@ set(SHADER_FILES
         "res/shaders/PixelGrid/PixelGrid.vert"
         "res/shaders/PixelGrid/PixelGrid.frag"
         "res/shaders/PixelGridCompute/PixelGridCompute.comp"
+        "res/shaders/PixelGridComputeFlow/PixelGridComputeFlow.comp"
 )
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)

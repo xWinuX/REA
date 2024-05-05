@@ -15,7 +15,7 @@ namespace REA::System
 		tileData->colorLookup[0] = glm::vec4((1.0f/255.0f) * 0x07, (1.0f/255.0f) * 0x1F, (1.0f/255.0f) * 0x16, 1.0f); // Black
 		tileData->colorLookup[1] = glm::vec4((1.0f/255.0f) * 0xE6, (1.0f/255.0f) * 0xB0, (1.0f/255.0f) * 0x45, 1.0f); // Black
 		tileData->colorLookup[2] = glm::vec4((1.0f/255.0f) * 0x26, (1.0f/255.0f) * 0x4E, (1.0f/255.0f) * 0x80, 1.0f); // White
-		tileData->colorLookup[3] = glm::vec4((1.0f/255.0f) * 0x55, (1.0f/255.0f) * 0x55, (1.0f/255.0f) * 0x55, 1.0f); // White
+		tileData->colorLookup[3] = glm::vec4((1.0f/255.0f) * 0xC1, (1.0f/255.0f) * 0x5B, (1.0f/255.0f) * 0x4B, 1.0f); // White
 		//tileData->colorLookup[2] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Green
 		//tileData->colorLookup[1] = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // Blue
 		//tileData->colorLookup[0] = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // White

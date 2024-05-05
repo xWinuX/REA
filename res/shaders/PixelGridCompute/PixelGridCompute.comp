@@ -10,26 +10,20 @@ struct Pixel {
     uint PixelID8_Flags8_Density8_Spread8;
 };
 
-layout(set = 0, binding = 0) uniform CameraProperties {
-    mat4 view;
-    mat4 viewIdentity;
-    mat4 orthoProj;
-    mat4 proj;
-    mat4 viewProj;
-} cameraProperties;
 
 
-layout(std430, set = 1, binding = 0) readonly buffer c_SimulationData {
+layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
     float deltaTime;
     uint timer;
+    float rng;
     Pixel solidPixel;
 } simulationData;
 
-layout(std430, set = 1, binding = 1) readonly buffer na_PixelSSBOIn {
+layout(std430, set = 1, binding = 1) buffer na_s_PixelSSBOIn {
     Pixel readOnlyPixels[1000000];
 };
 
-layout(std430, set = 1, binding = 2) writeonly buffer s_Pixels {
+layout(std430, set = 1, binding = 2) buffer s_Pixels {
     Pixel pixels[1000000];
 };
 

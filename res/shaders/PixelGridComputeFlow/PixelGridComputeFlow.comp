@@ -1,0 +1,142 @@
+#version 450
+
+
+bool bitsetHas(uint bitset, uint bits)
+{
+    return (bitset & bits) == bits;
+}
+
+struct Pixel {
+    uint PixelID8_Flags8_Density8_Spread8;
+};
+
+layout(push_constant) uniform PushConstant {
+    uint iteration;
+};
+
+layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
+    float deltaTime;
+    uint timer;
+    float rng;
+    Pixel solidPixel;
+} simulationData;
+
+layout(std430, set = 1, binding = 1) buffer na_s_PixelSSBOIn {
+    Pixel readOnlyPixels[1000000];
+};
+
+layout(std430, set = 1, binding = 2) buffer s_Pixels {
+    Pixel pixels[1000000];
+};
+
+const uint width = 1000;
+const uint height = 1000;
+
+const uint Solid = 1u << 0u;
+const uint Gravity = 1u << 1u;
+
+// Pixel with {PixelID: 255, Flags: [Solid], Density: minValue, Spread: 0}
+//const Pixel solidPixel = { 0x000001FF };
+//const Pixel solidPixel = { 0xFF01F000 };
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index >= width * height) {
+        return;
+    }
+
+    uint y = index / width;
+    uint x = index % height;
+
+    Pixel solidPixel = simulationData.solidPixel;
+    Pixel currentPixel = readOnlyPixels[index];
+
+    uint currentPixelFlags = (currentPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+    uint currentPixelDensity = (currentPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+    uint currentPixelSpread = (currentPixel.PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
+
+    if (bitsetHas(currentPixelFlags, Gravity))
+    {
+        bool atTheBottom = y == 0;
+        bool atTheTop    = y == height - 1;
+
+        uint topIndex    = (y + 1) * width + x;
+        uint bottomIndex = (y - 1) * width + x;
+
+        Pixel bottomPixel = solidPixel;
+        if (!atTheBottom) { bottomPixel = readOnlyPixels[bottomIndex]; }
+
+        Pixel rightPixel       = solidPixel;
+        Pixel bottomRightPixel = solidPixel;
+
+        Pixel leftPixel       = solidPixel;
+        Pixel bottomLeftPixel = solidPixel;
+
+        // Right
+        if (x + 1 < width)
+        {
+            rightPixel = readOnlyPixels[index + 1];
+
+            if (!atTheBottom) { bottomRightPixel = readOnlyPixels[bottomIndex + 1]; }
+        }
+
+        // Left
+        if (x - 1 > 0)
+        {
+            leftPixel = readOnlyPixels[index - 1];
+
+            if (!atTheBottom) { bottomLeftPixel = readOnlyPixels[bottomIndex - 1]; }
+        }
+
+        uint bottomPixelFlags = (bottomPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+        uint bottomPixelDensity = (bottomPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+
+        uint rightPixelFlags = (rightPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+        uint rightPixelDensity = (rightPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+        uint rightPixelSpread = (rightPixel.PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
+
+        uint leftPixelFlags = (leftPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+        uint leftPixelDensity = (leftPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+        uint leftPixelSpread = (leftPixel.PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
+
+        if (simulationData.rng > 0.5f)
+        {
+            uint bottomLeftPixelFlags = (bottomLeftPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+            uint bottomLeftPixelDensity = (bottomLeftPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+
+            if (!bitsetHas(leftPixelFlags, Solid) && bottomLeftPixelDensity >= leftPixelDensity && leftPixelSpread > iteration && currentPixelDensity < leftPixelDensity)
+            {
+                pixels[index] = leftPixel;
+                return;
+            }
+
+            if (!bitsetHas(rightPixelFlags, Solid) && bottomPixelDensity >= currentPixelDensity && currentPixelSpread > iteration && currentPixelDensity >= rightPixelDensity)
+            {
+                pixels[index] = rightPixel;
+                return;
+            }
+        }
+        else
+        {
+            uint bottomRightPixelFlags = (bottomRightPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+            uint bottomRightPixelDensity = (bottomRightPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+
+            if (!bitsetHas(rightPixelFlags, Solid) && bottomRightPixelDensity >= rightPixelDensity && rightPixelSpread > iteration && currentPixelDensity < rightPixelDensity)
+            {
+                pixels[index] = rightPixel;
+                return;
+            }
+
+            if (!bitsetHas(leftPixelFlags, Solid) && bottomPixelDensity >= currentPixelDensity && currentPixelSpread > iteration && currentPixelDensity >= leftPixelDensity)
+            {
+                pixels[index] = leftPixel;
+                return;
+            }
+        }
+    }
+
+    pixels[index].PixelID8_Flags8_Density8_Spread8 = currentPixel.PixelID8_Flags8_Density8_Spread8;
+}

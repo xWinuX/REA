@@ -18,9 +18,11 @@ namespace REA::System
 			if (pixels == nullptr) { continue; }
 
 			Pixel drawPixel;
-			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Gravity), 3, 0 }; }
+			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Gravity), 4, 0 }; }
 
-			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 2, 1 }; }
+			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 2, 4 }; }
+
+			if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 3, 1 }; }
 
 			if (drawPixel.PixelID != 0)
 			{

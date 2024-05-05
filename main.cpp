@@ -67,7 +67,8 @@ int main()
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
-	AssetHandle<Rendering::Shader> pixelGridCompute = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid, { "res/shaders/PixelGridCompute" });
+	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridCompute" });
+	AssetHandle<Rendering::Shader> pixelGridComputeFlow = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Flow, { "res/shaders/PixelGridComputeFlow" });
 
 
 	// Setup ECS
@@ -97,7 +98,12 @@ int main()
 	ecs.AddSystem<System::Camera>(ECS::Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(ECS::Stage::Gameplay, 999);
 
-	ecs.AddSystem<System::PixelGridSimulation>(ECS::Stage::Gameplay, 999, pixelGridCompute);
+
+	System::PixelGridSimulation::SimulationShaders simulationShaders = {
+		.FallingSimulation = pixelGridComputeFall,
+		.FlowSimulation = pixelGridComputeFlow
+	};
+	ecs.AddSystem<System::PixelGridSimulation>(ECS::Stage::Gameplay, 999, simulationShaders);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	ecs.AddSystem<System::RenderingPreparation>(ECS::Stage::Rendering, 0);
