@@ -1,37 +1,6 @@
 #version 450
 
-
-bool bitsetHas(uint bitset, uint bits)
-{
-    return (bitset & bits) == bits;
-}
-
-struct Pixel {
-    uint PixelID8_Flags8_Density8_Spread8;
-};
-
-
-
-layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
-    float deltaTime;
-    uint timer;
-    float rng;
-    Pixel solidPixel;
-} simulationData;
-
-layout(std430, set = 1, binding = 1) buffer na_s_PixelSSBOIn {
-    Pixel readOnlyPixels[1000000];
-};
-
-layout(std430, set = 1, binding = 2) buffer s_Pixels {
-    Pixel pixels[1000000];
-};
-
-const uint width = 1000;
-const uint height = 1000;
-
-const uint Solid = 1u << 0u;
-const uint Gravity = 1u << 1u;
+#include "../PixelGridComputeGlobals.glsl"
 
 // Pixel with {PixelID: 255, Flags: [Solid], Density: minValue, Spread: 0}
 //const Pixel solidPixel = { 0x000001FF };
@@ -51,11 +20,9 @@ void main()
 
     Pixel solidPixel = simulationData.solidPixel;
     Pixel currentPixel = readOnlyPixels[index];
-    // Extracting Flags (next 8 bits)
-    uint currentPixelFlags = (currentPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
 
-    // Extracting Density (next 8 bits)
-    uint currentPixelDensity = int((currentPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu);
+    uint currentPixelFlags = getPixelFlags(currentPixel.PixelID8_Flags8_Density8_Spread8);
+    uint currentPixelDensity = getPixelDensity(currentPixel.PixelID8_Flags8_Density8_Spread8);
 
     if (bitsetHas(currentPixelFlags, Gravity))
     {
@@ -100,11 +67,11 @@ void main()
             if (!atTheBottom) { bottomLeftPixel = readOnlyPixels[bottomIndex - 1]; }
         }
 
-        uint topPixelFlags = (topPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-        uint topPixelDensity = (topPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+        uint topPixelFlags = getPixelFlags(topPixel.PixelID8_Flags8_Density8_Spread8);
+        uint topPixelDensity = getPixelDensity(topPixel.PixelID8_Flags8_Density8_Spread8);
 
-        uint bottomPixelFlags = (bottomPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-        uint bottomPixelDensity = (bottomPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+        uint bottomPixelFlags = getPixelFlags(bottomPixel.PixelID8_Flags8_Density8_Spread8);
+        uint bottomPixelDensity = getPixelDensity(bottomPixel.PixelID8_Flags8_Density8_Spread8);
 
         if (!bitsetHas(topPixelFlags, Solid) && currentPixelDensity < topPixelDensity)
         {
@@ -120,19 +87,19 @@ void main()
 
         if (simulationData.timer % 2 == 0)
         {
-            uint leftPixelFlags = (leftPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-            uint leftPixelDensity = (leftPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+            uint leftPixelFlags = getPixelFlags(leftPixel.PixelID8_Flags8_Density8_Spread8);
+            uint leftPixelDensity = getPixelDensity(leftPixel.PixelID8_Flags8_Density8_Spread8);
 
-            uint topLeftPixelFlags = (topLeftPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-            uint topLeftPixelDensity = (topLeftPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+            uint topLeftPixelFlags = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
+            uint topLeftPixelDensity = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
             if (!bitsetHas(topLeftPixelFlags, Solid) && !bitsetHas(leftPixelFlags, Solid) && leftPixelDensity >= topLeftPixelDensity && currentPixelDensity < topLeftPixelDensity)
             {
                 pixels[index] = topLeftPixel;
                 return;
             }
 
-            uint bottomRightPixelFlags = (bottomRightPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-            uint bottomRightPixelDensity = (bottomRightPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+            uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
+            uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
             if (!bitsetHas(bottomRightPixelFlags, Solid) && currentPixelDensity > bottomRightPixelDensity)
             {
                 pixels[index] = bottomRightPixel;
@@ -141,19 +108,19 @@ void main()
         }
         else
         {
-            uint rightPixelFlags = (rightPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-            uint rightPixelDensity = (rightPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+            uint rightPixelFlags = getPixelFlags(rightPixel.PixelID8_Flags8_Density8_Spread8);
+            uint rightPixelDensity = getPixelDensity(rightPixel.PixelID8_Flags8_Density8_Spread8);
 
-            uint topRightPixelFlags = (topRightPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-            uint topRightPixelDensity = (topRightPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+            uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
+            uint topRightPixelDensity = getPixelDensity(topRightPixel.PixelID8_Flags8_Density8_Spread8);
             if (!bitsetHas(topRightPixelFlags, Solid) && !bitsetHas(rightPixelFlags, Solid) && rightPixelDensity >= topRightPixelDensity && currentPixelDensity < topRightPixelDensity)
             {
                 pixels[index] = topRightPixel;
                 return;
             }
 
-            uint bottomLeftPixelFlags = (bottomLeftPixel.PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-            uint bottomLeftPixelDensity = (bottomLeftPixel.PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+            uint bottomLeftPixelFlags = getPixelFlags(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
+            uint bottomLeftPixelDensity = getPixelDensity(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
             if (!bitsetHas(bottomLeftPixelFlags, Solid) && currentPixelDensity > bottomLeftPixelDensity)
             {
                 pixels[index] = bottomLeftPixel;
@@ -162,5 +129,5 @@ void main()
         }
     }
 
-    pixels[index].PixelID8_Flags8_Density8_Spread8 = currentPixel.PixelID8_Flags8_Density8_Spread8;
+    pixels[index] = currentPixel;
 }

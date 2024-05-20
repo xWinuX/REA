@@ -4,5 +4,5 @@
 
 namespace REA::System
 {
-	void RenderingPreparation::RunExecute(ECS::Context& context) { Rendering::Shader::UpdateGlobal(); }
+	void RenderingPreparation::RunExecute(ECS::ContextProvider& contextProvider, uint8_t stage) { Rendering::Shader::UpdateGlobal(); }
 }

@@ -17,7 +17,8 @@ namespace REA::System
 	                               Component::Player*     playerComponents,
 	                               Component::Physics*    physicsComponents,
 	                               std::vector<uint64_t>& entities,
-	                               ECS::Context&          context)
+	                               ECS::ContextProvider&  contextProvider,
+	                               uint8_t                stage)
 	{
 		for (int i = 0; i < entities.size(); ++i)
 		{
@@ -34,7 +35,7 @@ namespace REA::System
 
 			if (Input::GetButtonActionDown(InputAction::Fire))
 			{
-				context.Registry->CreateEntity<Component::Transform, Component::Physics, Component::SpriteRenderer>({ transformComponent.Position, transformComponent.Rotation },
+				contextProvider.Registry->CreateEntity<Component::Transform, Component::Physics, Component::SpriteRenderer>({ transformComponent.Position, transformComponent.Rotation },
 				                                                                                                    { false, glm::vec3(direction.x, -direction.y, 0.0f) * 3.0f },
 				                                                                                                    { _bulletSprite, 5.0f });
 			}

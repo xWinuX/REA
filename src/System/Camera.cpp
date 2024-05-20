@@ -3,13 +3,14 @@
 #include <imgui.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Shader.hpp>
 
 namespace REA::System
 {
-	void Camera::Execute(Component::Transform* transformComponents, Component::Camera* cameraComponents, std::vector<uint64_t>& entities, ECS::Context& context)
+	void Camera::Execute(Component::Transform* transformComponents, Component::Camera* cameraComponents, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 
 		CameraUBO* cameraUBO = Rendering::Shader::GetGlobalProperties().GetBufferData<CameraUBO>(0);
@@ -18,12 +19,14 @@ namespace REA::System
 			Component::Transform& transformComponent = transformComponents[i];
 			Component::Camera&    cameraComponent    = cameraComponents[i];
 
-			if (context.Registry->IsEntityValid(cameraComponent.TargetEntity))
+			if (contextProvider.Registry->IsEntityValid(cameraComponent.TargetEntity))
 			{
-				transformComponent.Position = context.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity).Position - glm::vec3(0.0f, 0.0f, 10.0f);
+				transformComponent.Position = contextProvider.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity).Position - glm::vec3(0.0f, 0.0f, 10.0f);
 
-				const uint32_t width  = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().width;
-				const uint32_t height = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
+				Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
+
+				const uint32_t width  = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().width;
+				const uint32_t height = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
 
 				cameraUBO->view = glm::lookAt(transformComponent.Position, transformComponent.Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 				cameraUBO->viewIdentity = glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));

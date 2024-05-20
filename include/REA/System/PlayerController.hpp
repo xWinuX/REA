@@ -16,11 +16,13 @@ namespace REA::System
 		public:
 			PlayerController(AssetHandle<SpriteTexture> bulletSprite);
 
+		protected:
 			void Execute(Component::Transform*  transformComponents,
 			             Component::Player*     playerComponents,
 			             Component::Physics*    physicsComponents,
 			             std::vector<uint64_t>& entities,
-			             ECS::Context&          context) override;
+			             ECS::ContextProvider&  contextProvider,
+			             uint8_t                stage) override;
 
 		private:
 			AssetHandle<SpriteTexture> _bulletSprite;

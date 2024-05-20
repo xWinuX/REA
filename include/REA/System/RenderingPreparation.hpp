@@ -7,6 +7,7 @@ namespace REA::System
 {
 	class RenderingPreparation final : public ECS::SystemBase
 	{
-		void RunExecute(ECS::Context& context) override;
+		protected:
+			void RunExecute(ECS::ContextProvider& contextProvider, uint8_t stage) override;
 	};
 }

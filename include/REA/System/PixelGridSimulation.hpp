@@ -18,9 +18,10 @@ namespace REA::System
 			};
 
 			PixelGridSimulation(SimulationShaders simulationShaders);
-			void CmdWaitForPreviousComputeShader(uint32_t fif);
 
-			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, SplitEngine::ECS::Context& context) override;
+		protected:
+			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& context, uint8_t stage) override;
+			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
 		private:
 			struct UBO_SimulationData
@@ -42,5 +43,7 @@ namespace REA::System
 			vk::Fence                        _computeFence;
 
 			SimulationShaders _shaders;
+
+			void CmdWaitForPreviousComputeShader(uint32_t fif);
 	};
 }

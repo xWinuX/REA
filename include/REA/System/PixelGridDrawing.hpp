@@ -12,7 +12,8 @@ namespace REA::System
 		public:
 			PixelGridDrawing(int radius = 1);
 
-			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context) override;
+		protected:
+			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
 		private:
 			int _radius = 1;

@@ -1,6 +1,8 @@
 #include "REA/System/PixelGridSimulation.hpp"
 
 #include <execution>
+#include <imgui.h>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
@@ -75,10 +77,20 @@ namespace REA::System
 		                                                    nullptr);
 	}
 
-	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
+	void PixelGridSimulation::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& context, uint8_t stage)
 	{
-		Rendering::Vulkan::Device&     device       = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
-		Rendering::Vulkan::QueueFamily computeQueue = context.Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
+		ImGui::Begin("Simulation");
+		ImGui::Button("▶️");
+		ImGui::End();
+		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, context, stage);
+	}
+
+	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
+	{
+		Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
+
+		Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
+		Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
 
 		device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 		device.GetVkDevice().resetFences(_computeFence);
@@ -87,7 +99,7 @@ namespace REA::System
 
 		UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
 
-		simulationData->deltaTime = context.DeltaTime;
+		simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 		simulationData->timer++;
 		simulationData->rng = glm::linearRand(0.0f, 1.0f);
 

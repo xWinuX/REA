@@ -3,6 +3,7 @@
 #include <execution>
 #include <imgui.h>
 #include <SplitEngine/Application.hpp>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Rendering/Model.hpp>
 #include <SplitEngine/Rendering/Texture2D.hpp>
 
@@ -63,11 +64,13 @@ namespace REA::System
 		_model = std::make_unique<Rendering::Model, Rendering::Model::CreateInfo>({ reinterpret_cast<std::vector<std::byte>&>(vertices), indices });
 	}
 
-	void SpriteRenderer::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::Context& context)
+	void SpriteRenderer::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 		size_t numEntities = 0;
 
 		ObjectBuffer* objectBuffer = _material->GetProperties().GetBufferData<ObjectBuffer>(0);
+
+		float deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 
 		for (const auto& archetype: archetypes)
 		{
@@ -82,7 +85,7 @@ namespace REA::System
 			std::for_each(std::execution::par,
 			              _indexes.begin(),
 			              _indexes.end(),
-			              [this, objectBuffer, spriteComponents, context, &numEntities](size_t i)
+			              [this, objectBuffer, spriteComponents, contextProvider, &numEntities, deltaTime](size_t i)
 			              {
 				              Component::SpriteRenderer& spriteAnimatorComponent = spriteComponents[i];
 				              SpriteTexture*             sprite                  = spriteAnimatorComponent.SpriteTexture.Get();
@@ -92,7 +95,7 @@ namespace REA::System
 				              if (numSubSprites > 1 && animationSpeed > 0.0f)
 				              {
 					              float currentFrame     = spriteAnimatorComponent.CurrentFrame;
-					              float animationAdvance = animationSpeed * context.DeltaTime;
+					              float animationAdvance = animationSpeed * deltaTime;
 
 					              float    newCurrentFrame     = currentFrame + animationAdvance;
 					              uint32_t castNewCurrentFrame = static_cast<uint32_t>(newCurrentFrame);
@@ -110,7 +113,7 @@ namespace REA::System
 
 		objectBuffer->numObjects = numEntities;
 
-		vk::CommandBuffer commandBuffer = context.Renderer->GetCommandBuffer().GetVkCommandBuffer();
+		vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
 
 		_material->GetShader()->BindGlobal(commandBuffer);
 

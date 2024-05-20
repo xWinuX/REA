@@ -8,6 +8,7 @@ namespace REA::System
 		public:
 			Debug() = default;
 
-			void ExecuteArchetypes(std::vector<SplitEngine::ECS::Archetype*>& archetypes, SplitEngine::ECS::Context& context) override;
+		protected:
+			void ExecuteArchetypes(std::vector<SplitEngine::ECS::Archetype*>& archetypes, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage) override;
 	};
 }

@@ -1,3 +1,5 @@
+#include <imgui.h>
+
 #include "SplitEngine/Application.hpp"
 #include "SplitEngine/AssetDatabase.hpp"
 #include "SplitEngine/Input.hpp"
@@ -28,7 +30,9 @@
 #include "REA/System/RenderingPreparation.hpp"
 #include "REA/System/SpriteRenderer.hpp"
 #include "include/REA/System/PixelGridDrawing.hpp"
+#include "REA/Stage.hpp"
 #include "REA/System/GameOfLifeSimulation.hpp"
+#include "REA/System/ImGuiManager.hpp"
 
 
 using namespace SplitEngine;
@@ -45,11 +49,6 @@ int main()
 
 	AssetDatabase& assetDatabase = application.GetAssetDatabase();
 
-	/**
-	 * You can create an Asset with every type that has a public struct named CreateInfo!
-	 * That means you can also create custom assets
-	 * The key can be anything as long as it can be cast into an int, so no magic strings!
-	 */
 	AssetHandle<Rendering::Shader>   spriteShader   = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Sprite, { "res/shaders/debug" });
 	AssetHandle<Rendering::Material> spriteMaterial = assetDatabase.CreateAsset<Rendering::Material>(Material::Sprite, { spriteShader });
 
@@ -70,14 +69,8 @@ int main()
 	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridCompute" });
 	AssetHandle<Rendering::Shader> pixelGridComputeFlow = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Flow, { "res/shaders/PixelGridComputeFlow" });
 
-
-	// Setup ECS
 	ECS::Registry& ecs = application.GetECSRegistry();
 
-	/**
-	 * 	Each component that is used needs to be registered
-	 * 	It's important that every Component, that will be used, is registered before any Entities are created or else the ECS will not work or likely crash the app
-	 */
 	ecs.RegisterComponent<Component::Transform>();
 	ecs.RegisterComponent<Component::SpriteRenderer>();
 	ecs.RegisterComponent<Component::Physics>();
@@ -86,28 +79,23 @@ int main()
 	ecs.RegisterComponent<Component::Camera>();
 	ecs.RegisterComponent<Component::PixelGrid>();
 
-	/**
-	 * 	Each system can either be registered as a gameplay system or as a render system
-	 * 	Gameplay systems execute before rendering systems and don't have any special context
-	 * 	Render systems execute after gameplay systems and run in a vulkan context so draw calls/binds etc... can be made
-	 * 	Systems can be registered multiple times and parameters get forwarded to the systems constructor
-	 * 	Systems can be registered as the game is running, so no need to preregister all at the start if you don't want to
-	 */
-	ecs.AddSystem<System::Debug>(ECS::Stage::Gameplay, -1);
-	ecs.AddSystem<System::PixelGridDrawing>(ECS::Stage::Gameplay,0, 50);
-	ecs.AddSystem<System::Camera>(ECS::Stage::Gameplay, 1);
-	ecs.AddSystem<System::AudioSourcePlayer>(ECS::Stage::Gameplay, 999);
+	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
+	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
+
+	ecs.AddSystem<System::PixelGridDrawing>(Stage::Gameplay,0, 50);
+	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
+	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 
 
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.FallingSimulation = pixelGridComputeFall,
 		.FlowSimulation = pixelGridComputeFlow
 	};
-	ecs.AddSystem<System::PixelGridSimulation>(ECS::Stage::Gameplay, 999, simulationShaders);
+	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
-	ecs.AddSystem<System::RenderingPreparation>(ECS::Stage::Rendering, 0);
-	ecs.AddSystem<System::PixelGridRenderer>(ECS::Stage::Rendering, 1, pixelGridMaterial);
+	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
+	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
 	//ecs.AddSystem<System::SpriteRenderer>(ECS::Stage::Rendering, 2, spriteMaterial, packingData);
 
 	// Create entities

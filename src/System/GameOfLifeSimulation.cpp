@@ -4,7 +4,7 @@
 
 namespace REA::System
 {
-	void GameOfLifeSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
+	void GameOfLifeSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 		for (int i = 0; i < entities.size(); ++i)
 		{

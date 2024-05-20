@@ -1,6 +1,7 @@
 #include "REA/System/PixelGridDrawing.hpp"
 
 #include <SplitEngine/Application.hpp>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 
 namespace REA::System
@@ -8,7 +9,7 @@ namespace REA::System
 	PixelGridDrawing::PixelGridDrawing(int radius):
 		_radius(radius) {}
 
-	void PixelGridDrawing::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
+	void PixelGridDrawing::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 		for (int i = 0; i < entities.size(); ++i)
 		{
@@ -18,15 +19,16 @@ namespace REA::System
 			if (pixels == nullptr) { continue; }
 
 			Pixel drawPixel;
-			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Gravity), 4, 0 }; }
+			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Solid), 4, 0 }; }
 
 			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 2, 4 }; }
 
-			if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 3, 1 }; }
+			//if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 3, 1 }; }
+			if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 4, 0 };}
 
 			if (drawPixel.PixelID != 0)
 			{
-				glm::ivec2 windowSize = context.Application->GetWindow().GetSize();
+				glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 
 				glm::ivec2 mousePosition = Input::GetMousePosition() + windowSize / 2;
 

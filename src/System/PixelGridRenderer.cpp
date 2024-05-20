@@ -2,6 +2,7 @@
 
 #include <execution>
 #include <glm/gtc/random.hpp>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Shader.hpp>
 
@@ -12,10 +13,10 @@ namespace REA::System
 	{
 		SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
-		tileData->colorLookup[0] = glm::vec4((1.0f/255.0f) * 0x07, (1.0f/255.0f) * 0x1F, (1.0f/255.0f) * 0x16, 1.0f); // Black
-		tileData->colorLookup[1] = glm::vec4((1.0f/255.0f) * 0xE6, (1.0f/255.0f) * 0xB0, (1.0f/255.0f) * 0x45, 1.0f); // Black
-		tileData->colorLookup[2] = glm::vec4((1.0f/255.0f) * 0x26, (1.0f/255.0f) * 0x4E, (1.0f/255.0f) * 0x80, 1.0f); // White
-		tileData->colorLookup[3] = glm::vec4((1.0f/255.0f) * 0xC1, (1.0f/255.0f) * 0x5B, (1.0f/255.0f) * 0x4B, 1.0f); // White
+		tileData->colorLookup[0] = glm::vec4((1.0f / 255.0f) * 0x07, (1.0f / 255.0f) * 0x1F, (1.0f / 255.0f) * 0x16, 1.0f); // Black
+		tileData->colorLookup[1] = glm::vec4((1.0f / 255.0f) * 0xE6, (1.0f / 255.0f) * 0xB0, (1.0f / 255.0f) * 0x45, 1.0f); // Black
+		tileData->colorLookup[2] = glm::vec4((1.0f / 255.0f) * 0x26, (1.0f / 255.0f) * 0x4E, (1.0f / 255.0f) * 0x80, 1.0f); // White
+		tileData->colorLookup[3] = glm::vec4((1.0f / 255.0f) * 0xC1, (1.0f / 255.0f) * 0x5B, (1.0f / 255.0f) * 0x4B, 1.0f); // White
 		//tileData->colorLookup[2] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Green
 		//tileData->colorLookup[1] = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // Blue
 		//tileData->colorLookup[0] = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // White
@@ -41,9 +42,9 @@ namespace REA::System
 		_model = std::make_unique<Rendering::Model, Rendering::Model::CreateInfo>({ reinterpret_cast<std::vector<std::byte>&>(vertices), indices });
 	}
 
-	void PixelGridRenderer::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::Context& context)
+	void PixelGridRenderer::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
-		vk::CommandBuffer commandBuffer = context.Renderer->GetCommandBuffer().GetVkCommandBuffer();
+		vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
 		_material->GetShader()->BindGlobal(commandBuffer);
 
 		_material->GetShader()->Update();
@@ -53,7 +54,7 @@ namespace REA::System
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			const Component::PixelGrid& pixelGrid = pixelGrids[i];
-			SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
+			SSBO_GridInfo*              tileData  = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
 			tileData->width  = pixelGrid.Width;
 			tileData->height = pixelGrid.Height;

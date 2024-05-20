@@ -46,12 +46,18 @@ add_executable(
         src/System/PixelGridDrawing.cpp
         include/REA/System/PixelGridDrawing.hpp
         include/REA/BitSet.hpp
+        src/System/ImGuiManager.cpp
+        include/REA/System/ImGuiManager.hpp
+        include/REA/Stage.hpp
 )
 
 target_include_directories(REA PRIVATE include)
 
 find_package(SplitEngine CONFIG REQUIRED)
 target_link_libraries(REA PRIVATE SplitEngine::SplitEngine)
+
+find_package(imgui CONFIG REQUIRED)
+target_link_libraries(REA PRIVATE imgui::imgui)
 
 add_custom_command(TARGET REA POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -76,6 +82,7 @@ foreach (SHADER_FILE ${SHADER_FILES})
     add_custom_command(TARGET REA POST_BUILD
             COMMAND ${glslc_executable}
             -o ${SPIRV_OUTPUT}
+            # -g # Uncomment to enable debug infos
             $<TARGET_FILE_DIR:REA>/${SHADER_FILE}
             DEPENDS ${CMAKE_SOURCE_DIR}/${SHADER_FILE}
             RESULT_VARIABLE glslang_result

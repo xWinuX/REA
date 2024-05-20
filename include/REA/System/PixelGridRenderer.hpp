@@ -16,7 +16,9 @@ namespace REA::System
 		public:
 			explicit PixelGridRenderer(AssetHandle<Rendering::Material> material);
 
-			void Execute(Component::PixelGrid*, std::vector<uint64_t>& entities, ECS::Context& context) override;
+		protected:
+			void Execute(Component::PixelGrid*, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage) override;
+
 		private:
 			struct SSBO_GridInfo
 			{

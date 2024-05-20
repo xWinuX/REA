@@ -14,10 +14,14 @@ namespace REA::System
 		public:
 			Camera() = default;
 
-			void Execute(Component::Transform* transformComponents, Component::Camera* cameraComponents, std::vector<uint64_t>& entities, ECS::Context& context) override;
+		protected:
+			void Execute(Component::Transform*  transformComponents,
+			             Component::Camera*     cameraComponents,
+			             std::vector<uint64_t>& entities,
+			             ECS::ContextProvider&  contextProvider,
+			             uint8_t                stage) override;
 
 		private:
-
 			glm::vec3 eye;
 			glm::vec3 center;
 			glm::vec3 up;
