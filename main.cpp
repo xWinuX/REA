@@ -40,7 +40,7 @@ using namespace REA;
 
 int main()
 {
-	Application application = Application({{}, {.UseVulkanValidationLayers=false}});
+	Application application = Application({ {}, { .UseVulkanValidationLayers = false } });
 
 	application.GetWindow().SetSize(1000, 1000);
 
@@ -66,6 +66,7 @@ int main()
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
+	AssetHandle<Rendering::Shader> pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Idle, { "res/shaders/PixelGridComputeIdle" });
 	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridCompute" });
 	AssetHandle<Rendering::Shader> pixelGridComputeFlow = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Flow, { "res/shaders/PixelGridComputeFlow" });
 
@@ -82,12 +83,13 @@ int main()
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
 
-	ecs.AddSystem<System::PixelGridDrawing>(Stage::Gameplay,0, 50);
+	ecs.AddSystem<System::PixelGridDrawing>(Stage::Gameplay, 0, 50);
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 
 
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
+		.IdleSimulation = pixelGridComputeIdle,
 		.FallingSimulation = pixelGridComputeFall,
 		.FlowSimulation = pixelGridComputeFlow
 	};
@@ -105,8 +107,8 @@ int main()
 	ecs.CreateEntity<Component::Transform, Component::Camera>({}, { playerEntity });
 
 
-	Component::PixelGrid pixelGrid = {};
-	uint64_t pixelGridEntity = ecs.CreateEntity<Component::PixelGrid>(std::move(pixelGrid));
+	Component::PixelGrid pixelGrid       = {};
+	uint64_t             pixelGridEntity = ecs.CreateEntity<Component::PixelGrid>(std::move(pixelGrid));
 
 	// Run Game
 	application.Run();

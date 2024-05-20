@@ -13,6 +13,7 @@ namespace REA
 	{
 		Sprite,
 		PixelGrid,
+		Comp_PixelGrid_Idle,
 		Comp_PixelGrid_Fall,
 		Comp_PixelGrid_Flow,
 	};

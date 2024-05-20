@@ -6,6 +6,8 @@
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Systems.hpp>
 
+#include "IconsFontAwesome.h"
+
 namespace REA::System
 {
 	ImGuiManager::ImGuiManager(ECS::ContextProvider& contextProvider)
@@ -34,6 +36,15 @@ namespace REA::System
 		_imGuiDescriptorPool = device.GetVkDevice().createDescriptorPool(descriptorPoolCreateInfo);
 
 		ImGui::CreateContext();
+
+		ImGuiIO& io = ImGui::GetIO();
+		io.Fonts->AddFontDefault();
+
+		ImFontConfig config;
+		config.MergeMode = true;
+		config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
+		static const ImWchar iconRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+		io.Fonts->AddFontFromFileTTF("res/fonts/fa-solid-900.ttf", 13.0f, &config, iconRanges);
 
 		ImGui_ImplSDL2_InitForVulkan(window);
 

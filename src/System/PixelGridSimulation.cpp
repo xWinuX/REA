@@ -7,6 +7,8 @@
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
 
+#include "IconsFontAwesome.h"
+
 namespace REA::System
 {
 	PixelGridSimulation::PixelGridSimulation(SimulationShaders shaders):
@@ -80,8 +82,11 @@ namespace REA::System
 	void PixelGridSimulation::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& context, uint8_t stage)
 	{
 		ImGui::Begin("Simulation");
-		ImGui::Button("▶️");
+		if (ImGui::Button(_paused ? ICON_FA_PLAY : ICON_FA_PAUSE)) { _paused = !_paused; }
+		if (_paused) { if (ImGui::Button(ICON_FA_FORWARD_STEP)) { _doStep = true; } }
 		ImGui::End();
+
+
 		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, context, stage);
 	}
 
@@ -97,58 +102,66 @@ namespace REA::System
 
 		uint32_t fif = _fif;
 
-		UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
-
-		simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
-		simulationData->timer++;
-		simulationData->rng = glm::linearRand(0.0f, 1.0f);
-
-		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, fif);
-
-		if (Input::GetDown(KeyCode::SPACE))
+		if (!_paused || _doStep)
 		{
-			for (int i = 0; i < 500; ++i)
-			{
-				if (i % 2 == 0) { continue; }
-				inputPixels->Pixels[500'250 + i] = { static_cast<uint8_t>(1), BitSet<uint8_t>(Gravity), 3, 0 };
-			}
-		}
+			UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
 
-		_commandBuffer.GetVkCommandBuffer().reset({});
+			simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
+			simulationData->timer++;
+			simulationData->rng = glm::linearRand(0.0f, 1.0f);
 
-		constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+			_commandBuffer.GetVkCommandBuffer().reset({});
 
-		auto& fallProperties = _shaders.FallingSimulation->GetProperties();
+			constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
 
-		_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
+			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
-		// Fall
-		_shaders.FallingSimulation->Update();
+			// Fall
+			_shaders.FallingSimulation->Update();
 
-		_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-		_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
-
-		// Flow
-		uint32_t flowIteration = 0;
-
-		_shaders.FlowSimulation->Update();
-
-		for (int i = 0; i < 4; ++i)
-		{
-			CmdWaitForPreviousComputeShader(fif);
-			fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
-
-			_shaders.FlowSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
-
-			_shaders.FlowSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+			_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 			_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
 
-			flowIteration++;
-		}
+			// Flow
+			uint32_t flowIteration = 0;
 
-		_commandBuffer.GetVkCommandBuffer().end();
+			_shaders.FlowSimulation->Update();
+
+			for (int i = 0; i < 4; ++i)
+			{
+				CmdWaitForPreviousComputeShader(fif);
+				fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+
+				_shaders.FlowSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
+
+				_shaders.FlowSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+				_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
+
+				flowIteration++;
+			}
+
+			_commandBuffer.GetVkCommandBuffer().end();
+
+			_doStep = false;
+		}
+		else
+		{
+			_commandBuffer.GetVkCommandBuffer().reset({});
+
+			constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+
+			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
+
+			_shaders.IdleSimulation->Update();
+
+			_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+			_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
+
+			_commandBuffer.GetVkCommandBuffer().end();
+		}
 
 		vk::SubmitInfo submitInfo;
 		submitInfo.commandBufferCount = 1;

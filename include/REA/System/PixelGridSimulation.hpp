@@ -13,6 +13,7 @@ namespace REA::System
 		public:
 			struct SimulationShaders
 			{
+				AssetHandle<Rendering::Shader> IdleSimulation;
 				AssetHandle<Rendering::Shader> FallingSimulation;
 				AssetHandle<Rendering::Shader> FlowSimulation;
 			};
@@ -43,6 +44,9 @@ namespace REA::System
 			vk::Fence                        _computeFence;
 
 			SimulationShaders _shaders;
+
+			bool _paused = true;
+			bool _doStep = false;
 
 			void CmdWaitForPreviousComputeShader(uint32_t fif);
 	};

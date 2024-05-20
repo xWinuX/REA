@@ -9,6 +9,11 @@ project(REA)
 
 add_compile_definitions(SE_DEBUG_LOG)
 
+file(DOWNLOAD
+        https://raw.githubusercontent.com/juliettef/IconFontCppHeaders/main/IconsFontAwesome6.h
+        ${CMAKE_SOURCE_DIR}/external/include/IconsFontAwesome.h
+)
+
 add_executable(
         REA
         main.cpp
@@ -49,9 +54,11 @@ add_executable(
         src/System/ImGuiManager.cpp
         include/REA/System/ImGuiManager.hpp
         include/REA/Stage.hpp
+        ${CMAKE_SOURCE_DIR}/external/include/IconsFontAwesome.h
 )
 
 target_include_directories(REA PRIVATE include)
+target_include_directories(REA PRIVATE external/include)
 
 find_package(SplitEngine CONFIG REQUIRED)
 target_link_libraries(REA PRIVATE SplitEngine::SplitEngine)
@@ -71,6 +78,7 @@ set(SHADER_FILES
         "res/shaders/PixelGrid/PixelGrid.vert"
         "res/shaders/PixelGrid/PixelGrid.frag"
         "res/shaders/PixelGridCompute/PixelGridCompute.comp"
+        "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeFlow/PixelGridComputeFlow.comp"
 )
 
