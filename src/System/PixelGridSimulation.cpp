@@ -2,6 +2,7 @@
 
 #include <execution>
 #include <imgui.h>
+#include <glm/gtc/random.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
@@ -11,6 +12,22 @@
 
 namespace REA::System
 {
+	void PixelGridSimulation::ClearGrid()
+	{
+		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
+
+		std::for_each(std::execution::par_unseq,
+		              std::begin(inputPixels->Pixels),
+		              std::end(inputPixels->Pixels),
+		              [](Pixel& pixel)
+		              {
+			              pixel.PixelID = std::numeric_limits<int8_t>::max();
+			              pixel.Flags.Set(Gravity);
+			              pixel.Density         = std::numeric_limits<uint8_t>::min();
+			              pixel.SpreadingFactor = 0;
+		              });
+	}
+
 	PixelGridSimulation::PixelGridSimulation(SimulationShaders shaders):
 		_shaders(shaders)
 	{
@@ -35,15 +52,7 @@ namespace REA::System
 		_shaders.FallingSimulation->Update();
 		_shaders.FlowSimulation->Update();
 
-		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
-
-		for (Pixel& pixel: inputPixels->Pixels)
-		{
-			pixel.PixelID = std::numeric_limits<int8_t>::max();
-			pixel.Flags.Set(Gravity);
-			pixel.Density         = std::numeric_limits<uint8_t>::min();
-			pixel.SpreadingFactor = 0;
-		}
+		ClearGrid();
 
 		// Set solid pixel
 		Pixel solidPixel = { std::numeric_limits<Pixel::ID>::max(), BitSet<uint8_t>(Solid), std::numeric_limits<uint8_t>::min(), 0 };
@@ -83,7 +92,9 @@ namespace REA::System
 	{
 		ImGui::Begin("Simulation");
 		if (ImGui::Button(_paused ? ICON_FA_PLAY : ICON_FA_PAUSE)) { _paused = !_paused; }
+		ImGui::SameLine();
 		if (_paused) { if (ImGui::Button(ICON_FA_FORWARD_STEP)) { _doStep = true; } }
+		if (ImGui::Button(ICON_FA_TRASH)) { ClearGrid(); }
 		ImGui::End();
 
 
@@ -128,7 +139,7 @@ namespace REA::System
 
 			_shaders.FlowSimulation->Update();
 
-			for (int i = 0; i < 4; ++i)
+			for (int i = 0; i < 1; ++i)
 			{
 				CmdWaitForPreviousComputeShader(fif);
 				fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;

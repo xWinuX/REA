@@ -87,12 +87,19 @@ void main()
 
         if (simulationData.timer % 2 == 0)
         {
+            uint rightPixelFlags = getPixelFlags(rightPixel.PixelID8_Flags8_Density8_Spread8);
+            uint rightPixelDensity = getPixelDensity(rightPixel.PixelID8_Flags8_Density8_Spread8);
+
             uint leftPixelFlags = getPixelFlags(leftPixel.PixelID8_Flags8_Density8_Spread8);
             uint leftPixelDensity = getPixelDensity(leftPixel.PixelID8_Flags8_Density8_Spread8);
 
             uint topLeftPixelFlags = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
             uint topLeftPixelDensity = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
-            if (!bitsetHas(topLeftPixelFlags, Solid) && !bitsetHas(leftPixelFlags, Solid) && leftPixelDensity >= topLeftPixelDensity && currentPixelDensity < topLeftPixelDensity)
+
+            if (!bitsetHas(topLeftPixelFlags, Solid) &&
+            !bitsetHas(topPixelFlags, Solid) &&// If top left is not solid meaning it can flow
+            leftPixelDensity >= topLeftPixelDensity &&// and top left will not swap with left
+            currentPixelDensity < topLeftPixelDensity)// and can swap with current pixel
             {
                 pixels[index] = topLeftPixel;
                 return;
@@ -100,7 +107,11 @@ void main()
 
             uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
             uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
-            if (!bitsetHas(bottomRightPixelFlags, Solid) && currentPixelDensity > bottomRightPixelDensity)
+            if (!bitsetHas(bottomRightPixelFlags, Solid) &&
+            !bitsetHas(topPixelFlags, Solid) &&
+            !bitsetHas(rightPixelFlags, Solid) &&
+            rightPixelDensity <= bottomRightPixelDensity &&
+            currentPixelDensity > bottomRightPixelDensity)
             {
                 pixels[index] = bottomRightPixel;
                 return;
@@ -108,12 +119,19 @@ void main()
         }
         else
         {
+            uint leftPixelFlags = getPixelFlags(leftPixel.PixelID8_Flags8_Density8_Spread8);
+            uint leftPixelDensity = getPixelDensity(leftPixel.PixelID8_Flags8_Density8_Spread8);
+
             uint rightPixelFlags = getPixelFlags(rightPixel.PixelID8_Flags8_Density8_Spread8);
             uint rightPixelDensity = getPixelDensity(rightPixel.PixelID8_Flags8_Density8_Spread8);
 
             uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
-            uint topRightPixelDensity = getPixelDensity(topRightPixel.PixelID8_Flags8_Density8_Spread8);
-            if (!bitsetHas(topRightPixelFlags, Solid) && !bitsetHas(rightPixelFlags, Solid) && rightPixelDensity >= topRightPixelDensity && currentPixelDensity < topRightPixelDensity)
+            uint topRightPixelDensity = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
+
+            if (!bitsetHas(topRightPixelFlags, Solid) &&// If top right is not solid meaning it can flow
+            !bitsetHas(topPixelFlags, Solid) &&// If top left is not solid meaning it can flow
+            rightPixelDensity >= topRightPixelDensity &&// and top right will not swap with right
+            currentPixelDensity < topRightPixelDensity)// and can swap with current pixel
             {
                 pixels[index] = topRightPixel;
                 return;
@@ -121,7 +139,11 @@ void main()
 
             uint bottomLeftPixelFlags = getPixelFlags(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
             uint bottomLeftPixelDensity = getPixelDensity(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
-            if (!bitsetHas(bottomLeftPixelFlags, Solid) && currentPixelDensity > bottomLeftPixelDensity)
+            if (!bitsetHas(bottomLeftPixelFlags, Solid) &&
+            !bitsetHas(topPixelFlags, Solid) &&
+            !bitsetHas(leftPixelFlags, Solid) &&
+            leftPixelDensity <= bottomLeftPixelDensity &&
+            currentPixelDensity > bottomLeftPixelDensity)
             {
                 pixels[index] = bottomLeftPixel;
                 return;

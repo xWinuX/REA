@@ -11,7 +11,7 @@
   "dependencies": [
     {
       "name": "split-engine",
-      "version>=": "1.3.2"
+      "version>=": "1.3.4"
     },
     {
       "name": "imgui",

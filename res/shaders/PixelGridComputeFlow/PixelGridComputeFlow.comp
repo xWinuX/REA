@@ -74,15 +74,15 @@ void main()
             uint bottomLeftPixelFlags = getPixelFlags(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
             uint bottomLeftPixelDensity = getPixelDensity(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
 
-            if (!bitsetHas(leftPixelFlags, Solid) &&  bottomLeftPixelDensity >= leftPixelDensity && leftPixelSpread > iteration && currentPixelDensity < leftPixelDensity)
+            if (currentPixelSpread > iteration && currentPixelDensity >= rightPixelDensity)
             {
-                pixels[index] = leftPixel;
+                pixels[index] = rightPixel;
                 return;
             }
 
-            if (!bitsetHas(rightPixelFlags, Solid) &&  bottomPixelDensity >= currentPixelDensity && currentPixelSpread > iteration && currentPixelDensity >= rightPixelDensity)
+            if (leftPixelSpread > iteration && currentPixelDensity < leftPixelDensity)
             {
-                pixels[index] = rightPixel;
+                pixels[index] = leftPixel;
                 return;
             }
         }
@@ -91,15 +91,15 @@ void main()
             uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
             uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
 
-            if (!bitsetHas(rightPixelFlags, Solid)  && bottomRightPixelDensity >= rightPixelDensity && rightPixelSpread > iteration && currentPixelDensity < rightPixelDensity)
+            if (currentPixelSpread > iteration && currentPixelDensity >= leftPixelDensity)
             {
-                pixels[index] = rightPixel;
+                pixels[index] = leftPixel;
                 return;
             }
 
-            if (!bitsetHas(leftPixelFlags, Solid)  && bottomPixelDensity >= currentPixelDensity && currentPixelSpread > iteration && currentPixelDensity >= leftPixelDensity)
+            if (rightPixelSpread > iteration && currentPixelDensity < rightPixelDensity)
             {
-                pixels[index] = leftPixel;
+                pixels[index] = rightPixel;
                 return;
             }
         }

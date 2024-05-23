@@ -18,6 +18,7 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> FlowSimulation;
 			};
 
+			void ClearGrid();
 			PixelGridSimulation(SimulationShaders simulationShaders);
 
 		protected:

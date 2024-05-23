@@ -1,13 +1,24 @@
 #include "REA/System/PixelGridDrawing.hpp"
 
+#include <imgui.h>
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
+#include <SplitEngine/Systems.hpp>
 
 namespace REA::System
 {
 	PixelGridDrawing::PixelGridDrawing(int radius):
 		_radius(radius) {}
+
+	void PixelGridDrawing::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
+	{
+		ImGui::Begin("Drawing");
+		ImGui::SliderInt("Brush Size", &_radius, 1, 50);
+		ImGui::End();
+		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
+		_mouseWheel = { 0, 0 };
+	}
 
 	void PixelGridDrawing::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
@@ -19,26 +30,38 @@ namespace REA::System
 			if (pixels == nullptr) { continue; }
 
 			Pixel drawPixel;
-			if (Input::GetDown(MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Solid), 4, 0 }; }
 
-			if (Input::GetDown(MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 2, 4 }; }
+			if (Input::GetDown(KeyCode::MOUSE_LEFT)) { drawPixel = { 1, BitSet<uint8_t>(Solid), 4, 0 }; }
+
+			if (Input::GetDown(KeyCode::MOUSE_RIGHT)) { drawPixel = { 2, BitSet<uint8_t>(Gravity), 2, 4 }; }
+
+
+			if (Input::GetDown(KeyCode::MOUSE_MIDDLE))
+			{
+				glm::ivec2 delta = Input::GetMouseDelta();
+				pixelGrid.Offset += glm::vec2(-delta.x, delta.y) / pixelGrid.Zoom;
+			}
+
 
 			//if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 3, 1 }; }
-			if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 4, 0 };}
+			if (Input::GetDown(KeyCode::F)) { drawPixel = { std::numeric_limits<int8_t>::max(), BitSet<uint8_t>(Gravity), std::numeric_limits<uint8_t>::min(), 0 }; }
+
+			pixelGrid.Zoom += (Input::GetMouseWheel().y * 0.05f) * pixelGrid.Zoom;
 
 			if (drawPixel.PixelID != 0)
 			{
 				glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 
-				glm::ivec2 mousePosition = Input::GetMousePosition() + windowSize / 2;
-
+				glm::vec2 mousePosition = Input::GetMousePosition();
 
 				// Calculate normalized mouse position
-				glm::vec2 normalizedMousePos = glm::vec2(mousePosition) / glm::vec2(windowSize);
+				glm::vec2 offset = glm::ivec2(pixelGrid.Offset.x, -pixelGrid.Offset.y);
+				glm::vec2  normalizedMousePos = glm::vec2((mousePosition / pixelGrid.Zoom) + offset) / glm::vec2(windowSize);
 
 				// Map normalized mouse position to grid position
-				int gridX = static_cast<int>(normalizedMousePos.x * pixelGrid.Width);
-				int gridY = pixelGrid.Height - static_cast<int>(normalizedMousePos.y * pixelGrid.Height);
+				int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.Width)));
+				int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.Height) / pixelGrid.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.Height)));
+
 
 				if (_radius == 1)
 				{

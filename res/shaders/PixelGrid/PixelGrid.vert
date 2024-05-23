@@ -23,6 +23,8 @@ const vec2 POSITIONS_NDC[4] = vec2[4] (
 layout(std140, set = 1, binding = 0) readonly buffer si_GridInfo {
     int width;
     int height;
+    float zoom;
+    vec2 offset;
     vec4 colorLookup[16];
 } gridInfo;
 
@@ -32,5 +34,5 @@ void main() {
 
     gl_Position =  vec4(POSITIONS_NDC[inIndex], 0.0f, 1.0f);
 
-    fragPosition = POSITIONS[inIndex] * vec2(gridInfo.width, gridInfo.height);
+    fragPosition = (POSITIONS[inIndex] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
 }

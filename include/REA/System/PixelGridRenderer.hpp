@@ -22,10 +22,11 @@ namespace REA::System
 		private:
 			struct SSBO_GridInfo
 			{
-				int32_t width;
-				int32_t height;
-
-				alignas(16) glm::vec4 colorLookup[16];
+				int32_t               width;
+				int32_t               height;
+				float                 zoom;
+				alignas(16) glm::vec2 offset;
+				alignas(32) glm::vec4 colorLookup[16];
 			};
 
 			AssetHandle<Rendering::Material>       _material;

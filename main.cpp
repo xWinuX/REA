@@ -83,7 +83,7 @@ int main()
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
 
-	ecs.AddSystem<System::PixelGridDrawing>(Stage::Gameplay, 0, 50);
+	ecs.AddSystem<System::PixelGridDrawing>(Stage::Gameplay, 0, 1);
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 

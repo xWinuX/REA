@@ -54,10 +54,12 @@ namespace REA::System
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			const Component::PixelGrid& pixelGrid = pixelGrids[i];
-			SSBO_GridInfo*              tileData  = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
+			SSBO_GridInfo*              gridInfo  = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
-			tileData->width  = pixelGrid.Width;
-			tileData->height = pixelGrid.Height;
+			gridInfo->width  = pixelGrid.Width;
+			gridInfo->height = pixelGrid.Height;
+			gridInfo->zoom   = pixelGrid.Zoom;
+			gridInfo->offset = pixelGrid.Offset;
 
 			//pixelGrid.Pixels
 
