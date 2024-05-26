@@ -31,7 +31,7 @@ namespace REA::System
 				float    deltaTime = 0.0f;
 				uint32_t timer     = 0;
 				float    rng       = 0.0f;
-				Pixel    solidPixel{};
+				Pixel    voidPixel{};
 			};
 
 			struct SSBO_Pixels
@@ -46,8 +46,9 @@ namespace REA::System
 
 			SimulationShaders _shaders;
 
-			bool _paused = true;
-			bool _doStep = false;
+			bool _paused    = true;
+			bool _clearGrid = false;
+			bool _doStep    = false;
 
 			void CmdWaitForPreviousComputeShader(uint32_t fif);
 	};

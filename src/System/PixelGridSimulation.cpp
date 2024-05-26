@@ -9,6 +9,7 @@
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
 
 #include "IconsFontAwesome.h"
+#include "REA/PixelType.hpp"
 
 namespace REA::System
 {
@@ -21,10 +22,10 @@ namespace REA::System
 		              std::end(inputPixels->Pixels),
 		              [](Pixel& pixel)
 		              {
-			              pixel.PixelID = std::numeric_limits<int8_t>::max();
-			              pixel.Flags.Set(Gravity);
-			              pixel.Density         = std::numeric_limits<uint8_t>::min();
-			              pixel.SpreadingFactor = 0;
+			              pixel.PixelID         = Pixels[PixelType::Air].PixelID;
+			              pixel.Flags           = Pixels[PixelType::Air].Flags;
+			              pixel.Density         = Pixels[PixelType::Air].Density;
+			              pixel.SpreadingFactor = Pixels[PixelType::Air].SpreadingFactor;
 		              });
 	}
 
@@ -48,15 +49,13 @@ namespace REA::System
 		}
 
 		//	properties.OverrideBufferPtrs(1, writeBuffer);
-
 		_shaders.FallingSimulation->Update();
 		_shaders.FlowSimulation->Update();
 
 		ClearGrid();
 
 		// Set solid pixel
-		Pixel solidPixel = { std::numeric_limits<Pixel::ID>::max(), BitSet<uint8_t>(Solid), std::numeric_limits<uint8_t>::min(), 0 };
-		_shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0)->solidPixel = solidPixel;
+		_shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0)->voidPixel = Pixels[PixelType::Void];
 
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
@@ -94,7 +93,7 @@ namespace REA::System
 		if (ImGui::Button(_paused ? ICON_FA_PLAY : ICON_FA_PAUSE)) { _paused = !_paused; }
 		ImGui::SameLine();
 		if (_paused) { if (ImGui::Button(ICON_FA_FORWARD_STEP)) { _doStep = true; } }
-		if (ImGui::Button(ICON_FA_TRASH)) { ClearGrid(); }
+		if (ImGui::Button(ICON_FA_TRASH)) { _clearGrid = true; }
 		ImGui::End();
 
 
@@ -111,6 +110,12 @@ namespace REA::System
 		device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 		device.GetVkDevice().resetFences(_computeFence);
 
+		if (_clearGrid)
+		{
+			ClearGrid();
+			_clearGrid = false;
+		}
+
 		uint32_t fif = _fif;
 
 		if (!_paused || _doStep)
@@ -123,23 +128,62 @@ namespace REA::System
 
 			_commandBuffer.GetVkCommandBuffer().reset({});
 
-			constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+			vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
 
 			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
 			// Fall
+			glm::uvec2 margolusOffset{};
+			uint32_t   timer = simulationData->timer;
+			switch (timer % 4)
+			{
+				case 0:
+					margolusOffset = { 0, 0 };
+					break;
+				case 1:
+					margolusOffset = { 1, 0 };
+					break;
+				case 2:
+					margolusOffset = { 0, 1 };
+					break;
+				case 3:
+					margolusOffset = { 1, 1 };
+					break;
+			}
+
 			_shaders.FallingSimulation->Update();
+
+			_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &margolusOffset);
 
 			_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-			_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
+			_commandBuffer.GetVkCommandBuffer().dispatch((1'000'000 / 4) / 64, 1, 1);
+
+			/*_commandBuffer.GetVkCommandBuffer().end();
+
+			vk::SubmitInfo submitInfo;
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers    = &_commandBuffer.GetVkCommandBuffer();
+
+			computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
+
+
+			device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
+			device.GetVkDevice().resetFences(_computeFence);
+
+			_commandBuffer.GetVkCommandBuffer().reset({});
+
+			commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+
+			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);*/
+
 
 			// Flow
 			uint32_t flowIteration = 0;
 
 			_shaders.FlowSimulation->Update();
 
-			for (int i = 0; i < 1; ++i)
+			for (int i = 0; i < 4; ++i)
 			{
 				CmdWaitForPreviousComputeShader(fif);
 				fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;

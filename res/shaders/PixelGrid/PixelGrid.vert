@@ -25,7 +25,8 @@ layout(std140, set = 1, binding = 0) readonly buffer si_GridInfo {
     int height;
     float zoom;
     vec2 offset;
-    vec4 colorLookup[16];
+    vec2 pointerPosition;
+    vec4 colorLookup[256];
 } gridInfo;
 
 void main() {

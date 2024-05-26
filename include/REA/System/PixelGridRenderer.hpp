@@ -5,6 +5,7 @@
 #include <SplitEngine/Rendering/Material.hpp>
 #include <SplitEngine/Rendering/Model.hpp>
 
+#include "REA/Color.hpp"
 #include "REA/Component/PixelGrid.hpp"
 
 using namespace SplitEngine;
@@ -26,7 +27,8 @@ namespace REA::System
 				int32_t               height;
 				float                 zoom;
 				alignas(16) glm::vec2 offset;
-				alignas(32) glm::vec4 colorLookup[16];
+				glm::vec2             pointerPosition;
+				alignas(32) Color     colorLookup[std::numeric_limits<Pixel::ID>::max() + 1];
 			};
 
 			AssetHandle<Rendering::Material>       _material;

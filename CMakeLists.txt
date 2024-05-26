@@ -50,11 +50,13 @@ add_executable(
         include/REA/System/GameOfLifeSimulation.hpp
         src/System/PixelGridDrawing.cpp
         include/REA/System/PixelGridDrawing.hpp
-        include/REA/BitSet.hpp
         src/System/ImGuiManager.cpp
         include/REA/System/ImGuiManager.hpp
         include/REA/Stage.hpp
         ${CMAKE_SOURCE_DIR}/external/include/IconsFontAwesome.h
+        include/REA/PixelType.hpp
+        src/Color.cpp
+        include/REA/Color.hpp
 )
 
 target_include_directories(REA PRIVATE include)

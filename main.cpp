@@ -30,6 +30,7 @@
 #include "REA/System/RenderingPreparation.hpp"
 #include "REA/System/SpriteRenderer.hpp"
 #include "include/REA/System/PixelGridDrawing.hpp"
+#include "REA/PixelType.hpp"
 #include "REA/Stage.hpp"
 #include "REA/System/GameOfLifeSimulation.hpp"
 #include "REA/System/ImGuiManager.hpp"
@@ -40,6 +41,14 @@ using namespace REA;
 
 int main()
 {
+	// Setup Pixels Types
+	Pixels[PixelType::Air]   = { .PixelID = PixelType::Air, .Flags = BitSet<uint8_t>(Gravity), .Density = 10, .SpreadingFactor = 0 };
+	Pixels[PixelType::Sand]  = { .PixelID = PixelType::Sand, .Flags = BitSet<uint8_t>(Gravity), .Density = 14, .SpreadingFactor = 0 };
+	Pixels[PixelType::Water] = { .PixelID = PixelType::Water, .Flags = BitSet<uint8_t>(Gravity), .Density = 12, .SpreadingFactor = 4 };
+	Pixels[PixelType::Wood]  = { .PixelID = PixelType::Wood, .Flags = BitSet<uint8_t>(Solid), .Density = 15, .SpreadingFactor = 0 };
+	Pixels[PixelType::Smoke]  = { .PixelID = PixelType::Smoke, .Flags = BitSet<uint8_t>(Gravity), .Density = 8, .SpreadingFactor = 2 };
+	Pixels[PixelType::Void]  = { .PixelID = PixelType::Void, .Flags = BitSet<uint8_t>(Solid), .Density = std::numeric_limits<uint8_t>::max(), .SpreadingFactor = 0 };
+
 	Application application = Application({ {}, { .UseVulkanValidationLayers = false } });
 
 	application.GetWindow().SetSize(1000, 1000);

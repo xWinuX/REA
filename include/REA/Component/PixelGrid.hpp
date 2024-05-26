@@ -15,5 +15,6 @@ namespace REA::Component
 		int32_t   Height = 1000;
 		float     Zoom   = 5.0f;
 		glm::vec2 Offset = { 0, 0 };
+		glm::vec2 PointerPosition = {0, 0};
 	};
 }

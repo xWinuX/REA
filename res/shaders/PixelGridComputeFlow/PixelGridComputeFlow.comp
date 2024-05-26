@@ -43,7 +43,7 @@ void main()
         Pixel bottomLeftPixel = solidPixel;
 
         // Right
-        if (x + 1 < width)
+        if (x < width - 1)
         {
             rightPixel = readOnlyPixels[index + 1];
 
@@ -51,7 +51,7 @@ void main()
         }
 
         // Left
-        if (x - 1 > 0)
+        if (x > 0)
         {
             leftPixel = readOnlyPixels[index - 1];
 
@@ -74,13 +74,13 @@ void main()
             uint bottomLeftPixelFlags = getPixelFlags(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
             uint bottomLeftPixelDensity = getPixelDensity(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
 
-            if (currentPixelSpread > iteration && currentPixelDensity >= rightPixelDensity)
+            if (currentPixelSpread > iteration && currentPixelDensity >= rightPixelDensity && bottomPixelDensity >= currentPixelDensity)
             {
                 pixels[index] = rightPixel;
                 return;
             }
 
-            if (leftPixelSpread > iteration && currentPixelDensity < leftPixelDensity)
+            if (leftPixelSpread > iteration && currentPixelDensity < leftPixelDensity && bottomLeftPixelDensity >= leftPixelDensity)
             {
                 pixels[index] = leftPixel;
                 return;
@@ -91,13 +91,13 @@ void main()
             uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
             uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
 
-            if (currentPixelSpread > iteration && currentPixelDensity >= leftPixelDensity)
+            if (currentPixelSpread > iteration && currentPixelDensity >= leftPixelDensity && bottomPixelDensity >= currentPixelDensity)
             {
                 pixels[index] = leftPixel;
                 return;
             }
 
-            if (rightPixelSpread > iteration && currentPixelDensity < rightPixelDensity)
+            if (rightPixelSpread > iteration && currentPixelDensity < rightPixelDensity && bottomRightPixelDensity >= rightPixelDensity)
             {
                 pixels[index] = rightPixel;
                 return;

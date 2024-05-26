@@ -1,7 +1,8 @@
 #pragma once
+#include <array>
 #include <cstdint>
 
-#include "BitSet.hpp"
+#include "SplitEngine/DataStructures.hpp"
 
 using namespace SplitEngine;
 
@@ -22,4 +23,6 @@ namespace REA
 		uint8_t         Density         = 0;
 		uint8_t         SpreadingFactor = 0;
 	};
+
+	inline std::array<Pixel, std::numeric_limits<Pixel::ID>::max()+1> Pixels;
 }

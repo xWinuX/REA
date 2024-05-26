@@ -9,7 +9,8 @@ layout(std140, set = 1, binding = 0) readonly buffer si_GridInfo {
     int height;
     float zoom;
     vec2 offset;
-    vec4 colorLookup[16];
+    vec2 pointerPosition;
+    vec4 colorLookup[256];
 } gridInfo;
 
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
@@ -26,5 +27,12 @@ void main() {
     int height = gridInfo.height;
     int index = (int(fragPosition.y) * gridInfo.width + int(fragPosition.x));
     uint pixelID = pixels[index].PixelID8_Flags8_Density8_Spread8 & 0xFFu;
-    outColor = gridInfo.colorLookup[pixelID];
+
+  /*  uint density = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+     uint flags = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
+     uint spread = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
+     outColor = vec4(density/100.0f, flags/100.0f, 0.0f, 1.0f);
+*/
+    outColor = int(gridInfo.pointerPosition.x) == int(fragPosition.x) && int(gridInfo.pointerPosition.y) == int(fragPosition.y)  ? vec4(1.0f) : gridInfo.colorLookup[pixelID];
+    //outColor = vec4(vec3(pixelID /10.f), 1.0f);
 }
