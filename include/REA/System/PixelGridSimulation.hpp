@@ -50,6 +50,8 @@ namespace REA::System
 			bool _clearGrid = false;
 			bool _doStep    = false;
 
-			void CmdWaitForPreviousComputeShader(uint32_t fif);
+			void CmdWaitForPreviousComputeShader();
+
+			static glm::uvec2 GetMargolusOffset(uint32_t frame);
 	};
 }

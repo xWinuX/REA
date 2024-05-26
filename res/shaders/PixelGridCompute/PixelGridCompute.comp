@@ -13,42 +13,7 @@ layout(push_constant) uniform PushConstant {
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint margolusX = ((gl_GlobalInvocationID.x * 2) % width) - margolusOffset.x;
-    uint margolusY = (((gl_GlobalInvocationID.x * 2) / width) * 2) - margolusOffset.y;
-
-    uint topLeftIndex = (margolusY * width) + margolusX;
-
-    if (topLeftIndex >= width * height) {
-        return;
-    }
-
-    Pixel solidPixel = simulationData.solidPixel;
-
-    uint y = topLeftIndex / width;
-    uint x = topLeftIndex % height;
-
-    bool atTheBottom = y == 0;
-    bool atTheRightEdge = x >= width-1;
-
-    uint topRightIndex = topLeftIndex + 1;
-    uint bottomLeftIndex = (y - 1) * width + x;
-    uint bottomRightIndex = bottomLeftIndex + 1;
-
-    // Fill current pixel with current value
-    pixels[topLeftIndex] = readOnlyPixels[topLeftIndex];
-
-    // If were at the bottom theres nothing to do so just exit and fill the buffer with the current pixels
-    if (atTheBottom)
-    {
-        if (!atTheRightEdge) { pixels[topRightIndex] = readOnlyPixels[topRightIndex]; }
-        return;
-    }
-
-    // We can get the bottom left pixel without checking since we exit if were at the bottom anyway
-    Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
-    Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
-
-    pixels[bottomLeftIndex] = bottomLeftPixel;// Fill bottom pixels since we haven't done that yet
+    #include "../PixelGridMorgulusStarter.glsl"
 
     uint topLeftPixelFlags = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
     uint topLeftPixelDensity = getPixelDensity(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
@@ -73,185 +38,47 @@ void main()
     }
 
     // At the right edge
-    if (!atTheRightEdge)
+    pixels[topRightIndex] = topRightPixel;
+    pixels[bottomRightIndex] = bottomRightPixel;
+
+    uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
+    uint topRightPixelDensity = getPixelDensity(topRightPixel.PixelID8_Flags8_Density8_Spread8);
+
+    uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
+    uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
+
+    bool topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
+    bool bottomRightPixelSolid = bitsetHas(bottomRightPixelFlags, Solid);
+
+    if (bitsetHas(topRightPixelFlags, Gravity) && !bottomRightPixelSolid)
     {
-        Pixel topRightPixel = readOnlyPixels[topRightIndex];
-        Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
-
-        pixels[topRightIndex] = topRightPixel;
-        pixels[bottomRightIndex] = bottomRightPixel;
-
-        uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
-        uint topRightPixelDensity = getPixelDensity(topRightPixel.PixelID8_Flags8_Density8_Spread8);
-
-        uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
-        uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
-
-        bool topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
-        bool bottomRightPixelSolid = bitsetHas(bottomRightPixelFlags, Solid);
-
-        if (bitsetHas(topRightPixelFlags, Gravity) && !bottomRightPixelSolid)
+        if (topRightPixelDensity > bottomRightPixelDensity)
         {
-            if (topRightPixelDensity > bottomRightPixelDensity)
-            {
-                pixels[topRightIndex] = bottomRightPixel;
-                pixels[bottomRightIndex] = topRightPixel;
-                rightRowSwapped = true;
-            }
-        }
-
-        if (leftRowSwapped || rightRowSwapped) { return; }
-
-        if ((topLeftPixelSolid && bottomRightPixelSolid) || (topRightPixelSolid && bottomLeftPixelSolid))
-        {
-            return;
-        }
-
-        if (bitsetHas(topLeftPixelFlags, Gravity) && !bottomRightPixelSolid && topLeftPixelDensity > bottomRightPixelDensity)
-        {
-            pixels[topLeftIndex] = bottomRightPixel;
-            pixels[bottomRightIndex] = topLeftPixel;
-            return;
-        }
-
-        if (bitsetHas(topRightPixelFlags, Gravity) && !bottomLeftPixelSolid &&  topRightPixelDensity > bottomLeftPixelDensity)
-        {
-            pixels[topRightIndex] = bottomLeftPixel;
-            pixels[bottomLeftIndex] = topRightPixel;
-            return;
+            pixels[topRightIndex] = bottomRightPixel;
+            pixels[bottomRightIndex] = topRightPixel;
+            rightRowSwapped = true;
         }
     }
+
+    if (leftRowSwapped || rightRowSwapped) { return; }
+
+    if ((topLeftPixelSolid && bottomRightPixelSolid) || (topRightPixelSolid && bottomLeftPixelSolid))
+    {
+        return;
+    }
+
+    if (bitsetHas(topLeftPixelFlags, Gravity) && !bottomRightPixelSolid && topLeftPixelDensity > bottomRightPixelDensity)
+    {
+        pixels[topLeftIndex] = bottomRightPixel;
+        pixels[bottomRightIndex] = topLeftPixel;
+        return;
+    }
+
+    if (bitsetHas(topRightPixelFlags, Gravity) && !bottomLeftPixelSolid &&  topRightPixelDensity > bottomLeftPixelDensity)
+    {
+        pixels[topRightIndex] = bottomLeftPixel;
+        pixels[bottomLeftIndex] = topRightPixel;
+        return;
+    }
+
 }
-
-/* if (bitsetHas(topLeftPixelFlags, Gravity))
- {
-     bool atTheTop    = y == height - 1;
-
-     uint topIndex    = (y + 1) * width + x;
-     uint bottomIndex = (y - 1) * width + x;
-
-     // Middle
-     Pixel topPixel = solidPixel;
-     if (!atTheTop) { topPixel = readOnlyPixels[topIndex]; }
-
-     Pixel bottomPixel = solidPixel;
-     if (!atTheBottom) { bottomPixel = readOnlyPixels[bottomIndex]; }
-
-     Pixel rightPixel       = solidPixel;
-     Pixel topRightPixel    = solidPixel;
-     Pixel bottomRightPixel = solidPixel;
-
-     Pixel leftPixel       = solidPixel;
-     Pixel topLeftPixel    = solidPixel;
-     Pixel bottomLeftPixel = solidPixel;
-
-     // Right
-     if (x < width-1)
-     {
-         rightPixel = readOnlyPixels[topLeftIndex + 1];
-
-         if (!atTheTop) { topRightPixel = readOnlyPixels[topIndex + 1]; }
-
-         if (!atTheBottom) { bottomRightPixel = readOnlyPixels[bottomIndex + 1]; }
-     }
-
-     // Left
-     if (x > 0)
-     {
-         leftPixel = readOnlyPixels[topLeftIndex - 1];
-
-         if (!atTheTop) { topLeftPixel = readOnlyPixels[topIndex - 1]; }
-
-         if (!atTheBottom) { bottomLeftPixel = readOnlyPixels[bottomIndex - 1]; }
-     }
-
-     uint topPixelFlags = getPixelFlags(topPixel.PixelID8_Flags8_Density8_Spread8);
-     uint topPixelDensity = getPixelDensity(topPixel.PixelID8_Flags8_Density8_Spread8);
-
-     uint bottomPixelFlags = getPixelFlags(bottomPixel.PixelID8_Flags8_Density8_Spread8);
-     uint bottomPixelDensity = getPixelDensity(bottomPixel.PixelID8_Flags8_Density8_Spread8);
-
-
-     uint modResult = y % 4;
-     if ((simulationData.timer % 2 == 0 && modResult > 1) || (simulationData.timer % 2 != 0 && (modResult == 1 || modResult == 3)))
-     {
-         if (!bitsetHas(topPixelFlags, Solid) && topLeftPixelDensity < topPixelDensity)
-         {
-             pixels[topLeftIndex] = topPixel;
-             return;
-         }
-
-         if (!bitsetHas(bottomPixelFlags, Solid) && topLeftPixelDensity > bottomPixelDensity)
-         {
-             pixels[topLeftIndex] = bottomPixel;
-             return;
-         }
-     }
-
-     // if (simulationData.timer % 2 == 0)
-     //{
-
-
-
-     uint rightPixelFlags = getPixelFlags(rightPixel.PixelID8_Flags8_Density8_Spread8);
-     uint rightPixelDensity = getPixelDensity(rightPixel.PixelID8_Flags8_Density8_Spread8);
-
-     uint leftPixelFlags = getPixelFlags(leftPixel.PixelID8_Flags8_Density8_Spread8);
-     uint leftPixelDensity = getPixelDensity(leftPixel.PixelID8_Flags8_Density8_Spread8);
-
-     uint topLeftPixelFlags = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
-     uint topLeftPixelDensity = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
-
-     if (!bitsetHas(topLeftPixelFlags, Solid) &&
-     !bitsetHas(topPixelFlags, Solid) &&
-     leftPixelDensity >= topLeftPixelDensity &&
-     topLeftPixelDensity < topLeftPixelDensity)
-     {
-         pixels[topLeftIndex] = topLeftPixel;
-         return;
-     }
-
-     uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
-     uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
-     if (!bitsetHas(bottomRightPixelFlags, Solid) &&
-     !bitsetHas(topPixelFlags, Solid) &&
-     !bitsetHas(rightPixelFlags, Solid) &&
-     rightPixelDensity <= bottomRightPixelDensity &&
-     topLeftPixelDensity > bottomRightPixelDensity)
-     {
-         pixels[topLeftIndex] = bottomRightPixel;
-         return;
-     }
-     }
-     else
-     {
-         uint leftPixelFlags = getPixelFlags(leftPixel.PixelID8_Flags8_Density8_Spread8);
-         uint leftPixelDensity = getPixelDensity(leftPixel.PixelID8_Flags8_Density8_Spread8);
-
-         uint rightPixelFlags = getPixelFlags(rightPixel.PixelID8_Flags8_Density8_Spread8);
-         uint rightPixelDensity = getPixelDensity(rightPixel.PixelID8_Flags8_Density8_Spread8);
-
-         uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
-         uint topRightPixelDensity = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
-
-         if (!bitsetHas(topRightPixelFlags, Solid) &&// If top right is not solid meaning it can flow
-         !bitsetHas(topPixelFlags, Solid) &&// If top left is not solid meaning it can flow
-         rightPixelDensity >= topRightPixelDensity &&// and top right will not swap with right
-         currentPixelDensity < topRightPixelDensity)// and can swap with current pixel
-         {
-             pixels[index] = topRightPixel;
-             return;
-         }
-
-         uint bottomLeftPixelFlags = getPixelFlags(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
-         uint bottomLeftPixelDensity = getPixelDensity(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
-         if (!bitsetHas(bottomLeftPixelFlags, Solid) &&
-         !bitsetHas(topPixelFlags, Solid) &&
-         !bitsetHas(leftPixelFlags, Solid) &&
-         leftPixelDensity <= bottomLeftPixelDensity &&
-         currentPixelDensity > bottomLeftPixelDensity)
-         {
-             pixels[index] = bottomLeftPixel;
-             return;
-         }
-     }*/

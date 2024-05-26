@@ -42,7 +42,7 @@ using namespace REA;
 int main()
 {
 	// Setup Pixels Types
-	Pixels[PixelType::Air]   = { .PixelID = PixelType::Air, .Flags = BitSet<uint8_t>(Gravity), .Density = 10, .SpreadingFactor = 0 };
+	Pixels[PixelType::Air]   = { .PixelID = PixelType::Air, .Flags = BitSet<uint8_t>(Gravity), .Density = 10, .SpreadingFactor = 4 };
 	Pixels[PixelType::Sand]  = { .PixelID = PixelType::Sand, .Flags = BitSet<uint8_t>(Gravity), .Density = 14, .SpreadingFactor = 0 };
 	Pixels[PixelType::Water] = { .PixelID = PixelType::Water, .Flags = BitSet<uint8_t>(Gravity), .Density = 12, .SpreadingFactor = 4 };
 	Pixels[PixelType::Wood]  = { .PixelID = PixelType::Wood, .Flags = BitSet<uint8_t>(Solid), .Density = 15, .SpreadingFactor = 0 };

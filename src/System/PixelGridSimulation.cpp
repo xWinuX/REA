@@ -61,28 +61,21 @@ namespace REA::System
 		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
 	}
 
-	void PixelGridSimulation::CmdWaitForPreviousComputeShader(uint32_t fif)
+	void PixelGridSimulation::CmdWaitForPreviousComputeShader()
 	{
-		vk::MemoryBarrier memoryBarrier = vk::MemoryBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
-
-		SplitEngine::Rendering::Shader::Properties properties          = _shaders.FallingSimulation->GetProperties();
-		auto                                       bufferInfos         = properties.GetBufferInfo(2, fif);
-		vk::BufferMemoryBarrier                    bufferMemoryBarrier = vk::BufferMemoryBarrier(vk::AccessFlagBits::eShaderWrite,
-		                                                                                         vk::AccessFlagBits::eShaderRead,
-		                                                                                         2,
-		                                                                                         2,
-		                                                                                         properties.GetBuffer(2).GetVkBuffer(),
-		                                                                                         bufferInfos.offset,
-		                                                                                         bufferInfos.range);
-
+		vk::MemoryBarrier memoryBarrier[] = {
+			vk::MemoryBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderWrite),
+			vk::MemoryBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead),
+			vk::MemoryBarrier(vk::AccessFlagBits::eShaderRead, vk::AccessFlagBits::eShaderRead),
+		};
 
 		_commandBuffer.GetVkCommandBuffer().pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
 		                                                    vk::PipelineStageFlagBits::eComputeShader,
 		                                                    {},
 		                                                    1,
-		                                                    &memoryBarrier,
-		                                                    1,
-		                                                    &bufferMemoryBarrier,
+		                                                    memoryBarrier,
+		                                                    0,
+		                                                    nullptr,
 		                                                    0,
 		                                                    nullptr);
 	}
@@ -98,6 +91,23 @@ namespace REA::System
 
 
 		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, context, stage);
+	}
+
+	glm::uvec2 PixelGridSimulation::GetMargolusOffset(uint32_t frame)
+	{
+		switch (frame % 4)
+		{
+			case 0:
+				return { 0, 0 };
+			case 1:
+				return { 1, 0 };
+			case 2:
+				return { 0, 1 };
+			case 3:
+				return { 1, 1 };
+			default:
+				return { 0, 0 };
+		}
 	}
 
 	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
@@ -133,23 +143,9 @@ namespace REA::System
 			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
 			// Fall
-			glm::uvec2 margolusOffset{};
-			uint32_t   timer = simulationData->timer;
-			switch (timer % 4)
-			{
-				case 0:
-					margolusOffset = { 0, 0 };
-					break;
-				case 1:
-					margolusOffset = { 1, 0 };
-					break;
-				case 2:
-					margolusOffset = { 0, 1 };
-					break;
-				case 3:
-					margolusOffset = { 1, 1 };
-					break;
-			}
+			uint32_t   timer          = simulationData->timer;
+			glm::uvec2 margolusOffset = GetMargolusOffset(timer);
+
 
 			_shaders.FallingSimulation->Update();
 
@@ -179,23 +175,27 @@ namespace REA::System
 
 
 			// Flow
-			uint32_t flowIteration = 0;
+			/*uint32_t flowIteration = 0;
 
 			_shaders.FlowSimulation->Update();
 
 			for (int i = 0; i < 4; ++i)
 			{
-				CmdWaitForPreviousComputeShader(fif);
+				CmdWaitForPreviousComputeShader();
+
 				fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 
+				margolusOffset = GetMargolusOffset(timer + 1 + i);
+
 				_shaders.FlowSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
+				_shaders.FlowSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
 
 				_shaders.FlowSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-				_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
+				_commandBuffer.GetVkCommandBuffer().dispatch((1'000'000 / 4) / 64, 1, 1);
 
 				flowIteration++;
-			}
+			}*/
 
 			_commandBuffer.GetVkCommandBuffer().end();
 

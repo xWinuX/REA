@@ -65,16 +65,17 @@ namespace REA::System
 			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.Width)));
 			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.Height) / pixelGrid.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.Height)));
 
+
+			gridX = std::clamp<int>(gridX, 0, pixelGrid.Width);
+			gridY = std::clamp<int>(gridY, 0, pixelGrid.Height);
+
 			pixelGrid.PointerPosition = { gridX, gridY };
 
 			if (drawPixel.PixelID != 0)
 			{
 				if (_radius == 1)
 				{
-					const int xx = std::clamp<int>(gridX, 0, pixelGrid.Width);
-					const int yy = std::clamp<int>(gridY, 0, pixelGrid.Height);
-
-					const int index = yy * pixelGrid.Width + xx;
+					const int index = gridY * pixelGrid.Width + gridX;
 					pixels[index]   = drawPixel;
 				}
 				else

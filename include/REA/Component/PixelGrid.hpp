@@ -13,7 +13,7 @@ namespace REA::Component
 
 		int32_t   Width  = 1000;
 		int32_t   Height = 1000;
-		float     Zoom   = 5.0f;
+		float     Zoom   = 1.0f;
 		glm::vec2 Offset = { 0, 0 };
 		glm::vec2 PointerPosition = {0, 0};
 	};
