@@ -35,6 +35,9 @@ void main() {
 
     gl_Position =  vec4(POSITIONS_NDC[inIndex], 0.0f, 1.0f);
 
-    vec2 position = (POSITIONS[inIndex] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
-    fragPosition = vec2(clamp(position.x, 0, gridInfo.width), clamp(position.y, 0, gridInfo.height));
+    //vec2 position = (POSITIONS[inIndex] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
+    //fragPosition = vec2(clamp(position.x, 0, gridInfo.width), clamp(position.y, 0, gridInfo.height));
+
+    fragPosition = (POSITIONS[inIndex] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
+
 }

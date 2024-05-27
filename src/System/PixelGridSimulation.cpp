@@ -17,16 +17,7 @@ namespace REA::System
 	{
 		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
 
-		std::for_each(std::execution::par_unseq,
-		              std::begin(inputPixels->Pixels),
-		              std::end(inputPixels->Pixels),
-		              [](Pixel& pixel)
-		              {
-			              pixel.PixelID         = Pixels[PixelType::Air].PixelID;
-			              pixel.Flags           = Pixels[PixelType::Air].Flags;
-			              pixel.Density         = Pixels[PixelType::Air].Density;
-			              pixel.SpreadingFactor = Pixels[PixelType::Air].SpreadingFactor;
-		              });
+		std::for_each(std::execution::par_unseq, std::begin(inputPixels->Pixels), std::end(inputPixels->Pixels), [](Pixel& pixel) { pixel = Pixels[PixelType::Air]; });
 	}
 
 	PixelGridSimulation::PixelGridSimulation(SimulationShaders shaders):
@@ -117,6 +108,10 @@ namespace REA::System
 		Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
 		Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
 
+		Component::PixelGrid& pixelGrid     = pixelGrids[0];
+		size_t                numPixels     = pixelGrid.Width * pixelGrid.Height;
+		size_t                numWorkgroups = CeilDivide(numPixels, 64ull);
+
 		device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 		device.GetVkDevice().resetFences(_computeFence);
 
@@ -136,6 +131,7 @@ namespace REA::System
 			simulationData->timer++;
 			simulationData->rng = glm::linearRand(0.0f, 1.0f);
 
+
 			_commandBuffer.GetVkCommandBuffer().reset({});
 
 			vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
@@ -143,9 +139,9 @@ namespace REA::System
 			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
 			// Fall
-			uint32_t   timer          = simulationData->timer;
-			glm::uvec2 margolusOffset = GetMargolusOffset(timer);
-
+			uint32_t   timer                 = simulationData->timer;
+			glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
+			size_t     numWorkgroupsMorgulus = CeilDivide(CeilDivide(numPixels, 4ull), 64ull);
 
 			_shaders.FallingSimulation->Update();
 
@@ -153,7 +149,7 @@ namespace REA::System
 
 			_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-			_commandBuffer.GetVkCommandBuffer().dispatch((1'000'000 / 4) / 64, 1, 1);
+			_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
 
 			/*_commandBuffer.GetVkCommandBuffer().end();
 
@@ -175,7 +171,7 @@ namespace REA::System
 
 
 			// Flow
-			/*uint32_t flowIteration = 0;
+			uint32_t flowIteration = 0;
 
 			_shaders.FlowSimulation->Update();
 
@@ -192,10 +188,10 @@ namespace REA::System
 
 				_shaders.FlowSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-				_commandBuffer.GetVkCommandBuffer().dispatch((1'000'000 / 4) / 64, 1, 1);
+				_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 				flowIteration++;
-			}*/
+			}
 
 			_commandBuffer.GetVkCommandBuffer().end();
 
@@ -213,7 +209,7 @@ namespace REA::System
 
 			_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-			_commandBuffer.GetVkCommandBuffer().dispatch(1'000'000 / 64, 1, 1);
+			_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 			_commandBuffer.GetVkCommandBuffer().end();
 		}
@@ -226,7 +222,6 @@ namespace REA::System
 
 		_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 
-		Component::PixelGrid& pixelGrid = pixelGrids[0];
-		pixelGrid.Pixels                = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
+		pixelGrid.Pixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
 	}
 }

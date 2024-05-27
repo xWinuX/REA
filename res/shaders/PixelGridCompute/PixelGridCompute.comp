@@ -15,6 +15,7 @@ void main()
 {
     #include "../PixelGridMorgulusStarter.glsl"
 
+
     uint topLeftPixelFlags = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
     uint topLeftPixelDensity = getPixelDensity(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
 
@@ -36,10 +37,6 @@ void main()
             leftRowSwapped = true;
         }
     }
-
-    // At the right edge
-    pixels[topRightIndex] = topRightPixel;
-    pixels[bottomRightIndex] = bottomRightPixel;
 
     uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
     uint topRightPixelDensity = getPixelDensity(topRightPixel.PixelID8_Flags8_Density8_Spread8);
@@ -80,5 +77,4 @@ void main()
         pixels[bottomLeftIndex] = topRightPixel;
         return;
     }
-
 }

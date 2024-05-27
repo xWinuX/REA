@@ -53,5 +53,8 @@ namespace REA::System
 			void CmdWaitForPreviousComputeShader();
 
 			static glm::uvec2 GetMargolusOffset(uint32_t frame);
+
+			template<typename T>
+			static T CeilDivide(T number, T divisor) { return (number + (divisor - 1)) / divisor; }
 	};
 }

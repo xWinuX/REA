@@ -1,27 +1,33 @@
-uint cellStep = gl_GlobalInvocationID.x * 2;
-uint margolusX = (cellStep % width) + margolusOffset.x;
-uint margolusY = ((cellStep / width) * 2) + margolusOffset.y;
-
-uint topLeftIndex = (margolusY * width) + margolusX;
-
 // Early exit if topLeftIndex is out of bounds
-if (topLeftIndex >= width * height) {
+if (gl_GlobalInvocationID.x >= (width * height) / 4) {
     return;
 }
 
+uint cellStep = gl_GlobalInvocationID.x * 2;
+uint margolusX = ((cellStep + margolusOffset.x) % width);
+uint margolusY = (((cellStep / width) * 2) + 1) - margolusOffset.y;
+
+uint topLeftIndex = (margolusY * width) + margolusX;
+
+
 Pixel solidPixel = simulationData.solidPixel;
 
-uint y = margolusY;
 uint x = margolusX;
+uint y = margolusY;
+
+uint topRightX = (x + 1) % width;
+uint topRightY = y;
+
+uint bottomLeftX = x;
+uint bottomLeftY = int(y)-1 == -1 ? height - 1 : y - 1;
+
+uint bottomRightX = topRightX;
+uint bottomRightY = bottomLeftY;
 
 // Calculate wrapped indices
-uint topRightIndex = topLeftIndex + 1;
-
-uint wrappedY = (y == 0) ? height - 1 : y - 1;
-uint bottomLeftIndex = wrappedY * width + x;
-
-uint bottomRightX = (x + 1) % width;
-uint bottomRightIndex = bottomLeftIndex + bottomRightX - x;
+uint topRightIndex = (topRightY * width) + topRightX;
+uint bottomLeftIndex = (bottomLeftY * width) + bottomLeftX;
+uint bottomRightIndex = (bottomRightY * width) + bottomRightX;
 
 // Read pixels
 Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
