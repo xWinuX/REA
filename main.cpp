@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "SplitEngine/Application.hpp"
 #include "SplitEngine/AssetDatabase.hpp"
@@ -33,6 +34,7 @@
 #include "REA/PixelGridBuilder.hpp"
 #include "REA/PixelType.hpp"
 #include "REA/Stage.hpp"
+#include "REA/Context/ImGui.hpp"
 #include "REA/System/GameOfLifeSimulation.hpp"
 #include "REA/System/ImGuiManager.hpp"
 
@@ -90,6 +92,8 @@ int main()
 	ecs.RegisterComponent<Component::Player>();
 	ecs.RegisterComponent<Component::Camera>();
 	ecs.RegisterComponent<Component::PixelGrid>();
+
+	ecs.RegisterContext<Context::ImGui>({});
 
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);

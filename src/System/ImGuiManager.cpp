@@ -1,12 +1,14 @@
 #include "REA/System/ImGuiManager.hpp"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Systems.hpp>
 
 #include "IconsFontAwesome.h"
+#include "REA/Context/ImGui.hpp"
 
 namespace REA::System
 {
@@ -39,12 +41,20 @@ namespace REA::System
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.Fonts->AddFontDefault();
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		ImFontConfig config;
 		config.MergeMode = true;
 		config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
 		static const ImWchar iconRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 		io.Fonts->AddFontFromFileTTF("res/fonts/fa-solid-900.ttf", 13.0f, &config, iconRanges);
+
+		ImGuiStyle& imGuiStyle = ImGui::GetStyle();
+
+		imGuiStyle.FrameRounding = 5.0f;
+		imGuiStyle.ChildRounding = 5.0f;
+		imGuiStyle.GrabRounding = 5.0f;
+
 
 		ImGui_ImplSDL2_InitForVulkan(window);
 
@@ -84,6 +94,20 @@ namespace REA::System
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 
 		StartNewImGuiFrame();
+		ImGuiID dockSpaceID = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+		if (_firstRender)
+		{
+			Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+
+			ImGui::DockBuilderSplitNode(dockSpaceID, ImGuiDir_Left, 0.2f, &imGuiContext->LeftDockingID, &imGuiContext->CenterDockingID);
+			ImGui::DockBuilderSplitNode(imGuiContext->CenterDockingID, ImGuiDir_Right, 0.4f, &imGuiContext->RightDockingID, &imGuiContext->CenterDockingID);
+			ImGui::DockBuilderSplitNode(imGuiContext->CenterDockingID, ImGuiDir_Up, 0.15f, &imGuiContext->TopDockingID, &imGuiContext->CenterDockingID);
+			ImGui::DockBuilderSplitNode(imGuiContext->TopDockingID, ImGuiDir_Left, 0.3f, &imGuiContext->TopLeftDockingID, &imGuiContext->TopDockingID);
+			
+			ImGui::DockBuilderFinish(dockSpaceID);
+
+			_firstRender = false;
+		}
 	}
 
 	void ImGuiManager::StartNewImGuiFrame()

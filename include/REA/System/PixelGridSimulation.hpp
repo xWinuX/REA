@@ -22,7 +22,7 @@ namespace REA::System
 			PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel clearPixel);
 
 		protected:
-			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& context, uint8_t stage) override;
+			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
 		private:

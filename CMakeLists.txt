@@ -61,6 +61,7 @@ add_executable(
         include/REA/Math.hpp
         src/PixelGridBuilder.cpp
         include/REA/PixelGridBuilder.hpp
+        include/REA/Context/ImGui.hpp
 )
 
 target_include_directories(REA PRIVATE include)

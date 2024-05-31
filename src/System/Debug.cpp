@@ -4,12 +4,16 @@
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
 
+#include "REA/Context/ImGui.hpp"
+
 using namespace SplitEngine;
 
 namespace REA::System
 {
 	void Debug::ExecuteArchetypes(std::vector<SplitEngine::ECS::Archetype*>& archetypes, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
+		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+		ImGui::SetNextWindowDockID(imGuiContext->TopLeftDockingID, ImGuiCond_Always);
 		ImGui::Begin("Debug");
 		EngineContext* engineContext = contextProvider.GetContext<EngineContext>();
 

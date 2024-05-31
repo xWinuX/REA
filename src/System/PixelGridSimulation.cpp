@@ -12,6 +12,7 @@
 
 #include "IconsFontAwesome.h"
 #include "REA/PixelType.hpp"
+#include "REA/Context/ImGui.hpp"
 
 namespace REA::System
 {
@@ -71,8 +72,10 @@ namespace REA::System
 		                                                    nullptr);
 	}
 
-	void PixelGridSimulation::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& context, uint8_t stage)
+	void PixelGridSimulation::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
+		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+		ImGui::SetNextWindowDockID(imGuiContext->TopDockingID, ImGuiCond_Always);
 		ImGui::Begin("Simulation");
 		if (ImGui::Button(_paused ? ICON_FA_PLAY : ICON_FA_PAUSE)) { _paused = !_paused; }
 		ImGui::SameLine();
@@ -81,7 +84,7 @@ namespace REA::System
 		ImGui::End();
 
 
-		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, context, stage);
+		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
 	}
 
 	glm::uvec2 PixelGridSimulation::GetMargolusOffset(uint32_t frame)

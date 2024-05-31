@@ -17,7 +17,8 @@
       "name": "imgui",
       "features": [
         "sdl2-binding",
-        "vulkan-binding"
+        "vulkan-binding",
+        "docking-experimental"
       ],
       "version>=": "1.90"
     }

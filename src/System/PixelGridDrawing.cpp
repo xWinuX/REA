@@ -8,6 +8,7 @@
 #include <SplitEngine/Systems.hpp>
 
 #include "REA/PixelType.hpp"
+#include "REA/Context/ImGui.hpp"
 
 
 namespace REA::System
@@ -17,6 +18,8 @@ namespace REA::System
 
 	void PixelGridDrawing::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
+		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+		ImGui::SetNextWindowDockID(imGuiContext->RightDockingID, ImGuiCond_Always);
 		ImGui::Begin("Drawing");
 		ImGui::SliderInt("Brush Size", &_radius, 1, 50);
 		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
@@ -35,15 +38,46 @@ namespace REA::System
 			if (pixels == nullptr) { continue; }
 
 			ImGui::Spacing();
-			//ImGui::Columns(4);
-			for (Pixel& pixel: pixelLookup)
-			{
-				bool selected = _drawPixel != nullptr && _drawPixel->PixelData.PixelID == pixel.PixelData.PixelID;
-				if (ImGui::Selectable(std::format("{0}", pixel.Name).c_str(), selected)) { _drawPixel = &pixel; }
-			//	ImGui::NextColumn();
-			}
-			//ImGui::Columns();
 
+			ImGui::PushStyleColor(ImGuiCol_Button, 0x00000000);
+			ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+			ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(3.0f, 3.0f));
+
+			if (ImGui::BeginTable("Pixel Selection", 5))
+			{
+				for (Pixel& pixel: pixelLookup)
+				{
+					ImGui::TableNextColumn();
+
+					ImU32 color      = IM_COL32(pixel.Color.R * 255, pixel.Color.G * 255, pixel.Color.B * 255, pixel.Color.A * 255);
+					bool  selected = _drawPixel != nullptr && _drawPixel->PixelData.PixelID == pixel.PixelData.PixelID;
+
+					ImGui::GetWindowDrawList()->ChannelsSplit(2);
+					ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
+
+
+					ImVec2 availableSize = ImGui::GetContentRegionAvail();
+
+					if (ImGui::Button(std::format("{0}", pixel.Name).c_str(), {availableSize.x, 50})) { _drawPixel = &pixel; }
+
+					ImVec2 p_min = ImGui::GetItemRectMin();
+					ImVec2 p_max = ImGui::GetItemRectMax();
+
+					if (selected) { ImGui::GetWindowDrawList()->AddRect(p_min, p_max, 0xFFFFFFFF, 3.0f, 0, 3.0f); }
+
+					// Render background behind Selectable().
+					ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
+					ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, color, 3.0f);
+					ImGui::GetWindowDrawList()->ChannelsMerge();
+
+
+				}
+				ImGui::EndTable();
+			}
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
+			ImGui::PopStyleVar();
+			ImGui::Separator();
 
 			if (Input::GetDown(KeyCode::MOUSE_MIDDLE))
 			{
