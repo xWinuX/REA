@@ -23,10 +23,10 @@ namespace REA::System
 				              const int x     = i % width;
 				              const int index = y * width + x;
 
-				              const auto& tileIDs    = pixelGrid.Pixels;
-				              auto&       newTileIDs = _staticGrid.Pixels;
+				              const auto& tileIDs    = pixelGrid.PixelData;
+				              auto&       newTileIDs = _staticGrid.PixelData;
 
-				              const Pixel& pixel = pixelGrid.Pixels[index];
+				              const Pixel::Data& pixel = pixelGrid.PixelData[index];
 
 				              int liveNeighbors = 0;
 

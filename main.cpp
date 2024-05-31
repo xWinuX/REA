@@ -30,11 +30,11 @@
 #include "REA/System/RenderingPreparation.hpp"
 #include "REA/System/SpriteRenderer.hpp"
 #include "include/REA/System/PixelGridDrawing.hpp"
+#include "REA/PixelGridBuilder.hpp"
 #include "REA/PixelType.hpp"
 #include "REA/Stage.hpp"
 #include "REA/System/GameOfLifeSimulation.hpp"
 #include "REA/System/ImGuiManager.hpp"
-
 
 using namespace SplitEngine;
 using namespace REA;
@@ -42,12 +42,14 @@ using namespace REA;
 int main()
 {
 	// Setup Pixels Types
-	Pixels[PixelType::Air]   = { .PixelID = PixelType::Air, .Flags = BitSet<uint8_t>(Gravity), .Density = 10, .SpreadingFactor = 4 };
-	Pixels[PixelType::Sand]  = { .PixelID = PixelType::Sand, .Flags = BitSet<uint8_t>(Gravity), .Density = 14, .SpreadingFactor = 0 };
-	Pixels[PixelType::Water] = { .PixelID = PixelType::Water, .Flags = BitSet<uint8_t>(Gravity), .Density = 12, .SpreadingFactor = 4 };
-	Pixels[PixelType::Wood]  = { .PixelID = PixelType::Wood, .Flags = BitSet<uint8_t>(Solid), .Density = 15, .SpreadingFactor = 0 };
-	Pixels[PixelType::Smoke]  = { .PixelID = PixelType::Smoke, .Flags = BitSet<uint8_t>(Gravity), .Density = 8, .SpreadingFactor = 2 };
-	Pixels[PixelType::Void]  = { .PixelID = PixelType::Void, .Flags = BitSet<uint8_t>(Solid), .Density = std::numeric_limits<uint8_t>::max(), .SpreadingFactor = 0 };
+	std::vector<Pixel> pixelLookup = {
+		{ .Name = "Air", .Color = Color(0x5890FFFF), .PixelData = { .PixelID = PixelType::Air, .Flags = BitSet<uint8_t>(Gravity), .Density = 10, .SpreadingFactor = 4 }, },
+		{ .Name = "Sand", .Color = Color(0x9F944BFF), .PixelData = { .PixelID = PixelType::Sand, .Flags = BitSet<uint8_t>(Gravity), .Density = 14, .SpreadingFactor = 0 } },
+		{ .Name = "Water", .Color = Color(0x84BCFFFF), .PixelData = { .PixelID = PixelType::Water, .Flags = BitSet<uint8_t>(Gravity), .Density = 12, .SpreadingFactor = 8 } },
+		{ .Name = "Wood", .Color = Color(0x775937FF), .PixelData = { .PixelID = PixelType::Wood, .Flags = BitSet<uint8_t>(Solid), .Density = 15, .SpreadingFactor = 0 } },
+		{ .Name = "Smoke", .Color = Color(0xAAAAAAFF), .PixelData = { .PixelID = PixelType::Smoke, .Flags = BitSet<uint8_t>(Gravity), .Density = 8, .SpreadingFactor = 2 } },
+		{ .Name = "Oil", .Color = Color(0x333333FF), .PixelData = { .PixelID = PixelType::Oil, .Flags = BitSet<uint8_t>(Gravity), .Density = 11, .SpreadingFactor = 2 } },
+	};
 
 	Application application = Application({ {}, { .UseVulkanValidationLayers = false } });
 
@@ -96,13 +98,12 @@ int main()
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 
-
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
 		.FallingSimulation = pixelGridComputeFall,
 		.FlowSimulation = pixelGridComputeFlow
 	};
-	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders);
+	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders, pixelLookup[PixelType::Air]);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
@@ -112,12 +113,13 @@ int main()
 	// Create entities
 	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Physics, Component::Player, Component::SpriteRenderer>({}, {}, {}, { floppaSprite, 1.0f });
 
-
 	ecs.CreateEntity<Component::Transform, Component::Camera>({}, { playerEntity });
 
 
-	Component::PixelGrid pixelGrid       = {};
-	uint64_t             pixelGridEntity = ecs.CreateEntity<Component::PixelGrid>(std::move(pixelGrid));
+	PixelGridBuilder     pixelGridBuilder{};
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1000, 1000 }).WithPixelData(std::move(pixelLookup)).Build();
+
+	uint64_t pixelGridEntity = ecs.CreateEntity<Component::PixelGrid>(std::move(pixelGrid));
 
 	// Run Game
 	application.Run();

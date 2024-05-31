@@ -24,8 +24,6 @@ namespace REA::System
 			AssetHandle<Rendering::Material>  _material;
 			std::unique_ptr<Rendering::Model> _model;
 
-			static float FastFmod(float a, float b);
-
 			struct TextureData
 			{
 				glm::vec3             PageIndexAndSize{};

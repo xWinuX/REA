@@ -33,31 +33,41 @@ void main()
     bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelFlags, Solid);
     bool bottomRightPixelSolid = bitsetHas(bottomRightPixelFlags, Solid);
 
-    bool topRowSwapped = false;
 
-   if (!topRightPixelSolid && !topRightPixelSolid)
-   {
-       if (
-           (simulationData.rng >= 0.5f && topLeftPixelSpread > flowIteration && topLeftPixelDensity > topRightPixelDensity) ||
-           (simulationData.rng < 0.5f && topRightPixelSpread > flowIteration && topRightPixelDensity > topLeftPixelDensity)
-       )
-       {
-           pixels[topLeftIndex] = topRightPixel;
-           pixels[topRightIndex] = topLeftPixel;
-           return;
-       }
-   }
+    bool topLeftCanSpread = topLeftPixelSpread > flowIteration;
+    bool topRightCanSpread = topRightPixelSpread > flowIteration;
+    bool bottomLeftCanSpread = topLeftPixelSpread > flowIteration;
+    bool bottomRightCanSpread = topRightPixelSpread > flowIteration;
 
-   if (!bottomLeftPixelSolid && !bottomRightPixelSolid)
-   {
-       if (
-       (simulationData.rng >= 0.5f && bottomLeftPixelSpread > flowIteration && bottomLeftPixelDensity > bottomRightPixelDensity) ||
-       (simulationData.rng < 0.5f && bottomRightPixelSpread > flowIteration && bottomRightPixelDensity > bottomLeftPixelDensity)
-       )
-       {
-           pixels[bottomLeftIndex] = bottomRightPixel;
-           pixels[bottomRightIndex] = bottomLeftPixel;
-           return;
-       }
-   }
+    if (!topLeftCanSpread && !topRightCanSpread && !bottomLeftCanSpread && !bottomRightCanSpread) { return; }
+
+    if (!topRightPixelSolid && !topRightPixelSolid)
+    {
+        if (
+        ((bottomLeftPixelSolid || bottomLeftPixelDensity >= topLeftPixelDensity) && (bottomRightPixelSolid || bottomRightPixelDensity >= topRightPixelDensity)) && (
+        (simulationData.rng >= 0.5f && topLeftCanSpread && topLeftPixelDensity > topRightPixelDensity) ||
+        (simulationData.rng < 0.5f && topRightCanSpread && topRightPixelDensity > topLeftPixelDensity)
+        )
+        )
+        {
+            pixels[topLeftIndex] = topRightPixel;
+            pixels[topRightIndex] = topLeftPixel;
+            return;
+        }
+    }
+
+    if (!bottomLeftPixelSolid && !bottomRightPixelSolid)
+    {
+        if (
+        ((topLeftPixelSolid || topLeftPixelDensity >= bottomLeftPixelDensity) && (topRightPixelSolid || topRightPixelDensity >= bottomRightPixelDensity)) && (
+        (simulationData.rng >= 0.5f && bottomLeftCanSpread && bottomLeftPixelDensity > bottomRightPixelDensity) ||
+        (simulationData.rng < 0.5f && bottomRightCanSpread && bottomRightPixelDensity > bottomLeftPixelDensity)
+        )
+        )
+        {
+            pixels[bottomLeftIndex] = bottomRightPixel;
+            pixels[bottomRightIndex] = bottomLeftPixel;
+            return;
+        }
+    }
 }

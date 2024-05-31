@@ -5,8 +5,10 @@
 #include <glm/gtc/random.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
+#include <SplitEngine/Debug/Performance.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
+#include <utility>
 
 #include "IconsFontAwesome.h"
 #include "REA/PixelType.hpp"
@@ -17,11 +19,12 @@ namespace REA::System
 	{
 		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
 
-		std::for_each(std::execution::par_unseq, std::begin(inputPixels->Pixels), std::end(inputPixels->Pixels), [](Pixel& pixel) { pixel = Pixels[PixelType::Air]; });
+		std::for_each(std::execution::par_unseq, std::begin(inputPixels->Pixels), std::end(inputPixels->Pixels), [this](Pixel::Data& pixel) { pixel = _clearPixel.PixelData; });
 	}
 
-	PixelGridSimulation::PixelGridSimulation(SimulationShaders shaders):
-		_shaders(shaders)
+	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel clearPixel):
+		_clearPixel(std::move(clearPixel)),
+		_shaders(simulationShaders)
 	{
 		auto&                      properties = _shaders.FallingSimulation->GetProperties();
 		Rendering::Vulkan::Device* device     = _shaders.FallingSimulation->GetPipeline().GetDevice();
@@ -44,9 +47,6 @@ namespace REA::System
 		_shaders.FlowSimulation->Update();
 
 		ClearGrid();
-
-		// Set solid pixel
-		_shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0)->voidPixel = Pixels[PixelType::Void];
 
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
@@ -112,6 +112,7 @@ namespace REA::System
 		size_t                numPixels     = pixelGrid.Width * pixelGrid.Height;
 		size_t                numWorkgroups = CeilDivide(numPixels, 64ull);
 
+
 		device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 		device.GetVkDevice().resetFences(_computeFence);
 
@@ -123,13 +124,16 @@ namespace REA::System
 
 		uint32_t fif = _fif;
 
+		UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
+		simulationData->width  = pixelGrid.Width;
+		simulationData->height = pixelGrid.Height;
+
 		if (!_paused || _doStep)
 		{
-			UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
 
 			simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 			simulationData->timer++;
-			simulationData->rng = glm::linearRand(0.0f, 1.0f);
+			simulationData->rng    = glm::linearRand(0.0f, 1.0f);
 
 
 			_commandBuffer.GetVkCommandBuffer().reset({});
@@ -175,7 +179,7 @@ namespace REA::System
 
 			_shaders.FlowSimulation->Update();
 
-			for (int i = 0; i < 4; ++i)
+			for (int i = 0; i < 8; ++i)
 			{
 				CmdWaitForPreviousComputeShader();
 
@@ -222,6 +226,6 @@ namespace REA::System
 
 		_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 
-		pixelGrid.Pixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
+		pixelGrid.PixelData = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
 	}
 }

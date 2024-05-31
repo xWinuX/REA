@@ -7,6 +7,8 @@
 #include <SplitEngine/Rendering/Model.hpp>
 #include <SplitEngine/Rendering/Texture2D.hpp>
 
+#include "REA/Math.hpp"
+
 namespace REA::System
 {
 	SpriteRenderer::SpriteRenderer(AssetHandle<Rendering::Material> material, Tools::ImagePacker::PackingData& packingData) :
@@ -100,7 +102,7 @@ namespace REA::System
 					              float    newCurrentFrame     = currentFrame + animationAdvance;
 					              uint32_t castNewCurrentFrame = static_cast<uint32_t>(newCurrentFrame);
 
-					              if (castNewCurrentFrame >= numSubSprites) { spriteAnimatorComponent.CurrentFrame = FastFmod(newCurrentFrame, static_cast<float>(numSubSprites)); }
+					              if (castNewCurrentFrame >= numSubSprites) { spriteAnimatorComponent.CurrentFrame = Math::FastFmod(newCurrentFrame, static_cast<float>(numSubSprites)); }
 					              else { spriteAnimatorComponent.CurrentFrame = newCurrentFrame; }
 
 					              objectBuffer->textureIDs[numEntities + i] = sprite->GetTextureID(static_cast<uint32_t>(spriteAnimatorComponent.CurrentFrame));
@@ -130,6 +132,4 @@ namespace REA::System
 		const uint32_t numInstances = std::max(1u, static_cast<uint32_t>(std::ceil(static_cast<float>(numEntities) / static_cast<float>(NUM_QUADS_IN_BATCH))));
 		commandBuffer.drawIndexed(_model->GetModelBuffer().GetBufferElementNum(1), numInstances, 0, 0, 0);
 	}
-
-	float SpriteRenderer::FastFmod(const float a, const float b) { return ((a) - ((int)((a) / (b))) * (b)); }
 }

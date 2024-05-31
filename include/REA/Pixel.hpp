@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 
+#include "Color.hpp"
 #include "SplitEngine/DataStructures.hpp"
 
 using namespace SplitEngine;
@@ -18,11 +19,16 @@ namespace REA
 	{
 		typedef uint8_t ID;
 
-		ID              PixelID         = 0;
-		BitSet<uint8_t> Flags           = BitSet<uint8_t>(Gravity);
-		uint8_t         Density         = 0;
-		uint8_t         SpreadingFactor = 0;
-	};
+		struct Data
+		{
+			ID              PixelID         = 0;
+			BitSet<uint8_t> Flags           = BitSet<uint8_t>();
+			uint8_t         Density         = 0;
+			uint8_t         SpreadingFactor = 0;
+		};
 
-	inline std::array<Pixel, std::numeric_limits<Pixel::ID>::max()+1> Pixels;
+		std::string Name    = "NAME_HERE";
+		Color       Color{};
+		Data        PixelData{};
+	};
 }

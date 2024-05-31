@@ -18,7 +18,8 @@ namespace REA::System
 			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
 		private:
-			int _radius = 1;
-			glm::ivec2 _mouseWheel = {0, 0};
+			int        _radius     = 1;
+			Pixel*     _drawPixel  = nullptr;
+			glm::ivec2 _mouseWheel = { 0, 0 };
 	};
 }

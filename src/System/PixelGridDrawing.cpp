@@ -1,12 +1,14 @@
 #include "REA/System/PixelGridDrawing.hpp"
 
 #include <imgui.h>
+
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 #include <SplitEngine/Systems.hpp>
 
 #include "REA/PixelType.hpp"
+
 
 namespace REA::System
 {
@@ -17,8 +19,8 @@ namespace REA::System
 	{
 		ImGui::Begin("Drawing");
 		ImGui::SliderInt("Brush Size", &_radius, 1, 50);
-		ImGui::End();
 		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
+		ImGui::End();
 		_mouseWheel = { 0, 0 };
 	}
 
@@ -26,19 +28,21 @@ namespace REA::System
 	{
 		for (int i = 0; i < entities.size(); ++i)
 		{
-			Component::PixelGrid& pixelGrid = pixelGrids[i];
-			Pixel*                pixels    = pixelGrid.Pixels;
+			Component::PixelGrid& pixelGrid   = pixelGrids[i];
+			Pixel::Data*          pixels      = pixelGrid.PixelData;
+			std::vector<Pixel>&   pixelLookup = pixelGrid.PixelLookup;
 
 			if (pixels == nullptr) { continue; }
 
-			Pixel drawPixel;
-
-			if (Input::GetDown(KeyCode::MOUSE_LEFT)) { drawPixel = Pixels[PixelType::Wood]; }
-
-			if (Input::GetDown(KeyCode::MOUSE_RIGHT)) { drawPixel = Pixels[PixelType::Water]; }
-
-			if (Input::GetDown(KeyCode::N1)) { drawPixel = Pixels[PixelType::Sand]; }
-			if (Input::GetDown(KeyCode::N2)) { drawPixel = Pixels[PixelType::Smoke]; }
+			ImGui::Spacing();
+			//ImGui::Columns(4);
+			for (Pixel& pixel: pixelLookup)
+			{
+				bool selected = _drawPixel != nullptr && _drawPixel->PixelData.PixelID == pixel.PixelData.PixelID;
+				if (ImGui::Selectable(std::format("{0}", pixel.Name).c_str(), selected)) { _drawPixel = &pixel; }
+			//	ImGui::NextColumn();
+			}
+			//ImGui::Columns();
 
 
 			if (Input::GetDown(KeyCode::MOUSE_MIDDLE))
@@ -47,11 +51,7 @@ namespace REA::System
 				pixelGrid.Offset += glm::vec2(-delta.x, delta.y) / pixelGrid.Zoom;
 			}
 
-
-			//if (Input::GetDown(F)) { drawPixel = { 3, BitSet<uint8_t>(Gravity), 3, 1 }; }
-
 			pixelGrid.Zoom += (static_cast<float>(Input::GetMouseWheel().y) * 0.05f) * pixelGrid.Zoom;
-
 
 			glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 
@@ -65,18 +65,18 @@ namespace REA::System
 			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.Width)));
 			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.Height) / pixelGrid.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.Height)));
 
-
-			gridX = std::clamp<int>(gridX, 0, pixelGrid.Width);
-			gridY = std::clamp<int>(gridY, 0, pixelGrid.Height);
+			gridX = static_cast<int>(glm::mod(static_cast<float>(gridX), static_cast<float>(pixelGrid.Width)));
+			gridY = static_cast<int>(glm::mod(static_cast<float>(gridY), static_cast<float>(pixelGrid.Height)));
 
 			pixelGrid.PointerPosition = { gridX, gridY };
 
-			if (drawPixel.PixelID != 0)
+			if (Input::GetDown(KeyCode::MOUSE_LEFT) && _drawPixel != nullptr)
 			{
+				Pixel::Data& pixelData = _drawPixel->PixelData;
 				if (_radius == 1)
 				{
 					const int index = gridY * pixelGrid.Width + gridX;
-					pixels[index]   = drawPixel;
+					pixels[index]   = pixelData;
 				}
 				else
 				{
@@ -87,7 +87,7 @@ namespace REA::System
 							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
 							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
 							const int index = yy * pixelGrid.Width + xx;
-							if (index < pixelGrid.Width * pixelGrid.Height) { pixels[index] = drawPixel; }
+							if (index < pixelGrid.Width * pixelGrid.Height) { pixels[index] = pixelData; }
 						}
 					}
 				}

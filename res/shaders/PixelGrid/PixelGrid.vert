@@ -20,7 +20,7 @@ const vec2 POSITIONS_NDC[4] = vec2[4] (
     vec2(1.0f, -1.0f)
 );
 
-layout(std140, set = 1, binding = 0) readonly buffer si_GridInfo {
+layout(std140, set = 1, binding = 0) readonly buffer c_GridInfo {
     int width;
     int height;
     float zoom;

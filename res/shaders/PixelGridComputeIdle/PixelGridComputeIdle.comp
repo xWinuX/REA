@@ -7,7 +7,7 @@ void main()
 {
     uint index = gl_GlobalInvocationID.x;
 
-    if (index >= width * height) {
+    if (index >= simulationData.width * simulationData.height) {
         return;
     }
 

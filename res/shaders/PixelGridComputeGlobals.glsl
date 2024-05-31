@@ -24,7 +24,8 @@ layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
     float deltaTime;
     uint timer;
     float rng;
-    Pixel solidPixel;
+    uint width;
+    uint height;
 } simulationData;
 
 layout(std430, set = 1, binding = 1) buffer na_s_PixelSSBOIn {
@@ -34,9 +35,6 @@ layout(std430, set = 1, binding = 1) buffer na_s_PixelSSBOIn {
 layout(std430, set = 1, binding = 2) buffer s_Pixels {
     Pixel pixels[1000000];
 };
-
-const uint width = 1000;
-const uint height = 1000;
 
 const uint Solid = 1u << 0u;
 const uint Gravity = 1u << 1u;

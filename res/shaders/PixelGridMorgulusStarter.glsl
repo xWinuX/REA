@@ -1,4 +1,6 @@
-// Early exit if topLeftIndex is out of bounds
+uint width = simulationData.width;
+uint height = simulationData.height;
+
 if (gl_GlobalInvocationID.x >= (width * height) / 4) {
     return;
 }
@@ -8,9 +10,6 @@ uint margolusX = ((cellStep + margolusOffset.x) % width);
 uint margolusY = (((cellStep / width) * 2) + 1) - margolusOffset.y;
 
 uint topLeftIndex = (margolusY * width) + margolusX;
-
-
-Pixel solidPixel = simulationData.solidPixel;
 
 uint x = margolusX;
 uint y = margolusY;

@@ -1,26 +1,15 @@
 #include "REA/System/PixelGridRenderer.hpp"
 
 #include <execution>
-#include <glm/gtc/random.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Shader.hpp>
-
-#include "REA/PixelType.hpp"
 
 namespace REA::System
 {
 	PixelGridRenderer::PixelGridRenderer(AssetHandle<Rendering::Material> material) :
 		_material(material)
 	{
-		SSBO_GridInfo* tileData = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
-
-		tileData->colorLookup[PixelType::Air]   = Color(0x5890FFFF);
-		tileData->colorLookup[PixelType::Sand]  = Color(0x9F944BFF);
-		tileData->colorLookup[PixelType::Water] = Color(0x84BCFFFF);
-		tileData->colorLookup[PixelType::Wood]  = Color(0x775937FF);
-		tileData->colorLookup[PixelType::Void]  = Color(0x000000FF);
-
 		const std::vector<uint32_t> quad        = { 0, 1, 2, 2, 1, 3 };
 		const std::vector<uint16_t> quadIndices = { 0, 1, 2, 3, 4, 5 };
 
@@ -57,10 +46,14 @@ namespace REA::System
 			gridInfo->zoom            = pixelGrid.Zoom;
 			gridInfo->offset          = pixelGrid.Offset;
 			gridInfo->pointerPosition = pixelGrid.PointerPosition;
-
-			//pixelGrid.Pixels
-
-			//memcpy(&gridData->tileIDs[0], &pixelGrid.Pixels[0], sizeof(SSBO_GridData));
+			size_t size               = std::min(pixelGrid.ColorLookup.size(), std::size(gridInfo->colorLookup));
+			if (_sameGridCounter < Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT)
+			{
+				for (int i = 0; i < size; ++i)
+				{
+					gridInfo->colorLookup[i] = pixelGrid.ColorLookup[i];
+				}
+			}
 
 			_material->Update();
 
@@ -69,6 +62,11 @@ namespace REA::System
 			_model->Bind(commandBuffer);
 
 			commandBuffer.drawIndexed(_model->GetModelBuffer().GetBufferElementNum(1), 1, 0, 0, 0);
+
+			uint64_t entity = entities[i];
+			if (_previousEntity != entity) { _sameGridCounter = 0; }
+			else { _sameGridCounter++; }
+			_previousEntity = entity;
 		}
 	}
 }

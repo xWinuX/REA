@@ -4,7 +4,7 @@ layout(location = 0) in vec2 fragPosition;
 
 layout(location = 0) out vec4 outColor;
 
-layout(std140, set = 1, binding = 0) readonly buffer si_GridInfo {
+layout(std140, set = 1, binding = 0) readonly buffer c_GridInfo {
     int width;
     int height;
     float zoom;

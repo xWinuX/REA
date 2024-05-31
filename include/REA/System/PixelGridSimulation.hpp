@@ -19,7 +19,7 @@ namespace REA::System
 			};
 
 			void ClearGrid();
-			PixelGridSimulation(SimulationShaders simulationShaders);
+			PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel clearPixel);
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& context, uint8_t stage) override;
@@ -31,13 +31,16 @@ namespace REA::System
 				float    deltaTime = 0.0f;
 				uint32_t timer     = 0;
 				float    rng       = 0.0f;
-				Pixel    voidPixel{};
+				uint32_t width     = 0;
+				uint32_t height    = 0;
 			};
 
 			struct SSBO_Pixels
 			{
-				Pixel Pixels[1'000'000];
+				Pixel::Data Pixels[1000000];
 			};
+
+			Pixel _clearPixel;
 
 			uint32_t _fif = 1;
 

@@ -9,12 +9,16 @@ namespace REA::Component
 {
 	struct PixelGrid
 	{
-		Pixel* Pixels = nullptr;
+		Pixel::Data* PixelData = nullptr;
 
-		int32_t   Width  = 1000;
-		int32_t   Height = 1000;
-		float     Zoom   = 1.0f;
-		glm::vec2 Offset = { 0, 0 };
-		glm::vec2 PointerPosition = {0, 0};
+		int32_t Width  = 0;
+		int32_t Height = 0;
+
+		std::vector<Pixel> PixelLookup {};
+		std::vector<Color> ColorLookup {};
+
+		float     Zoom            = 1.0f;
+		glm::vec2 Offset          = { 0, 0 };
+		glm::vec2 PointerPosition = { 0, 0 };
 	};
 }

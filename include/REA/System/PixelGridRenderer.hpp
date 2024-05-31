@@ -34,5 +34,8 @@ namespace REA::System
 			AssetHandle<Rendering::Material>       _material;
 			std::unique_ptr<Rendering::Model>      _model;
 			std::ranges::iota_view<size_t, size_t> _indexes;
+
+			uint64_t _previousEntity = -1;
+			uint32_t _sameGridCounter = 0;
 	};
 }
