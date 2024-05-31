@@ -45,7 +45,6 @@ namespace REA::System
 
 		//	properties.OverrideBufferPtrs(1, writeBuffer);
 		_shaders.FallingSimulation->Update();
-		_shaders.FlowSimulation->Update();
 
 		ClearGrid();
 
@@ -146,57 +145,29 @@ namespace REA::System
 			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
 			// Fall
+			uint32_t flowIteration = 0;
 			uint32_t   timer                 = simulationData->timer;
 			glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
 			size_t     numWorkgroupsMorgulus = CeilDivide(CeilDivide(numPixels, 4ull), 64ull);
 
+
 			_shaders.FallingSimulation->Update();
 
-			_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &margolusOffset);
-
-			_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-			_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
-
-			/*_commandBuffer.GetVkCommandBuffer().end();
-
-			vk::SubmitInfo submitInfo;
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers    = &_commandBuffer.GetVkCommandBuffer();
-
-			computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
-
-
-			device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
-			device.GetVkDevice().resetFences(_computeFence);
-
-			_commandBuffer.GetVkCommandBuffer().reset({});
-
-			commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
-
-			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);*/
-
-
-			// Flow
-			uint32_t flowIteration = 0;
-
-			_shaders.FlowSimulation->Update();
 
 			for (int i = 0; i < 8; ++i)
 			{
 				CmdWaitForPreviousComputeShader();
 
+				_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
+				_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
+
+				_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+				_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
+
 				fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 
-				margolusOffset = GetMargolusOffset(timer + 1 + i);
-
-				_shaders.FlowSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
-				_shaders.FlowSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
-
-				_shaders.FlowSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-				_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
-
+				margolusOffset = GetMargolusOffset(timer + i);
 				flowIteration++;
 			}
 

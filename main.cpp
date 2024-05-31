@@ -81,7 +81,6 @@ int main()
 
 	AssetHandle<Rendering::Shader> pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Idle, { "res/shaders/PixelGridComputeIdle" });
 	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridCompute" });
-	AssetHandle<Rendering::Shader> pixelGridComputeFlow = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Flow, { "res/shaders/PixelGridComputeFlow" });
 
 	ECS::Registry& ecs = application.GetECSRegistry();
 
@@ -105,7 +104,6 @@ int main()
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
 		.FallingSimulation = pixelGridComputeFall,
-		.FlowSimulation = pixelGridComputeFlow
 	};
 	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders, pixelLookup[PixelType::Air]);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);

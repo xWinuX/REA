@@ -15,7 +15,6 @@ namespace REA::System
 			{
 				AssetHandle<Rendering::Shader> IdleSimulation;
 				AssetHandle<Rendering::Shader> FallingSimulation;
-				AssetHandle<Rendering::Shader> FlowSimulation;
 			};
 
 			void ClearGrid();

@@ -7,6 +7,7 @@
 //const Pixel solidPixel = { 0xFF01F000 };
 
 layout(push_constant) uniform PushConstant {
+    uint flowIteration;
     uvec2 margolusOffset;
 };
 
@@ -15,66 +16,171 @@ void main()
 {
     #include "../PixelGridMorgulusStarter.glsl"
 
-
     uint topLeftPixelFlags = getPixelFlags(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
     uint topLeftPixelDensity = getPixelDensity(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
+    uint topLeftPixelSpread = getPixelSpread(topLeftPixel.PixelID8_Flags8_Density8_Spread8);
 
     uint bottomLeftPixelFlags = getPixelFlags(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
     uint bottomLeftPixelDensity = getPixelDensity(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
-
-    bool leftRowSwapped = false;
-    bool rightRowSwapped = false;
-
-    bool topLeftPixelSolid = bitsetHas(topLeftPixelFlags, Solid);
-    bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelFlags, Solid);
-
-    if (bitsetHas(topLeftPixelFlags, Gravity) && !bitsetHas(bottomLeftPixelFlags, Solid))
-    {
-        if (topLeftPixelDensity > bottomLeftPixelDensity)
-        {
-            pixels[topLeftIndex] = bottomLeftPixel;
-            pixels[bottomLeftIndex] = topLeftPixel;
-            leftRowSwapped = true;
-        }
-    }
+    uint bottomLeftPixelSpread = getPixelSpread(bottomLeftPixel.PixelID8_Flags8_Density8_Spread8);
 
     uint topRightPixelFlags = getPixelFlags(topRightPixel.PixelID8_Flags8_Density8_Spread8);
     uint topRightPixelDensity = getPixelDensity(topRightPixel.PixelID8_Flags8_Density8_Spread8);
+    uint topRightPixelSpread = getPixelSpread(topRightPixel.PixelID8_Flags8_Density8_Spread8);
 
     uint bottomRightPixelFlags = getPixelFlags(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
     uint bottomRightPixelDensity = getPixelDensity(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
+    uint bottomRightPixelSpread = getPixelSpread(bottomRightPixel.PixelID8_Flags8_Density8_Spread8);
 
+    bool topLeftPixelSolid = bitsetHas(topLeftPixelFlags, Solid);
+    bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelFlags, Solid);
     bool topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
     bool bottomRightPixelSolid = bitsetHas(bottomRightPixelFlags, Solid);
 
-    if (bitsetHas(topRightPixelFlags, Gravity) && !bottomRightPixelSolid)
+    if (flowIteration == 0)
     {
-        if (topRightPixelDensity > bottomRightPixelDensity)
+        bool leftRowSwapped = false;
+        bool rightRowSwapped = false;
+
+        if (bitsetHas(topLeftPixelFlags, Gravity) && !bitsetHas(bottomLeftPixelFlags, Solid))
         {
-            pixels[topRightIndex] = bottomRightPixel;
-            pixels[bottomRightIndex] = topRightPixel;
-            rightRowSwapped = true;
+            if (topLeftPixelDensity > bottomLeftPixelDensity)
+            {
+                pixels[topLeftIndex] = bottomLeftPixel;
+                pixels[bottomLeftIndex] = topLeftPixel;
+
+                Pixel tmpPixel = topLeftPixel;
+                uint tmpFlags = topLeftPixelFlags;
+                uint tmpDensity = topLeftPixelDensity;
+                uint tmpSpread = topLeftPixelSpread;
+
+                topLeftPixel = bottomLeftPixel;
+                topLeftPixelFlags = bottomLeftPixelFlags;
+                topLeftPixelDensity = bottomLeftPixelDensity;
+                topLeftPixelSpread = bottomLeftPixelSpread;
+
+                bottomLeftPixel = topLeftPixel;
+                bottomLeftPixelFlags = tmpFlags;
+                bottomLeftPixelDensity = tmpDensity;
+                bottomLeftPixelSpread = tmpSpread;
+
+                leftRowSwapped = true;
+            }
+        }
+
+        if (bitsetHas(topRightPixelFlags, Gravity) && !bottomRightPixelSolid)
+        {
+            if (topRightPixelDensity > bottomRightPixelDensity)
+            {
+                pixels[topRightIndex] = bottomRightPixel;
+                pixels[bottomRightIndex] = topRightPixel;
+
+                Pixel tmpPixel = topRightPixel;
+                uint tmpFlags = topRightPixelFlags;
+                uint tmpDensity = topRightPixelDensity;
+                uint tmpSpread = topRightPixelSpread;
+
+                topRightPixel = bottomRightPixel;
+                topRightPixelFlags = bottomRightPixelFlags;
+                topRightPixelDensity = bottomRightPixelDensity;
+                topRightPixelSpread = bottomRightPixelSpread;
+
+                bottomRightPixel = tmpPixel;
+                bottomRightPixelFlags = tmpFlags;
+                bottomRightPixelDensity = tmpDensity;
+                bottomRightPixelSpread = tmpSpread;
+
+                rightRowSwapped = true;
+            }
+        }
+
+        if ((topLeftPixelSolid && bottomRightPixelSolid) || (topRightPixelSolid && bottomLeftPixelSolid)) { return; }
+
+        if (!leftRowSwapped && !rightRowSwapped)
+        {
+            if (bitsetHas(topLeftPixelFlags, Gravity) && !bottomRightPixelSolid && topLeftPixelDensity > bottomRightPixelDensity)
+            {
+                pixels[topLeftIndex] = bottomRightPixel;
+                pixels[bottomRightIndex] = topLeftPixel;
+
+                Pixel tmpPixel = topLeftPixel;
+                uint tmpFlags = topLeftPixelFlags;
+                uint tmpDensity = topLeftPixelDensity;
+                uint tmpSpread = topLeftPixelSpread;
+
+                topLeftPixel = bottomRightPixel;
+                topLeftPixelFlags = bottomRightPixelFlags;
+                topLeftPixelDensity = bottomRightPixelDensity;
+                topLeftPixelSpread = bottomRightPixelSpread;
+
+                bottomRightPixel = tmpPixel;
+                bottomRightPixelFlags = tmpFlags;
+                bottomRightPixelDensity = tmpDensity;
+                bottomRightPixelSpread = tmpSpread;
+            }
+
+            else if (bitsetHas(topRightPixelFlags, Gravity) && !bottomLeftPixelSolid &&  topRightPixelDensity > bottomLeftPixelDensity)
+            {
+                pixels[topRightIndex] = bottomLeftPixel;
+                pixels[bottomLeftIndex] = topRightPixel;
+
+                Pixel tmpPixel = topRightPixel;
+                uint tmpFlags = topRightPixelFlags;
+                uint tmpDensity = topRightPixelDensity;
+                uint tmpSpread = topRightPixelSpread;
+
+                topRightPixel = bottomLeftPixel;
+                topRightPixelFlags = bottomLeftPixelFlags;
+                topRightPixelDensity = bottomLeftPixelDensity;
+                topRightPixelSpread = bottomLeftPixelSpread;
+
+                bottomLeftPixel = tmpPixel;
+                bottomLeftPixelFlags = tmpFlags;
+                bottomLeftPixelDensity = tmpDensity;
+                bottomLeftPixelSpread = tmpSpread;
+            }
         }
     }
 
-    if (leftRowSwapped || rightRowSwapped) { return; }
+    topLeftPixelSolid = bitsetHas(topLeftPixelFlags, Solid);
+    bottomLeftPixelSolid = bitsetHas(bottomLeftPixelFlags, Solid);
+    topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
+    bottomRightPixelSolid = bitsetHas(bottomRightPixelFlags, Solid);
 
-    if ((topLeftPixelSolid && bottomRightPixelSolid) || (topRightPixelSolid && bottomLeftPixelSolid))
+    bool topLeftCanSpread = topLeftPixelSpread > flowIteration;
+    bool topRightCanSpread = topRightPixelSpread > flowIteration;
+    bool bottomLeftCanSpread = topLeftPixelSpread > flowIteration;
+    bool bottomRightCanSpread = topRightPixelSpread > flowIteration;
+
+    if (!topLeftCanSpread && !topRightCanSpread && !bottomLeftCanSpread && !bottomRightCanSpread) { return; }
+
+    if (!topRightPixelSolid && !topRightPixelSolid)
     {
-        return;
+        if (
+        ((bottomLeftPixelSolid || bottomLeftPixelDensity >= topLeftPixelDensity) && (bottomRightPixelSolid || bottomRightPixelDensity >= topRightPixelDensity)) && (
+        (simulationData.rng >= 0.5f && topLeftCanSpread && topLeftPixelDensity > topRightPixelDensity) ||
+        (simulationData.rng < 0.5f && topRightCanSpread && topRightPixelDensity > topLeftPixelDensity)
+        )
+        )
+        {
+            pixels[topLeftIndex] = topRightPixel;
+            pixels[topRightIndex] = topLeftPixel;
+            return;
+        }
     }
 
-    if (bitsetHas(topLeftPixelFlags, Gravity) && !bottomRightPixelSolid && topLeftPixelDensity > bottomRightPixelDensity)
+    if (!bottomLeftPixelSolid && !bottomRightPixelSolid)
     {
-        pixels[topLeftIndex] = bottomRightPixel;
-        pixels[bottomRightIndex] = topLeftPixel;
-        return;
-    }
-
-    if (bitsetHas(topRightPixelFlags, Gravity) && !bottomLeftPixelSolid &&  topRightPixelDensity > bottomLeftPixelDensity)
-    {
-        pixels[topRightIndex] = bottomLeftPixel;
-        pixels[bottomLeftIndex] = topRightPixel;
-        return;
+        if (
+        ((topLeftPixelSolid || topLeftPixelDensity >= bottomLeftPixelDensity) && (topRightPixelSolid || topRightPixelDensity >= bottomRightPixelDensity)) && (
+        (simulationData.rng >= 0.5f && bottomLeftCanSpread && bottomLeftPixelDensity > bottomRightPixelDensity) ||
+        (simulationData.rng < 0.5f && bottomRightCanSpread && bottomRightPixelDensity > bottomLeftPixelDensity)
+        )
+        )
+        {
+            pixels[bottomLeftIndex] = bottomRightPixel;
+            pixels[bottomRightIndex] = bottomLeftPixel;
+            return;
+        }
     }
 }
