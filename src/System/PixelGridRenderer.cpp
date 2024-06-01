@@ -46,12 +46,12 @@ namespace REA::System
 			gridInfo->zoom            = pixelGrid.Zoom;
 			gridInfo->offset          = pixelGrid.Offset;
 			gridInfo->pointerPosition = pixelGrid.PointerPosition;
-			size_t size               = std::min(pixelGrid.ColorLookup.size(), std::size(gridInfo->colorLookup));
+			size_t size               = std::min(pixelGrid.PixelColorLookup.size(), std::size(gridInfo->colorLookup));
 			if (_sameGridCounter < Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT)
 			{
 				for (int i = 0; i < size; ++i)
 				{
-					gridInfo->colorLookup[i] = pixelGrid.ColorLookup[i];
+					gridInfo->colorLookup[i] = pixelGrid.PixelColorLookup[i];
 				}
 			}
 

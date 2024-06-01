@@ -10,9 +10,9 @@ namespace REA
 		return *this;
 	}
 
-	PixelGridBuilder& PixelGridBuilder::WithPixelData(std::vector<Pixel>&& pixelData)
+	PixelGridBuilder& PixelGridBuilder::WithPixelData(std::vector<PixelCreateInfo>&& pixelData)
 	{
-		_pixels = std::move(pixelData);
+		_pixelCreateInfos = std::move(pixelData);
 		return *this;
 	}
 
@@ -20,17 +20,23 @@ namespace REA
 	{
 		Component::PixelGrid pixelGrid{};
 
-		std::ranges::sort(_pixels, [](const Pixel& data1, const Pixel& data2) { return data1.PixelData.PixelID < data2.PixelData.PixelID; });
+		std::ranges::sort(_pixelCreateInfos, [](const PixelCreateInfo& data1, const PixelCreateInfo& data2) { return data1.ID < data2.ID; });
 
-		pixelGrid.ColorLookup.reserve(_pixels.size());
-		for (const Pixel& pixel: _pixels) { pixelGrid.ColorLookup.push_back(pixel.Color); }
+		pixelGrid.PixelLookup.reserve(_pixelCreateInfos.size());
+		pixelGrid.PixelColorLookup.reserve(_pixelCreateInfos.size());
+		pixelGrid.PixelDataLookup.reserve(_pixelCreateInfos.size());
 
-		pixelGrid.PixelLookup = std::move(_pixels);
+		for (const PixelCreateInfo& pixelCreateInfo: _pixelCreateInfos)
+		{
+			pixelGrid.PixelLookup.push_back({ pixelCreateInfo.Name, { pixelCreateInfo.ID, static_cast<uint8_t>(pixelCreateInfo.Data.BaseTemperature), 0 } });
+			pixelGrid.PixelColorLookup.push_back(pixelCreateInfo.Color);
+			pixelGrid.PixelDataLookup.push_back(pixelCreateInfo.Data);
+		}
 
 		pixelGrid.Width  = _size.x;
 		pixelGrid.Height = _size.y;
 
-		_pixels = {};
+		_pixelCreateInfos.clear();
 
 		return pixelGrid;
 	}

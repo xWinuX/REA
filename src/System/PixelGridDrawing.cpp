@@ -32,10 +32,10 @@ namespace REA::System
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::PixelGrid& pixelGrid   = pixelGrids[i];
-			Pixel::Data*          pixels      = pixelGrid.PixelData;
+			Pixel::State*         pixelState  = pixelGrid.PixelState;
 			std::vector<Pixel>&   pixelLookup = pixelGrid.PixelLookup;
 
-			if (pixels == nullptr) { continue; }
+			if (pixelState == nullptr) { continue; }
 
 			ImGui::Spacing();
 
@@ -45,12 +45,15 @@ namespace REA::System
 
 			if (ImGui::BeginTable("Pixel Selection", 5))
 			{
-				for (Pixel& pixel: pixelLookup)
+				for (int i = 0; i < pixelGrid.PixelLookup.size(); ++i)
 				{
+					Pixel& pixel      = pixelGrid.PixelLookup[i];
+					Color& pixelColor = pixelGrid.PixelColorLookup[i];
+
 					ImGui::TableNextColumn();
 
-					ImU32 color      = IM_COL32(pixel.Color.R * 255, pixel.Color.G * 255, pixel.Color.B * 255, pixel.Color.A * 255);
-					bool  selected = _drawPixel != nullptr && _drawPixel->PixelData.PixelID == pixel.PixelData.PixelID;
+					ImU32 color    = IM_COL32(pixelColor.R * 255, pixelColor.G * 255, pixelColor.B * 255, pixelColor.A * 255);
+					bool  selected = _drawPixelID == pixel.PixelState.PixelID;
 
 					ImGui::GetWindowDrawList()->ChannelsSplit(2);
 					ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
@@ -58,7 +61,7 @@ namespace REA::System
 
 					ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-					if (ImGui::Button(std::format("{0}", pixel.Name).c_str(), {availableSize.x, 50})) { _drawPixel = &pixel; }
+					if (ImGui::Button(std::format("{0}", pixel.Name).c_str(), { availableSize.x, 50 })) { _drawPixelID = pixel.PixelState.PixelID; }
 
 					ImVec2 p_min = ImGui::GetItemRectMin();
 					ImVec2 p_max = ImGui::GetItemRectMax();
@@ -69,8 +72,6 @@ namespace REA::System
 					ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
 					ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, color, 3.0f);
 					ImGui::GetWindowDrawList()->ChannelsMerge();
-
-
 				}
 				ImGui::EndTable();
 			}
@@ -104,13 +105,13 @@ namespace REA::System
 
 			pixelGrid.PointerPosition = { gridX, gridY };
 
-			if (Input::GetDown(KeyCode::MOUSE_LEFT) && _drawPixel != nullptr)
+			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{
-				Pixel::Data& pixelData = _drawPixel->PixelData;
+				Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
 				if (_radius == 1)
 				{
-					const int index = gridY * pixelGrid.Width + gridX;
-					pixels[index]   = pixelData;
+					const int index   = gridY * pixelGrid.Width + gridX;
+					pixelState[index] = drawState;
 				}
 				else
 				{
@@ -121,7 +122,7 @@ namespace REA::System
 							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
 							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
 							const int index = yy * pixelGrid.Width + xx;
-							if (index < pixelGrid.Width * pixelGrid.Height) { pixels[index] = pixelData; }
+							if (index < pixelGrid.Width * pixelGrid.Height) { pixelState[index] = drawState; }
 						}
 					}
 				}

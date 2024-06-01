@@ -26,13 +26,15 @@ layout(std430, set = 2, binding = 0) buffer s_Pixels {
 void main() {
     int height = gridInfo.height;
     int index = (int(fragPosition.y) * gridInfo.width + int(fragPosition.x));
-    uint pixelID = pixels[index].PixelID8_Flags8_Density8_Spread8 & 0xFFu;
+    uint pixelID = pixels[index].PixelID8_Flags8_Density8_Spread8;
 
   /*  uint density = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
      uint flags = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
      uint spread = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
      outColor = vec4(density/100.0f, flags/100.0f, 0.0f, 1.0f);
 */
-    outColor = int(gridInfo.pointerPosition.x) == int(fragPosition.x) && int(gridInfo.pointerPosition.y) == int(fragPosition.y)  ? vec4(1.0f) : gridInfo.colorLookup[pixelID];
+    uint temperature = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+    bool isCursorPixel = int(gridInfo.pointerPosition.x) == int(fragPosition.x) && int(gridInfo.pointerPosition.y) == int(fragPosition.y);
+    outColor = isCursorPixel ? vec4(1.0f) : gridInfo.colorLookup[pixelID & 0xFFFFu];
     //outColor = vec4(vec3(pixelID /10.f), 1.0f);
 }

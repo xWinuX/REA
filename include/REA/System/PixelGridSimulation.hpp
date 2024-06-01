@@ -15,10 +15,11 @@ namespace REA::System
 			{
 				AssetHandle<Rendering::Shader> IdleSimulation;
 				AssetHandle<Rendering::Shader> FallingSimulation;
+				AssetHandle<Rendering::Shader> AccumulateSimulation;
 			};
 
-			void ClearGrid();
-			PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel clearPixel);
+			void ClearGrid(const Component::PixelGrid& pixelGrid);
+			PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel::ID clearPixelID);
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
@@ -27,19 +28,20 @@ namespace REA::System
 		private:
 			struct UBO_SimulationData
 			{
-				float    deltaTime = 0.0f;
-				uint32_t timer     = 0;
-				float    rng       = 0.0f;
-				uint32_t width     = 0;
-				uint32_t height    = 0;
+				float       deltaTime = 0.0f;
+				uint32_t    timer     = 0;
+				float       rng       = 0.0f;
+				uint32_t    width     = 0;
+				uint32_t    height    = 0;
+				Pixel::Data pixelLookup[1024];
 			};
 
 			struct SSBO_Pixels
 			{
-				Pixel::Data Pixels[1000000];
+				Pixel::State Pixels[1000000];
 			};
 
-			Pixel _clearPixel;
+			Pixel::ID _clearPixelID;
 
 			uint32_t _fif = 1;
 
@@ -49,8 +51,10 @@ namespace REA::System
 			SimulationShaders _shaders;
 
 			bool _paused    = true;
-			bool _clearGrid = false;
+			bool _clearGrid = true;
 			bool _doStep    = false;
+
+			bool _firstUpdate = true;
 
 			void CmdWaitForPreviousComputeShader();
 

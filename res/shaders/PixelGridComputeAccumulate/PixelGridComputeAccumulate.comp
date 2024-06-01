@@ -1,0 +1,83 @@
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    uint width = simulationData.width;
+    uint height = simulationData.height;
+
+    if (gl_GlobalInvocationID.x >= width * height) {
+        return;
+    }
+
+    uint x = gl_GlobalInvocationID.x  % width;
+    uint y =  gl_GlobalInvocationID.x / width;
+
+    uint topY = y + 1 == height ? 0 : y + 1;
+    uint bottomY = int(y)-1 == -1 ? height - 1 : y - 1;
+
+    uint rightX = (x + 1) % width;
+    uint leftX = uint((int(x) - 1) % int(width));
+
+    // Calculate wrapped indices
+    uint topYCalc = (topY * width);
+    uint middleYCalc = (y * width);
+    uint bottomYCalc = (bottomY * width);
+
+    uint topLeftIndex = topYCalc + leftX;
+    uint topCenterIndex = topYCalc + x;
+    uint topRightIndex = topYCalc + rightX;
+
+    uint middleLeftIndex = middleYCalc + leftX;
+    uint middleCenterIndex = gl_GlobalInvocationID.x;
+    uint middleRightIndex = middleYCalc + rightX;
+
+    uint bottomLeftIndex = bottomYCalc + leftX;
+    uint bottomCenterIndex = bottomYCalc + x;
+    uint bottomRightIndex = bottomYCalc + rightX;
+
+    // Read pixels
+    Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
+    Pixel topCenterPixel = readOnlyPixels[topCenterIndex];
+    Pixel topRightPixel = readOnlyPixels[topRightIndex];
+
+    Pixel middleLeftPixel = readOnlyPixels[middleLeftIndex];
+    Pixel middleCenterPixel = readOnlyPixels[middleCenterIndex];
+    Pixel middleRightPixel = readOnlyPixels[middleRightIndex];
+
+    Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
+    Pixel bottomCenterPixel = readOnlyPixels[bottomCenterIndex];
+    Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
+
+    uint pixelID = middleCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu;
+    PixelData middleCenterPixelData = simulationData.pixelLookup[pixelID];
+    float temperatureResistance = middleCenterPixelData.TemperatureResistance;
+
+    float temperature = getTemperature(middleCenterPixel.PixelID16_Temperature8_Pressure8);
+
+    temperature += getTemperature(topLeftPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(topCenterPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(topRightPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+
+    temperature += getTemperature(middleLeftPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(middleRightPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+
+    temperature += getTemperature(bottomLeftPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(bottomCenterPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(bottomRightPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+
+    temperature = clamp(temperature, 0, 255.0f);
+
+    if (temperature >= middleCenterPixelData.HighTemperatureLimit) {
+        pixelID = middleCenterPixelData.HighTemperatureLimitPixelID;
+    }
+
+    middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0xFF000000u;
+    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= pixelID;
+    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= (uint(temperature) & 0xFFu)  << 16;
+
+    // Write pixels
+    pixels[middleCenterIndex] = middleCenterPixel;
+}

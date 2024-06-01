@@ -44,13 +44,95 @@ using namespace REA;
 int main()
 {
 	// Setup Pixels Types
-	std::vector<Pixel> pixelLookup = {
-		{ .Name = "Air", .Color = Color(0x5890FFFF), .PixelData = { .PixelID = PixelType::Air, .Flags = BitSet<uint8_t>(Gravity), .Density = 10, .SpreadingFactor = 4 }, },
-		{ .Name = "Sand", .Color = Color(0x9F944BFF), .PixelData = { .PixelID = PixelType::Sand, .Flags = BitSet<uint8_t>(Gravity), .Density = 14, .SpreadingFactor = 0 } },
-		{ .Name = "Water", .Color = Color(0x84BCFFFF), .PixelData = { .PixelID = PixelType::Water, .Flags = BitSet<uint8_t>(Gravity), .Density = 12, .SpreadingFactor = 8 } },
-		{ .Name = "Wood", .Color = Color(0x775937FF), .PixelData = { .PixelID = PixelType::Wood, .Flags = BitSet<uint8_t>(Solid), .Density = 15, .SpreadingFactor = 0 } },
-		{ .Name = "Smoke", .Color = Color(0xAAAAAAFF), .PixelData = { .PixelID = PixelType::Smoke, .Flags = BitSet<uint8_t>(Gravity), .Density = 8, .SpreadingFactor = 2 } },
-		{ .Name = "Oil", .Color = Color(0x333333FF), .PixelData = { .PixelID = PixelType::Oil, .Flags = BitSet<uint8_t>(Gravity), .Density = 11, .SpreadingFactor = 2 } },
+	std::vector<PixelGridBuilder::PixelCreateInfo> pixelLookup = {
+		{
+			.ID = PixelType::Air,
+			.Name = "Air",
+			.Color = Color(0x5890FFFF),
+			.Data =
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 10,
+				.SpreadingFactor = 4,
+				.TemperatureResistance = 0,
+			},
+		},
+		{
+			.ID = PixelType::Sand,
+			.Name = "Sand",
+			.Color = Color(0x9F944BFF),
+			.Data =
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 14,
+				.SpreadingFactor = 0,
+				.TemperatureResistance = 0,
+			}
+		},
+		{
+			.ID = PixelType::Water,
+			.Name = "Water",
+			.Color = Color(0x84BCFFFF),
+			.Data =
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 12,
+				.SpreadingFactor = 8,
+				.TemperatureResistance = 0.1f,
+				.HighTemperatureLimit = 128,
+				.HighTemperatureLimitPixelID = PixelType::Smoke,
+			}
+		},
+		{
+			.ID = PixelType::Wood,
+			.Name = "Wood",
+			.Color = Color(0x775937FF),
+			.Data = {
+				.Flags = BitSet<uint32_t>(Pixel::Solid),
+				.Density = 15,
+				.SpreadingFactor = 0,
+				.TemperatureResistance = 0,
+
+			}
+		},
+		{
+			.ID = PixelType::Smoke,
+			.Name = "Smoke",
+			.Color = Color(0xAAAAAAFF),
+			.Data = {
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 8,
+				.SpreadingFactor = 2,
+				.TemperatureResistance = 0,
+				.BaseTemperature = 129,
+				.LowerTemperatureLimit = 128,
+				.LowerTemperatureLimitPixelID = PixelType::Water,
+			}
+		},
+		{
+			.ID = PixelType::Oil,
+			.Name = "Oil",
+			.Color = Color(0x333333FF),
+			.Data = {
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 11,
+				.SpreadingFactor = 2,
+				.TemperatureResistance = 0,
+				.BaseTemperature = 0,
+			}
+		},
+		{
+			.ID = PixelType::Lava,
+			.Name = "Lava",
+			.Color = Color(0xFF8619FF),
+			.Data = {
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 11,
+				.SpreadingFactor = 2,
+				.TemperatureResistance = 0,
+				.BaseTemperature = 10,
+			}
+		},
 	};
 
 	Application application = Application({ {}, { .UseVulkanValidationLayers = false } });
@@ -80,7 +162,9 @@ int main()
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
 	AssetHandle<Rendering::Shader> pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Idle, { "res/shaders/PixelGridComputeIdle" });
-	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridCompute" });
+	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridComputeFalling" });
+	AssetHandle<Rendering::Shader> pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Accumulate,
+	                                                                                                         { "res/shaders/PixelGridComputeAccumulate" });
 
 	ECS::Registry& ecs = application.GetECSRegistry();
 
@@ -104,8 +188,9 @@ int main()
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
 		.FallingSimulation = pixelGridComputeFall,
+		.AccumulateSimulation = pixelGridComputeAccumulate
 	};
-	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders, pixelLookup[PixelType::Air]);
+	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders, PixelType::Air);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);

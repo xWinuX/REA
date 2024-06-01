@@ -1,23 +1,29 @@
-
+struct PixelData {
+    uint Flags;
+    uint Density;
+    uint Spread;
+    float TemperatureResistance;
+    uint BaseTemperature;
+    uint LowerTemperatureLimit;
+    uint LowerTemperatureLimitPixelID;
+    uint HighTemperatureLimit;
+    uint HighTemperatureLimitPixelID;
+};
 
 struct Pixel {
-    uint PixelID8_Flags8_Density8_Spread8;
+    uint PixelID16_Temperature8_Pressure8;
 };
 
 bool bitsetHas(uint bitset, uint bits) {
     return (bitset & bits) == bits;
 }
 
-uint getPixelFlags(uint packedData) {
-    return (packedData >> 8u) & 0xFFu;
+uint getPixelID(uint packedData) {
+    return packedData & 0xFFFFu;
 }
 
-uint getPixelDensity(uint packedData) {
+uint getTemperature(uint packedData) {
     return (packedData >> 16u) & 0xFFu;
-}
-
-uint getPixelSpread(uint packedData) {
-    return (packedData >> 24u) & 0xFFu;
 }
 
 layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
@@ -26,6 +32,7 @@ layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
     float rng;
     uint width;
     uint height;
+    PixelData pixelLookup[1024];
 } simulationData;
 
 layout(std430, set = 1, binding = 1) buffer na_s_PixelSSBOIn {

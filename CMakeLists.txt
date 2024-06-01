@@ -84,9 +84,9 @@ set(SHADER_FILES
         "res/shaders/debug/Debug.frag"
         "res/shaders/PixelGrid/PixelGrid.vert"
         "res/shaders/PixelGrid/PixelGrid.frag"
-        "res/shaders/PixelGridCompute/PixelGridCompute.comp"
+        "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp"
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
-        "res/shaders/PixelGridComputeFlow/PixelGridComputeFlow.comp"
+        "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
 )
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)

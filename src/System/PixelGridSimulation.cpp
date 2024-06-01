@@ -16,15 +16,16 @@
 
 namespace REA::System
 {
-	void PixelGridSimulation::ClearGrid()
+	void PixelGridSimulation::ClearGrid(const Component::PixelGrid& pixelGrid)
 	{
 		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
 
-		std::for_each(std::execution::par_unseq, std::begin(inputPixels->Pixels), std::end(inputPixels->Pixels), [this](Pixel::Data& pixel) { pixel = _clearPixel.PixelData; });
+		Pixel::State pixelState = pixelGrid.PixelLookup[_clearPixelID].PixelState;
+		std::for_each(std::execution::par_unseq, std::begin(inputPixels->Pixels), std::end(inputPixels->Pixels), [this, pixelState](Pixel::State& pixel) { pixel = pixelState; });
 	}
 
-	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel clearPixel):
-		_clearPixel(std::move(clearPixel)),
+	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel::ID clearPixelID):
+		_clearPixelID(clearPixelID),
 		_shaders(simulationShaders)
 	{
 		auto&                      properties = _shaders.FallingSimulation->GetProperties();
@@ -44,9 +45,9 @@ namespace REA::System
 		}
 
 		//	properties.OverrideBufferPtrs(1, writeBuffer);
-		_shaders.FallingSimulation->Update();
-
-		ClearGrid();
+		_shaders.IdleSimulation->Update();
+		_shaders.AccumulateSimulation->Update();
+		_shaders.AccumulateSimulation->Update();
 
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
@@ -120,7 +121,7 @@ namespace REA::System
 
 		if (_clearGrid)
 		{
-			ClearGrid();
+			ClearGrid(pixelGrid);
 			_clearGrid = false;
 		}
 
@@ -129,6 +130,13 @@ namespace REA::System
 		UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
 		simulationData->width  = pixelGrid.Width;
 		simulationData->height = pixelGrid.Height;
+
+
+		if (_firstUpdate)
+		{
+			memcpy(simulationData->pixelLookup, pixelGrid.PixelDataLookup.data(), pixelGrid.PixelDataLookup.size() * sizeof(Pixel::Data));
+			_firstUpdate = false;
+		}
 
 		if (!_paused || _doStep)
 		{
@@ -153,7 +161,6 @@ namespace REA::System
 
 			_shaders.FallingSimulation->Update();
 
-
 			for (int i = 0; i < 8; ++i)
 			{
 				CmdWaitForPreviousComputeShader();
@@ -170,6 +177,14 @@ namespace REA::System
 				margolusOffset = GetMargolusOffset(timer + i);
 				flowIteration++;
 			}
+
+			CmdWaitForPreviousComputeShader();
+
+			_shaders.AccumulateSimulation->Update();
+
+			_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+			_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 			_commandBuffer.GetVkCommandBuffer().end();
 
@@ -200,6 +215,6 @@ namespace REA::System
 
 		_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 
-		pixelGrid.PixelData = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
+		pixelGrid.PixelState = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
 	}
 }

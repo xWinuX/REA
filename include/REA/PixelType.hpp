@@ -3,7 +3,7 @@
 
 namespace REA
 {
-	enum PixelType : uint8_t
+	enum PixelType : uint32_t
 	{
 		Air,
 		Sand,
@@ -11,6 +11,7 @@ namespace REA
 		Wood,
 		Smoke,
 		Oil,
+		Lava,
 		MAX_VALUE
 	};
 }

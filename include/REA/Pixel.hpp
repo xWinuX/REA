@@ -9,26 +9,44 @@ using namespace SplitEngine;
 
 namespace REA
 {
-	enum PixelFlags : uint8_t
-	{
-		Solid   = 1 << 0,
-		Gravity = 1 << 1,
-	};
-
 	struct Pixel
 	{
-		typedef uint8_t ID;
+		typedef uint16_t ID;
 
-		struct Data
+		enum Flags : uint32_t
 		{
-			ID              PixelID         = 0;
-			BitSet<uint8_t> Flags           = BitSet<uint8_t>();
-			uint8_t         Density         = 0;
-			uint8_t         SpreadingFactor = 0;
+			Solid   = 1 << 0,
+			Gravity = 1 << 1,
 		};
 
-		std::string Name    = "NAME_HERE";
-		Color       Color{};
-		Data        PixelData{};
+		/**
+		 * State is typically used by shaders and should be kept as small as possible
+		 */
+		struct State
+		{
+			ID      PixelID     = 0;
+			uint8_t Temperature = 0;
+			uint8_t Pressure    = 0;
+		};
+
+		/**
+		 * Data is used to lookup certain aspects of a pixel id.
+		 * Stuff inside data will never change once its set
+		 */
+		struct Data
+		{
+			BitSet<uint32_t> Flags                        = BitSet<uint32_t>();
+			uint32_t         Density                      = 0;
+			uint32_t         SpreadingFactor              = 0;
+			float            TemperatureResistance        = 0;
+			uint32_t         BaseTemperature              = 0;
+			uint32_t         LowerTemperatureLimit        = 0;
+			uint32_t         LowerTemperatureLimitPixelID = 0;
+			uint32_t         HighTemperatureLimit         = 256;
+			uint32_t         HighTemperatureLimitPixelID  = 0;
+		};
+
+		std::string Name = "NAME_HERE";
+		State       PixelState{};
 	};
 }

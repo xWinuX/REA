@@ -15,7 +15,7 @@ namespace REA
 		PixelGrid,
 		Comp_PixelGrid_Idle,
 		Comp_PixelGrid_Fall,
-		Comp_PixelGrid_Flow,
+		Comp_PixelGrid_Accumulate,
 	};
 
 	enum class Material

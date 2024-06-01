@@ -1,0 +1,148 @@
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+
+// Pixel with {PixelID: 255, Flags: [Solid], Density: minValue, Spread: 0}
+//const Pixel solidPixel = { 0x000001FF };
+//const Pixel solidPixel = { 0xFF01F000 };
+
+layout(push_constant) uniform PushConstant {
+    uint flowIteration;
+    uvec2 margolusOffset;
+};
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    #include "../PixelGridMorgulusStarter.glsl"
+
+    bool topLeftPixelSolid = bitsetHas(topLeftPixelData.Flags, Solid);
+    bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelData.Flags, Solid);
+    bool topRightPixelSolid = bitsetHas(topRightPixelData.Flags, Solid);
+    bool bottomRightPixelSolid = bitsetHas(bottomRightPixelData.Flags, Solid);
+
+    if (flowIteration == 0)
+    {
+        bool leftRowSwapped = false;
+        bool rightRowSwapped = false;
+
+        if (bitsetHas(topLeftPixelData.Flags, Gravity) && !bitsetHas(bottomLeftPixelData.Flags, Solid))
+        {
+            if (topLeftPixelData.Density > bottomLeftPixelData.Density)
+            {
+                pixels[topLeftIndex] = bottomLeftPixel;
+                pixels[bottomLeftIndex] = topLeftPixel;
+
+                Pixel tmpPixel = topLeftPixel;
+                PixelData tmpPixelData = topLeftPixelData;
+
+                topLeftPixel = bottomLeftPixel;
+                topLeftPixelData = bottomLeftPixelData;
+
+                bottomLeftPixel = tmpPixel;
+                bottomLeftPixelData = tmpPixelData;
+
+                leftRowSwapped = true;
+            }
+        }
+
+        if (bitsetHas(topRightPixelData.Flags, Gravity) && !bottomRightPixelSolid)
+        {
+            if (topRightPixelData.Density > bottomRightPixelData.Density)
+            {
+                pixels[topRightIndex] = bottomRightPixel;
+                pixels[bottomRightIndex] = topRightPixel;
+
+                Pixel tmpPixel = topRightPixel;
+                PixelData tmpPixelData = topRightPixelData;
+
+                topRightPixel = bottomRightPixel;
+                topRightPixelData = bottomRightPixelData;
+
+                bottomRightPixel = tmpPixel;
+                bottomRightPixelData = tmpPixelData;
+
+                rightRowSwapped = true;
+            }
+        }
+
+        if ((topLeftPixelSolid && bottomRightPixelSolid) || (topRightPixelSolid && bottomLeftPixelSolid)) { return; }
+
+        if (!leftRowSwapped && !rightRowSwapped)
+        {
+            if (bitsetHas(topLeftPixelData.Flags, Gravity) && !bottomRightPixelSolid && topLeftPixelData.Density > bottomRightPixelData.Density)
+            {
+                pixels[topLeftIndex] = bottomRightPixel;
+                pixels[bottomRightIndex] = topLeftPixel;
+
+                Pixel tmpPixel = topLeftPixel;
+                PixelData tmpPixelData = topLeftPixelData;
+
+                topLeftPixel = bottomRightPixel;
+                topLeftPixelData = bottomRightPixelData;
+
+                bottomRightPixel = tmpPixel;
+                bottomRightPixelData = tmpPixelData;
+            }
+
+            else if (bitsetHas(topRightPixelData.Flags, Gravity) && !bottomLeftPixelSolid &&  topRightPixelData.Density > bottomLeftPixelData.Density)
+            {
+                pixels[topRightIndex] = bottomLeftPixel;
+                pixels[bottomLeftIndex] = topRightPixel;
+
+                Pixel tmpPixel = topRightPixel;
+                PixelData tmpPixelData = topRightPixelData;
+
+
+                topRightPixel = bottomLeftPixel;
+                topRightPixelData = bottomLeftPixelData;
+
+
+                bottomLeftPixel = tmpPixel;
+                bottomLeftPixelData = tmpPixelData;
+            }
+        }
+    }
+
+    topLeftPixelSolid = bitsetHas(topLeftPixelData.Flags, Solid);
+    bottomLeftPixelSolid = bitsetHas(bottomLeftPixelData.Flags, Solid);
+    topRightPixelSolid = bitsetHas(topRightPixelData.Flags, Solid);
+    bottomRightPixelSolid = bitsetHas(bottomRightPixelData.Flags, Solid);
+
+    bool topLeftCanSpread = topLeftPixelData.Spread > flowIteration;
+    bool topRightCanSpread = topRightPixelData.Spread > flowIteration;
+    bool bottomLeftCanSpread = topLeftPixelData.Spread > flowIteration;
+    bool bottomRightCanSpread = topRightPixelData.Spread > flowIteration;
+
+    if (!topLeftCanSpread && !topRightCanSpread && !bottomLeftCanSpread && !bottomRightCanSpread) { return; }
+
+    if (!topRightPixelSolid && !topRightPixelSolid)
+    {
+        if (
+        ((bottomLeftPixelSolid || bottomLeftPixelData.Density >= topLeftPixelData.Density) && (bottomRightPixelSolid || bottomRightPixelData.Density >= topRightPixelData.Density)) && (
+        (simulationData.rng >= 0.5f && topLeftCanSpread && topLeftPixelData.Density > topRightPixelData.Density) ||
+        (simulationData.rng < 0.5f && topRightCanSpread && topRightPixelData.Density > topLeftPixelData.Density)
+        )
+        )
+        {
+            pixels[topLeftIndex] = topRightPixel;
+            pixels[topRightIndex] = topLeftPixel;
+            return;
+        }
+    }
+
+    if (!bottomLeftPixelSolid && !bottomRightPixelSolid)
+    {
+        if (
+        ((topLeftPixelSolid || topLeftPixelData.Density >= bottomLeftPixelData.Density) && (topRightPixelSolid || topRightPixelData.Density >= bottomRightPixelData.Density)) && (
+        (simulationData.rng >= 0.5f && bottomLeftCanSpread && bottomLeftPixelData.Density > bottomRightPixelData.Density) ||
+        (simulationData.rng < 0.5f && bottomRightCanSpread && bottomRightPixelData.Density > bottomLeftPixelData.Density)
+        )
+        )
+        {
+            pixels[bottomLeftIndex] = bottomRightPixel;
+            pixels[bottomRightIndex] = bottomLeftPixel;
+            return;
+        }
+    }
+}

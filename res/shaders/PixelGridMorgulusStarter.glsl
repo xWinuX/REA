@@ -1,7 +1,7 @@
 uint width = simulationData.width;
 uint height = simulationData.height;
 
-if (gl_GlobalInvocationID.x >= (width * height) / 4) {
+if (gl_GlobalInvocationID.x >= width * height) {
     return;
 }
 
@@ -33,6 +33,11 @@ Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
 Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
 Pixel topRightPixel = readOnlyPixels[topRightIndex];
 Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
+
+PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
 
 // Write pixels
 pixels[topLeftIndex] = topLeftPixel;
