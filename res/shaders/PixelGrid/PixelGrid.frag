@@ -33,8 +33,9 @@ void main() {
      uint spread = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
      outColor = vec4(density/100.0f, flags/100.0f, 0.0f, 1.0f);
 */
+    vec4 pixelColor = gridInfo.colorLookup[pixelID & 0xFFFFu];
     uint temperature = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
     bool isCursorPixel = int(gridInfo.pointerPosition.x) == int(fragPosition.x) && int(gridInfo.pointerPosition.y) == int(fragPosition.y);
-    outColor = isCursorPixel ? vec4(1.0f) : gridInfo.colorLookup[pixelID & 0xFFFFu];
+    outColor = isCursorPixel ? vec4(1.0f) : pixelColor * (1.0f + (temperature/255.0f));//;
     //outColor = vec4(vec3(pixelID /10.f), 1.0f);
 }

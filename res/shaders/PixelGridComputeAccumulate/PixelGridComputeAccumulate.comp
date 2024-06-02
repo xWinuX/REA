@@ -55,23 +55,31 @@ void main()
     PixelData middleCenterPixelData = simulationData.pixelLookup[pixelID];
     float temperatureResistance = middleCenterPixelData.TemperatureResistance;
 
-    float temperature = getTemperature(middleCenterPixel.PixelID16_Temperature8_Pressure8);
+    float baseTemperature = getTemperature(middleCenterPixel.PixelID16_Temperature8_Pressure8);
+    float temperature = baseTemperature;
 
-    temperature += getTemperature(topLeftPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
-    temperature += getTemperature(topCenterPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
-    temperature += getTemperature(topRightPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(topLeftPixel.PixelID16_Temperature8_Pressure8);
+    temperature += getTemperature(topCenterPixel.PixelID16_Temperature8_Pressure8);
+    temperature += getTemperature(topRightPixel.PixelID16_Temperature8_Pressure8);
 
-    temperature += getTemperature(middleLeftPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
-    temperature += getTemperature(middleRightPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(middleLeftPixel.PixelID16_Temperature8_Pressure8);
+    temperature += getTemperature(middleRightPixel.PixelID16_Temperature8_Pressure8);
 
-    temperature += getTemperature(bottomLeftPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
-    temperature += getTemperature(bottomCenterPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
-    temperature += getTemperature(bottomRightPixel.PixelID16_Temperature8_Pressure8) * temperatureResistance;
+    temperature += getTemperature(bottomLeftPixel.PixelID16_Temperature8_Pressure8);
+    temperature += getTemperature(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+    temperature += getTemperature(bottomRightPixel.PixelID16_Temperature8_Pressure8);
 
+    temperature /= 9.0f;
+
+    temperature = mix(baseTemperature, temperature, temperatureResistance);
+
+    temperature = round(temperature);
     temperature = clamp(temperature, 0, 255.0f);
 
     if (temperature >= middleCenterPixelData.HighTemperatureLimit) {
         pixelID = middleCenterPixelData.HighTemperatureLimitPixelID;
+    } else if (temperature < middleCenterPixelData.LowerTemperatureLimit) {
+        pixelID =  middleCenterPixelData.LowerTemperatureLimitPixelID;
     }
 
     middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0xFF000000u;

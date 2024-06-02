@@ -44,30 +44,20 @@ using namespace REA;
 int main()
 {
 	// Setup Pixels Types
-	std::vector<PixelGridBuilder::PixelCreateInfo> pixelLookup = {
+	uint32_t                                       airTemperature = 30;
+	std::vector<PixelGridBuilder::PixelCreateInfo> pixelLookup    = {
 		{
 			.ID = PixelType::Air,
 			.Name = "Air",
 			.Color = Color(0x5890FFFF),
-			.Data =
-			{
-				.Flags = BitSet<uint32_t>(Pixel::Gravity),
-				.Density = 10,
-				.SpreadingFactor = 4,
-				.TemperatureResistance = 0,
-			},
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 10, .SpreadingFactor = 4, .TemperatureResistance = 0.3f, .BaseTemperature = airTemperature, },
 		},
 		{
 			.ID = PixelType::Sand,
 			.Name = "Sand",
 			.Color = Color(0x9F944BFF),
 			.Data =
-			{
-				.Flags = BitSet<uint32_t>(Pixel::Gravity),
-				.Density = 14,
-				.SpreadingFactor = 0,
-				.TemperatureResistance = 0,
-			}
+			{ .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Gravity), .Density = 14, .SpreadingFactor = 0, .TemperatureResistance = 1.0f, .BaseTemperature = airTemperature, }
 		},
 		{
 			.ID = PixelType::Water,
@@ -78,34 +68,28 @@ int main()
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
 				.Density = 12,
 				.SpreadingFactor = 8,
-				.TemperatureResistance = 0.1f,
-				.HighTemperatureLimit = 128,
-				.HighTemperatureLimitPixelID = PixelType::Smoke,
+				.TemperatureResistance = 0.9f,
+				.HighTemperatureLimit = 100,
+				.HighTemperatureLimitPixelID = PixelType::Steam,
 			}
 		},
 		{
 			.ID = PixelType::Wood,
 			.Name = "Wood",
 			.Color = Color(0x775937FF),
-			.Data = {
-				.Flags = BitSet<uint32_t>(Pixel::Solid),
-				.Density = 15,
-				.SpreadingFactor = 0,
-				.TemperatureResistance = 0,
-
-			}
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 0, .SpreadingFactor = 0, .TemperatureResistance = 1.0f, .BaseTemperature = airTemperature, }
 		},
 		{
-			.ID = PixelType::Smoke,
-			.Name = "Smoke",
+			.ID = PixelType::Steam,
+			.Name = "Steam",
 			.Color = Color(0xAAAAAAFF),
 			.Data = {
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
 				.Density = 8,
 				.SpreadingFactor = 2,
-				.TemperatureResistance = 0,
-				.BaseTemperature = 129,
-				.LowerTemperatureLimit = 128,
+				.TemperatureResistance = 0.01f,
+				.BaseTemperature = 100,
+				.LowerTemperatureLimit = 100,
 				.LowerTemperatureLimitPixelID = PixelType::Water,
 			}
 		},
@@ -114,11 +98,11 @@ int main()
 			.Name = "Oil",
 			.Color = Color(0x333333FF),
 			.Data = {
-				.Flags = BitSet<uint32_t>(Pixel::Gravity),
-				.Density = 11,
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Gravity),
+				.Density = 16,
 				.SpreadingFactor = 2,
 				.TemperatureResistance = 0,
-				.BaseTemperature = 0,
+				.BaseTemperature = airTemperature,
 			}
 		},
 		{
@@ -127,10 +111,12 @@ int main()
 			.Color = Color(0xFF8619FF),
 			.Data = {
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
-				.Density = 11,
+				.Density = 20,
 				.SpreadingFactor = 2,
-				.TemperatureResistance = 0,
-				.BaseTemperature = 10,
+				.TemperatureResistance = 0.01f,
+				.BaseTemperature = 200,
+				.LowerTemperatureLimit = 100,
+				.LowerTemperatureLimitPixelID = PixelType::Sand,
 			}
 		},
 	};

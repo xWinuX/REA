@@ -142,7 +142,7 @@ namespace REA::System
 		{
 
 			simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
-			simulationData->timer++;
+			simulationData->timer = simulationData->timer+1;
 			simulationData->rng    = glm::linearRand(0.0f, 1.0f);
 
 

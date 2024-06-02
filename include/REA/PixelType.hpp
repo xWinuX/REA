@@ -9,7 +9,7 @@ namespace REA
 		Sand,
 		Water,
 		Wood,
-		Smoke,
+		Steam,
 		Oil,
 		Lava,
 		MAX_VALUE
