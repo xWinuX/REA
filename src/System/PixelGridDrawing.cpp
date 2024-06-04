@@ -1,5 +1,6 @@
 #include "REA/System/PixelGridDrawing.hpp"
 
+#include <execution>
 #include <imgui.h>
 
 #include <SplitEngine/Application.hpp>
@@ -7,35 +8,84 @@
 #include <SplitEngine/Input.hpp>
 #include <SplitEngine/Systems.hpp>
 
+#include "IconsFontAwesome.h"
 #include "REA/PixelType.hpp"
 #include "REA/Context/ImGui.hpp"
 
 
 namespace REA::System
 {
-	PixelGridDrawing::PixelGridDrawing(int radius):
-		_radius(radius) {}
+	PixelGridDrawing::PixelGridDrawing(int radius, Pixel::ID clearPixelID):
+		_radius(radius),
+		_clearPixelID(clearPixelID) {}
+
+
+	void PixelGridDrawing::ClearGrid(const Component::PixelGrid& pixelGrid)
+	{
+		Pixel::State* inputPixels = pixelGrid.PixelState;
+
+		Pixel::State pixelState = pixelGrid.PixelLookup[_clearPixelID].PixelState;
+		std::for_each(std::execution::par_unseq, inputPixels, inputPixels + (pixelGrid.Width * pixelGrid.Height), [this, pixelState](Pixel::State& pixel) { pixel = pixelState; });
+	}
 
 	void PixelGridDrawing::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
 		ImGui::SetNextWindowDockID(imGuiContext->RightDockingID, ImGuiCond_Always);
 		ImGui::Begin("Drawing");
-		ImGui::SliderInt("Brush Size", &_radius, 1, 50);
-		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
+		System<Component::PixelGrid, Component::PixelGridRenderer>::ExecuteArchetypes(archetypes, contextProvider, stage);
 		ImGui::End();
 		_mouseWheel = { 0, 0 };
 	}
 
-	void PixelGridDrawing::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
+	void PixelGridDrawing::Execute(Component::PixelGrid*         pixelGrids,
+	                               Component::PixelGridRenderer* pixelGridRenderers,
+	                               std::vector<uint64_t>&        entities,
+	                               ECS::ContextProvider&         contextProvider,
+	                               uint8_t                       stage)
 	{
+		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+
 		for (int i = 0; i < entities.size(); ++i)
 		{
-			Component::PixelGrid& pixelGrid   = pixelGrids[i];
-			Pixel::State*         pixelState  = pixelGrid.PixelState;
-			std::vector<Pixel>&   pixelLookup = pixelGrid.PixelLookup;
+			Component::PixelGrid&         pixelGrid         = pixelGrids[i];
+			Component::PixelGridRenderer& pixelGridRenderer = pixelGridRenderers[i];
+			Pixel::State*                 pixelState        = pixelGrid.PixelState;
+			std::vector<Pixel>&           pixelLookup       = pixelGrid.PixelLookup;
 
 			if (pixelState == nullptr) { continue; }
+
+			if (_firstRender)
+			{
+				ClearGrid(pixelGrid);
+				_firstRender = false;
+			}
+
+			ImGui::Text("Actions");
+
+			std::string viewMode = "";
+
+			switch (pixelGridRenderer.RenderMode)
+			{
+				case Component::Normal:
+					viewMode = ICON_FA_TEMPERATURE_FULL;
+					break;
+				case Component::Temperature:
+					viewMode = ICON_FA_EYE;
+					break;
+			}
+
+			if (ImGui::Button(viewMode.c_str(), { 50, 50 }))
+			{
+				pixelGridRenderer.RenderMode = static_cast<Component::RenderMode>((pixelGridRenderer.RenderMode + 1) % Component::MAX_VALUE);
+			}
+			ImGui::SameLine();
+			IMGUI_COLORED_BUTTON(imGuiContext->ColorDanger, if (ImGui::Button(ICON_FA_TRASH, { 50, 50 })) { ClearGrid(pixelGrid); })
+
+
+			ImGui::Separator();
+			ImGui::SliderInt("Brush Size", &_radius, 1, 50);
+			ImGui::Separator();
 
 			ImGui::Spacing();
 
@@ -83,27 +133,27 @@ namespace REA::System
 			if (Input::GetDown(KeyCode::MOUSE_MIDDLE))
 			{
 				glm::ivec2 delta = Input::GetMouseDelta();
-				pixelGrid.Offset += glm::vec2(-delta.x, delta.y) / pixelGrid.Zoom;
+				pixelGridRenderer.Offset += glm::vec2(-delta.x, delta.y) / pixelGridRenderer.Zoom;
 			}
 
-			pixelGrid.Zoom += (static_cast<float>(Input::GetMouseWheel().y) * 0.05f) * pixelGrid.Zoom;
+			pixelGridRenderer.Zoom += (static_cast<float>(Input::GetMouseWheel().y) * 0.05f) * pixelGridRenderer.Zoom;
 
 			glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 
 			glm::vec2 mousePosition = Input::GetMousePosition();
 
 			// Calculate normalized mouse position
-			glm::vec2 offset             = glm::ivec2(pixelGrid.Offset.x, -pixelGrid.Offset.y);
-			glm::vec2 normalizedMousePos = glm::vec2((mousePosition / pixelGrid.Zoom) + offset) / glm::vec2(windowSize);
+			glm::vec2 offset             = glm::ivec2(pixelGridRenderer.Offset.x, -pixelGridRenderer.Offset.y);
+			glm::vec2 normalizedMousePos = glm::vec2((mousePosition / pixelGridRenderer.Zoom) + offset) / glm::vec2(windowSize);
 
 			// Map normalized mouse position to grid position
 			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.Width)));
-			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.Height) / pixelGrid.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.Height)));
+			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.Height) / pixelGridRenderer.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.Height)));
 
 			gridX = static_cast<int>(glm::mod(static_cast<float>(gridX), static_cast<float>(pixelGrid.Width)));
 			gridY = static_cast<int>(glm::mod(static_cast<float>(gridY), static_cast<float>(pixelGrid.Height)));
 
-			pixelGrid.PointerPosition = { gridX, gridY };
+			pixelGridRenderer.PointerPosition = { gridX, gridY };
 
 			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{

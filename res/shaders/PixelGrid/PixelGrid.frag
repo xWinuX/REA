@@ -1,23 +1,21 @@
 #version 450
 
-layout(location = 0) in vec2 fragPosition;
+#include "../PixelGridGlobals.glsl"
 
+layout(location = 0) in vec2 fragPosition;
 layout(location = 0) out vec4 outColor;
 
-layout(std140, set = 1, binding = 0) readonly buffer c_GridInfo {
+layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     int width;
     int height;
     float zoom;
+    uint renderMode;
     vec2 offset;
     vec2 pointerPosition;
     vec4 colorLookup[256];
 } gridInfo;
 
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
-
-struct Pixel {
-    uint PixelID8_Flags8_Density8_Spread8;
-};
 
 layout(std430, set = 2, binding = 0) buffer s_Pixels {
     Pixel pixels[1000000];
@@ -26,16 +24,17 @@ layout(std430, set = 2, binding = 0) buffer s_Pixels {
 void main() {
     int height = gridInfo.height;
     int index = (int(fragPosition.y) * gridInfo.width + int(fragPosition.x));
-    uint pixelID = pixels[index].PixelID8_Flags8_Density8_Spread8;
+    Pixel pixel = pixels[index];
+    uint pixelID = getPixelID(pixel.PixelID16_Temperature8_Pressure8);
+    float temperature = pixel.Temperature;
 
-  /*  uint density = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
-     uint flags = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 8u) & 0xFFu;
-     uint spread = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 24u) & 0xFFu;
-     outColor = vec4(density/100.0f, flags/100.0f, 0.0f, 1.0f);
-*/
-    vec4 pixelColor = gridInfo.colorLookup[pixelID & 0xFFFFu];
-    uint temperature = (pixels[index].PixelID8_Flags8_Density8_Spread8 >> 16u) & 0xFFu;
+    vec4 pixelColor = gridInfo.colorLookup[pixelID];
+
+    float temperatureScaled = temperature/255.0f;
+    if (gridInfo.renderMode == RenderMode_Normal) { pixelColor *= 1 + vec4(temperature/30.0f, temperatureScaled, temperatureScaled, 1.0f); }
+    if (gridInfo.renderMode == RenderMode_Temperature) { pixelColor = vec4(temperature/255.0f, 0.0f, 0.0f, 1.0f); }
+
     bool isCursorPixel = int(gridInfo.pointerPosition.x) == int(fragPosition.x) && int(gridInfo.pointerPosition.y) == int(fragPosition.y);
-    outColor = isCursorPixel ? vec4(1.0f) : pixelColor * (1.0f + (temperature/255.0f));//;
-    //outColor = vec4(vec3(pixelID /10.f), 1.0f);
+
+    outColor = isCursorPixel ? vec4(1.0f) : pixelColor;
 }

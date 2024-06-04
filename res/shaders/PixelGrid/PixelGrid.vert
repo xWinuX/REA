@@ -20,10 +20,11 @@ const vec2 POSITIONS_NDC[4] = vec2[4] (
     vec2(1.0f, -1.0f)
 );
 
-layout(std140, set = 1, binding = 0) readonly buffer c_GridInfo {
+layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     int width;
     int height;
     float zoom;
+    uint renderMode;
     vec2 offset;
     vec2 pointerPosition;
     vec4 colorLookup[256];

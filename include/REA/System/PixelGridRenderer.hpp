@@ -8,18 +8,23 @@
 #include "REA/Color.hpp"
 
 #include "REA/Component/PixelGrid.hpp"
+#include "REA/Component/PixelGridRenderer.hpp"
 
 using namespace SplitEngine;
 
 namespace REA::System
 {
-	class PixelGridRenderer final : public ECS::System<Component::PixelGrid>
+	class PixelGridRenderer final : public ECS::System<Component::PixelGrid, Component::PixelGridRenderer>
 	{
 		public:
 			explicit PixelGridRenderer(AssetHandle<Rendering::Material> material);
 
 		protected:
-			void Execute(Component::PixelGrid*, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage) override;
+			void Execute(Component::PixelGrid*         pixelGrids,
+			             Component::PixelGridRenderer* pixelGridRenderers,
+			             std::vector<uint64_t>&        entities,
+			             ECS::ContextProvider&         contextProvider,
+			             uint8_t                       stage) override;
 
 		private:
 			struct SSBO_GridInfo
@@ -27,16 +32,17 @@ namespace REA::System
 				int32_t               width;
 				int32_t               height;
 				float                 zoom;
-				alignas(16) glm::vec2 offset;
+				Component::RenderMode renderMode;
+				glm::vec2             offset;
 				glm::vec2             pointerPosition;
-				alignas(32) Color     colorLookup[256];
+				Color                 colorLookup[256];
 			};
 
 			AssetHandle<Rendering::Material>       _material;
 			std::unique_ptr<Rendering::Model>      _model;
 			std::ranges::iota_view<size_t, size_t> _indexes;
 
-			uint64_t _previousEntity = -1;
+			uint64_t _previousEntity  = -1;
 			uint32_t _sameGridCounter = 0;
 	};
 }

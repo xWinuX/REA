@@ -1,7 +1,7 @@
 uint width = simulationData.width;
 uint height = simulationData.height;
 
-if (gl_GlobalInvocationID.x >= width * height) {
+if (gl_GlobalInvocationID.x >= (width * height) / 4) {
     return;
 }
 
@@ -18,7 +18,7 @@ uint topRightX = (x + 1) % width;
 uint topRightY = y;
 
 uint bottomLeftX = x;
-uint bottomLeftY = int(y)-1 == -1 ? height - 1 : y - 1;
+uint bottomLeftY = (y == 0) ? height - 1 : y - 1;
 
 uint bottomRightX = topRightX;
 uint bottomRightY = bottomLeftY;

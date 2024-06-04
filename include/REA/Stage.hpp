@@ -9,6 +9,12 @@ namespace REA
 
 		Gameplay = 100,
 
+		GridComputeEnd = 101,
+
+		GridComputeHalted = 102,
+
+		GridComputeBegin = 103,
+
 		// BeginRendering = 150
 
 		Rendering = 175,

@@ -34,6 +34,7 @@
 #include "REA/PixelGridBuilder.hpp"
 #include "REA/PixelType.hpp"
 #include "REA/Stage.hpp"
+#include "REA/Component/PixelGridRenderer.hpp"
 #include "REA/Context/ImGui.hpp"
 #include "REA/System/GameOfLifeSimulation.hpp"
 #include "REA/System/ImGuiManager.hpp"
@@ -44,7 +45,7 @@ using namespace REA;
 int main()
 {
 	// Setup Pixels Types
-	uint32_t                                       airTemperature = 30;
+	float                                          airTemperature = 30;
 	std::vector<PixelGridBuilder::PixelCreateInfo> pixelLookup    = {
 		{
 			.ID = PixelType::Air,
@@ -68,7 +69,8 @@ int main()
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
 				.Density = 12,
 				.SpreadingFactor = 8,
-				.TemperatureResistance = 0.9f,
+				.TemperatureResistance = 0.6f,
+				.BaseTemperature = airTemperature,
 				.HighTemperatureLimit = 100,
 				.HighTemperatureLimitPixelID = PixelType::Steam,
 			}
@@ -86,10 +88,10 @@ int main()
 			.Data = {
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
 				.Density = 8,
-				.SpreadingFactor = 2,
-				.TemperatureResistance = 0.01f,
+				.SpreadingFactor = 5,
+				.TemperatureResistance = 0.1f,
 				.BaseTemperature = 100,
-				.LowerTemperatureLimit = 100,
+				.LowerTemperatureLimit = 99,
 				.LowerTemperatureLimitPixelID = PixelType::Water,
 			}
 		},
@@ -115,13 +117,27 @@ int main()
 				.SpreadingFactor = 2,
 				.TemperatureResistance = 0.01f,
 				.BaseTemperature = 200,
-				.LowerTemperatureLimit = 100,
-				.LowerTemperatureLimitPixelID = PixelType::Sand,
+				.LowerTemperatureLimit = 80,
+				.LowerTemperatureLimitPixelID = PixelType::Stone,
+			}
+		},
+		{
+			.ID = PixelType::Stone,
+			.Name = "Stone",
+			.Color = Color(0x465466FF),
+			.Data = {
+				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Solid),
+				.Density = 18,
+				.SpreadingFactor = 0,
+				.TemperatureResistance = 0.01f,
+				.BaseTemperature = airTemperature,
+				.HighTemperatureLimit = 180,
+				.HighTemperatureLimitPixelID = PixelType::Lava,
 			}
 		},
 	};
 
-	Application application = Application({ {}, { .UseVulkanValidationLayers = false } });
+	Application application = Application({ {}, {}, { .UseVulkanValidationLayers = true } });
 
 	application.GetWindow().SetSize(1000, 1000);
 
@@ -130,10 +146,17 @@ int main()
 
 	AssetDatabase& assetDatabase = application.GetAssetDatabase();
 
-	AssetHandle<Rendering::Shader>   spriteShader   = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Sprite, { "res/shaders/debug" });
+	AssetHandle<Rendering::Shader> spriteShader = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Sprite,
+	                                                                                           { { "res/shaders/debug/debug.vert", "res/shaders/debug/debug.frag" } });
 	AssetHandle<Rendering::Material> spriteMaterial = assetDatabase.CreateAsset<Rendering::Material>(Material::Sprite, { spriteShader });
 
-	AssetHandle<Rendering::Shader>   pixelGridShader   = assetDatabase.CreateAsset<Rendering::Shader>(Shader::PixelGrid, { "res/shaders/PixelGrid" });
+	AssetHandle<Rendering::Shader> pixelGridShader = assetDatabase.CreateAsset<Rendering::Shader>(Shader::PixelGrid,
+	                                                                                              {
+		                                                                                              {
+			                                                                                              "res/shaders/PixelGrid/PixelGrid.vert",
+			                                                                                              "res/shaders/PixelGrid/PixelGrid.frag"
+		                                                                                              }
+	                                                                                              });
 	AssetHandle<Rendering::Material> pixelGridMaterial = assetDatabase.CreateAsset<Rendering::Material>(Material::PixelGrid, { pixelGridShader });
 
 	// Create texture page and sprite assets
@@ -147,10 +170,18 @@ int main()
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
-	AssetHandle<Rendering::Shader> pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Idle, { "res/shaders/PixelGridComputeIdle" });
-	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall, { "res/shaders/PixelGridComputeFalling" });
+	AssetHandle<Rendering::Shader> pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Idle,
+	                                                                                                   { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
+
+	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Fall,
+	                                                                                                   { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
+
 	AssetHandle<Rendering::Shader> pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Shader::Comp_PixelGrid_Accumulate,
-	                                                                                                         { "res/shaders/PixelGridComputeAccumulate" });
+	                                                                                                         {
+		                                                                                                         {
+			                                                                                                         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
+		                                                                                                         }
+	                                                                                                         });
 
 	ECS::Registry& ecs = application.GetECSRegistry();
 
@@ -161,13 +192,14 @@ int main()
 	ecs.RegisterComponent<Component::Player>();
 	ecs.RegisterComponent<Component::Camera>();
 	ecs.RegisterComponent<Component::PixelGrid>();
+	ecs.RegisterComponent<Component::PixelGridRenderer>();
 
 	ecs.RegisterContext<Context::ImGui>({});
 
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
 
-	ecs.AddSystem<System::PixelGridDrawing>(Stage::Gameplay, 0, 1);
+	ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 0, 1, PixelType::Air);
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 
@@ -176,7 +208,7 @@ int main()
 		.FallingSimulation = pixelGridComputeFall,
 		.AccumulateSimulation = pixelGridComputeAccumulate
 	};
-	ecs.AddSystem<System::PixelGridSimulation>(Stage::Gameplay, 999, simulationShaders, PixelType::Air);
+	ecs.AddSystem<System::PixelGridSimulation>({ { Stage::GridComputeEnd, 1000 }, { Stage::GridComputeBegin, 1000 }, }, simulationShaders);
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
@@ -192,7 +224,7 @@ int main()
 	PixelGridBuilder     pixelGridBuilder{};
 	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1000, 1000 }).WithPixelData(std::move(pixelLookup)).Build();
 
-	uint64_t pixelGridEntity = ecs.CreateEntity<Component::PixelGrid>(std::move(pixelGrid));
+	ecs.CreateEntity<Component::PixelGrid, Component::PixelGridRenderer>(std::move(pixelGrid), {});
 
 	// Run Game
 	application.Run();

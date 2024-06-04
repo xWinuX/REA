@@ -12,6 +12,7 @@ namespace REA
 		Steam,
 		Oil,
 		Lava,
+		Stone,
 		MAX_VALUE
 	};
 }

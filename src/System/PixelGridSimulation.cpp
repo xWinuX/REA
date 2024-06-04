@@ -12,20 +12,12 @@
 
 #include "IconsFontAwesome.h"
 #include "REA/PixelType.hpp"
+#include "REA/Stage.hpp"
 #include "REA/Context/ImGui.hpp"
 
 namespace REA::System
 {
-	void PixelGridSimulation::ClearGrid(const Component::PixelGrid& pixelGrid)
-	{
-		SSBO_Pixels* inputPixels = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif);
-
-		Pixel::State pixelState = pixelGrid.PixelLookup[_clearPixelID].PixelState;
-		std::for_each(std::execution::par_unseq, std::begin(inputPixels->Pixels), std::end(inputPixels->Pixels), [this, pixelState](Pixel::State& pixel) { pixel = pixelState; });
-	}
-
-	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel::ID clearPixelID):
-		_clearPixelID(clearPixelID),
+	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders):
 		_shaders(simulationShaders)
 	{
 		auto&                      properties = _shaders.FallingSimulation->GetProperties();
@@ -74,15 +66,29 @@ namespace REA::System
 
 	void PixelGridSimulation::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
-		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
-		ImGui::SetNextWindowDockID(imGuiContext->TopDockingID, ImGuiCond_Always);
-		ImGui::Begin("Simulation");
-		if (ImGui::Button(_paused ? ICON_FA_PLAY : ICON_FA_PAUSE)) { _paused = !_paused; }
-		ImGui::SameLine();
-		if (_paused) { if (ImGui::Button(ICON_FA_FORWARD_STEP)) { _doStep = true; } }
-		if (ImGui::Button(ICON_FA_TRASH)) { _clearGrid = true; }
-		ImGui::End();
+		if (stage == Stage::GridComputeEnd)
+		{
+			Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+			ImGui::SetNextWindowDockID(imGuiContext->TopDockingID, ImGuiCond_Always);
+			ImGui::Begin("Simulation");
 
+			glm::vec2 avail  = { ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y };
+			glm::vec2 offset = (avail * 0.5f) - 25.0f;
+
+			if (_paused) { offset.x -= 35; }
+
+			glm::vec2 localPos = { ImGui::GetCursorPos().x, ImGui::GetCursorPos().y };
+			glm::vec2 pos      = localPos + offset;
+			ImGui::SetCursorPos({ pos.x, pos.y });
+
+			if (ImGui::Button(_paused ? ICON_FA_PLAY : ICON_FA_PAUSE, { 50, 50 })) { _paused = !_paused; }
+			else if (_paused)
+			{
+				ImGui::SetCursorPos({ pos.x + 60, pos.y });
+				if (ImGui::Button(ICON_FA_FORWARD_STEP, { 50, 50 })) { _doStep = true; }
+			}
+			ImGui::End();
+		}
 
 		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
 	}
@@ -106,115 +112,117 @@ namespace REA::System
 
 	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
-		Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
-
-		Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
-		Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
-
-		Component::PixelGrid& pixelGrid     = pixelGrids[0];
-		size_t                numPixels     = pixelGrid.Width * pixelGrid.Height;
-		size_t                numWorkgroups = CeilDivide(numPixels, 64ull);
-
-
-		device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
-		device.GetVkDevice().resetFences(_computeFence);
-
-		if (_clearGrid)
+		for (int i = 0; i < entities.size(); ++i)
 		{
-			ClearGrid(pixelGrid);
-			_clearGrid = false;
-		}
+			Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
 
-		uint32_t fif = _fif;
+			Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
+			Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
 
-		UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
-		simulationData->width  = pixelGrid.Width;
-		simulationData->height = pixelGrid.Height;
+			Component::PixelGrid& pixelGrid = pixelGrids[i];
 
-
-		if (_firstUpdate)
-		{
-			memcpy(simulationData->pixelLookup, pixelGrid.PixelDataLookup.data(), pixelGrid.PixelDataLookup.size() * sizeof(Pixel::Data));
-			_firstUpdate = false;
-		}
-
-		if (!_paused || _doStep)
-		{
-
-			simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
-			simulationData->timer = simulationData->timer+1;
-			simulationData->rng    = glm::linearRand(0.0f, 1.0f);
-
-
-			_commandBuffer.GetVkCommandBuffer().reset({});
-
-			vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
-
-			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
-
-			// Fall
-			uint32_t flowIteration = 0;
-			uint32_t   timer                 = simulationData->timer;
-			glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
-			size_t     numWorkgroupsMorgulus = CeilDivide(CeilDivide(numPixels, 4ull), 64ull);
-
-
-			_shaders.FallingSimulation->Update();
-
-			for (int i = 0; i < 8; ++i)
+			if (stage == Stage::GridComputeEnd)
 			{
-				CmdWaitForPreviousComputeShader();
+				//BENCHMARK_BEGIN
+				device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
+				device.GetVkDevice().resetFences(_computeFence);
+//				BENCHMARK_END("compute fence")
 
-				_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
-				_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
-
-				_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-				_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
-
-				fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
-
-				margolusOffset = GetMargolusOffset(timer + i);
-				flowIteration++;
+				pixelGrid.PixelState = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
 			}
 
-			CmdWaitForPreviousComputeShader();
+			if (stage == Stage::GridComputeBegin)
+			{
+				size_t numPixels     = pixelGrid.Width * pixelGrid.Height;
+				size_t numWorkgroups = CeilDivide(numPixels, 64ull);
 
-			_shaders.AccumulateSimulation->Update();
+				uint32_t fif = _fif;
 
-			_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+				UBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<UBO_SimulationData>(0);
+				simulationData->width              = pixelGrid.Width;
+				simulationData->height             = pixelGrid.Height;
 
-			_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
-			_commandBuffer.GetVkCommandBuffer().end();
+				if (_firstUpdate)
+				{
+					memcpy(simulationData->pixelLookup, pixelGrid.PixelDataLookup.data(), pixelGrid.PixelDataLookup.size() * sizeof(Pixel::Data));
+					_firstUpdate = false;
+				}
 
-			_doStep = false;
+				if (!_paused || _doStep)
+				{
+					simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
+					simulationData->timer     = simulationData->timer + 1;
+					simulationData->rng       = glm::linearRand(0.0f, 1.0f);
+
+					_commandBuffer.GetVkCommandBuffer().reset({});
+
+					vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+
+					_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
+
+					// Fall
+					uint32_t   flowIteration         = 0;
+					uint32_t   timer                 = simulationData->timer;
+					glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
+					size_t     numWorkgroupsMorgulus = CeilDivide(CeilDivide(numPixels, 4ull), 64ull);
+
+					_shaders.FallingSimulation->Update();
+
+					for (int i = 0; i < 8; ++i)
+					{
+						CmdWaitForPreviousComputeShader();
+
+						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
+						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
+
+						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
+
+						fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+
+						margolusOffset = GetMargolusOffset(timer + i);
+						flowIteration++;
+					}
+
+					CmdWaitForPreviousComputeShader();
+
+					_shaders.AccumulateSimulation->Update();
+
+					_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
+
+					_commandBuffer.GetVkCommandBuffer().end();
+
+					_doStep = false;
+				}
+				else
+				{
+					_commandBuffer.GetVkCommandBuffer().reset({});
+
+					constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
+
+					_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
+
+					_shaders.IdleSimulation->Update();
+
+					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(numPixels, 64ull), 1, 1);
+
+					_commandBuffer.GetVkCommandBuffer().end();
+				}
+
+				vk::SubmitInfo submitInfo;
+				submitInfo.commandBufferCount = 1;
+				submitInfo.pCommandBuffers    = &_commandBuffer.GetVkCommandBuffer();
+
+				computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
+
+				_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+			}
 		}
-		else
-		{
-			_commandBuffer.GetVkCommandBuffer().reset({});
-
-			constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
-
-			_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
-
-			_shaders.IdleSimulation->Update();
-
-			_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-			_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
-
-			_commandBuffer.GetVkCommandBuffer().end();
-		}
-
-		vk::SubmitInfo submitInfo;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers    = &_commandBuffer.GetVkCommandBuffer();
-
-		computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
-
-		_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
-
-		pixelGrid.PixelState = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
 	}
 }

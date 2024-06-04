@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <imgui.h>
 
 namespace REA
 {
@@ -13,6 +14,10 @@ namespace REA
 			float G = 0.0f;
 			float B = 0.0f;
 			float A = 0.0f;
+
+			explicit operator ImVec4() const;
+
+			Color operator * (const float scalar);
 
 		private:
 			static float SRGBToLinear(float x);

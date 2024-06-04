@@ -8,6 +8,7 @@
 #include <SplitEngine/Systems.hpp>
 
 #include "IconsFontAwesome.h"
+#include "REA/Color.hpp"
 #include "REA/Context/ImGui.hpp"
 
 namespace REA::System
@@ -42,6 +43,7 @@ namespace REA::System
 		ImGuiIO& io = ImGui::GetIO();
 		io.Fonts->AddFontDefault();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.IniFilename = nullptr;
 
 		ImFontConfig config;
 		config.MergeMode = true;
@@ -55,6 +57,14 @@ namespace REA::System
 		imGuiStyle.ChildRounding = 5.0f;
 		imGuiStyle.GrabRounding = 5.0f;
 
+
+
+		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
+
+		Color dangerColor = Color(0xFF4A48FF);
+		imGuiContext->ColorDanger = static_cast<ImVec4>(dangerColor);
+		imGuiContext->ColorDangerHover = static_cast<ImVec4>(dangerColor * 1.5f);
+		imGuiContext->ColorDangerClicked = static_cast<ImVec4>(dangerColor * 2.0f);
 
 		ImGui_ImplSDL2_InitForVulkan(window);
 

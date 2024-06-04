@@ -27,7 +27,11 @@ namespace REA::System
 		_model = std::make_unique<Rendering::Model, Rendering::Model::CreateInfo>({ reinterpret_cast<std::vector<std::byte>&>(vertices), indices });
 	}
 
-	void PixelGridRenderer::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
+	void PixelGridRenderer::Execute(Component::PixelGrid*         pixelGrids,
+	                                Component::PixelGridRenderer* pixelGridRenderers,
+	                                std::vector<uint64_t>&        entities,
+	                                ECS::ContextProvider&         contextProvider,
+	                                uint8_t                       stage)
 	{
 		vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
 		_material->GetShader()->BindGlobal(commandBuffer);
@@ -38,22 +42,18 @@ namespace REA::System
 
 		for (int i = 0; i < entities.size(); ++i)
 		{
-			const Component::PixelGrid& pixelGrid = pixelGrids[i];
-			SSBO_GridInfo*              gridInfo  = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
+			const Component::PixelGrid&         pixelGrid         = pixelGrids[i];
+			const Component::PixelGridRenderer& pixelGridRenderer = pixelGridRenderers[i];
+			SSBO_GridInfo*                      gridInfo          = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
 			gridInfo->width           = pixelGrid.Width;
 			gridInfo->height          = pixelGrid.Height;
-			gridInfo->zoom            = pixelGrid.Zoom;
-			gridInfo->offset          = pixelGrid.Offset;
-			gridInfo->pointerPosition = pixelGrid.PointerPosition;
+			gridInfo->zoom            = pixelGridRenderer.Zoom;
+			gridInfo->offset          = pixelGridRenderer.Offset;
+			gridInfo->pointerPosition = pixelGridRenderer.PointerPosition;
+			gridInfo->renderMode      = pixelGridRenderer.RenderMode;
 			size_t size               = std::min(pixelGrid.PixelColorLookup.size(), std::size(gridInfo->colorLookup));
-			if (_sameGridCounter < Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT)
-			{
-				for (int i = 0; i < size; ++i)
-				{
-					gridInfo->colorLookup[i] = pixelGrid.PixelColorLookup[i];
-				}
-			}
+			if (_sameGridCounter < Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT) { for (int i = 0; i < size; ++i) { gridInfo->colorLookup[i] = pixelGrid.PixelColorLookup[i]; } }
 
 			_material->Update();
 

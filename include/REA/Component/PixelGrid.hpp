@@ -17,9 +17,5 @@ namespace REA::Component
 		std::vector<Pixel>       PixelLookup{};
 		std::vector<Pixel::Data> PixelDataLookup;
 		std::vector<Color>       PixelColorLookup{};
-
-		float     Zoom            = 1.0f;
-		glm::vec2 Offset          = { 0, 0 };
-		glm::vec2 PointerPosition = { 0, 0 };
 	};
 }

@@ -25,8 +25,9 @@ namespace REA
 		struct State
 		{
 			ID      PixelID     = 0;
-			uint8_t Temperature = 0;
+			uint8_t H           = 0;
 			uint8_t Pressure    = 0;
+			float   Temperature = 0.0f;
 		};
 
 		/**
@@ -39,14 +40,19 @@ namespace REA
 			uint32_t         Density                      = 0;
 			uint32_t         SpreadingFactor              = 0;
 			float            TemperatureResistance        = 0;
-			uint32_t         BaseTemperature              = 0;
-			uint32_t         LowerTemperatureLimit        = 0;
+			float            BaseTemperature              = 0;
+			float            LowerTemperatureLimit        = 0;
 			uint32_t         LowerTemperatureLimitPixelID = 0;
-			uint32_t         HighTemperatureLimit         = 256;
+			float            HighTemperatureLimit         = 256;
 			uint32_t         HighTemperatureLimitPixelID  = 0;
 		};
 
 		std::string Name = "NAME_HERE";
 		State       PixelState{};
+	};
+
+	struct SSBO_Pixels
+	{
+		Pixel::State Pixels[1000000];
 	};
 }

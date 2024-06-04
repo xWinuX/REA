@@ -16,10 +16,10 @@ void main()
 {
     #include "../PixelGridMorgulusStarter.glsl"
 
-    uint topLeftTemperature = getTemperature(topLeftPixel.PixelID16_Temperature8_Pressure8);
-    uint topRightTemperature = getTemperature(topRightPixel.PixelID16_Temperature8_Pressure8);
-    uint bottomLeftTemperature = getTemperature(bottomLeftPixel.PixelID16_Temperature8_Pressure8);
-    uint bottomRightTemperature = getTemperature(bottomRightPixel.PixelID16_Temperature8_Pressure8);
+    float topLeftTemperature = topLeftPixel.Temperature;
+    float topRightTemperature = topRightPixel.Temperature;
+    float bottomLeftTemperature = bottomLeftPixel.Temperature;
+    float bottomRightTemperature = bottomRightPixel.Temperature;
 
     bool topLeftPixelSolid = bitsetHas(topLeftPixelData.Flags, Solid);
     bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelData.Flags, Solid);
@@ -36,7 +36,7 @@ void main()
     bool bottomLeftCanFlow = bottomLeftPixelData.Spread > 0;
     bool bottomRightCanFlow = bottomRightPixelData.Spread > 0;
 
-    float step = 0.002f;
+    float step = 0.00002f;
 
     float topLeftDensity = topLeftPixelData.Density - (step * topLeftTemperature * float(topLeftCanFlow));
     float topRightDensity = topRightPixelData.Density - (step * topRightTemperature * float(topRightCanFlow));

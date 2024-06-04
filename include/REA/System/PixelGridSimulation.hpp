@@ -18,8 +18,7 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> AccumulateSimulation;
 			};
 
-			void ClearGrid(const Component::PixelGrid& pixelGrid);
-			PixelGridSimulation(const SimulationShaders& simulationShaders, Pixel::ID clearPixelID);
+			PixelGridSimulation(const SimulationShaders& simulationShaders);
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
@@ -36,13 +35,6 @@ namespace REA::System
 				Pixel::Data pixelLookup[1024];
 			};
 
-			struct SSBO_Pixels
-			{
-				Pixel::State Pixels[1000000];
-			};
-
-			Pixel::ID _clearPixelID;
-
 			uint32_t _fif = 1;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
@@ -50,9 +42,8 @@ namespace REA::System
 
 			SimulationShaders _shaders;
 
-			bool _paused    = true;
-			bool _clearGrid = true;
-			bool _doStep    = false;
+			bool _paused = true;
+			bool _doStep = false;
 
 			bool _firstUpdate = true;
 
