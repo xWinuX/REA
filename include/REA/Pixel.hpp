@@ -1,9 +1,8 @@
 #pragma once
-#include <array>
-#include <cstdint>
 
-#include "Color.hpp"
 #include "SplitEngine/DataStructures.hpp"
+
+#include <limits>
 
 using namespace SplitEngine;
 
@@ -41,9 +40,9 @@ namespace REA
 			uint32_t         SpreadingFactor              = 0;
 			float            TemperatureResistance        = 0;
 			float            BaseTemperature              = 0;
-			float            LowerTemperatureLimit        = 0;
+			float            LowerTemperatureLimit        = -273.15f;
 			uint32_t         LowerTemperatureLimitPixelID = 0;
-			float            HighTemperatureLimit         = 256;
+			float            HighTemperatureLimit         = 1'000'000;
 			uint32_t         HighTemperatureLimitPixelID  = 0;
 		};
 
