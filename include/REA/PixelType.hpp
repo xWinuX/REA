@@ -13,6 +13,8 @@ namespace REA
 		Oil,
 		Lava,
 		Stone,
-		MAX_VALUE
+		Fire,
+		Smoke,
+		MAX_VALUE,
 	};
 }

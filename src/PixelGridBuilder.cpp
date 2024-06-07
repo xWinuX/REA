@@ -30,7 +30,7 @@ namespace REA
 		{
 			pixelGrid.PixelLookup.push_back({
 				                                pixelCreateInfo.Name,
-				                                { pixelCreateInfo.ID, static_cast<uint8_t>(pixelCreateInfo.Data.BaseTemperature), 0, pixelCreateInfo.Data.BaseTemperature }
+				                                { pixelCreateInfo.ID, 0, 0, pixelCreateInfo.Data.BaseTemperature }
 			                                });
 			pixelGrid.PixelColorLookup.push_back(pixelCreateInfo.Color);
 			pixelGrid.PixelDataLookup.push_back(pixelCreateInfo.Data);

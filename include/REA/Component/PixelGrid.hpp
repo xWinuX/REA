@@ -3,6 +3,7 @@
 #include <glm/vec2.hpp>
 
 #include "REA/Pixel.hpp"
+#include "REA/Color.hpp"
 
 
 namespace REA::Component
