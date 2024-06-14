@@ -98,7 +98,7 @@ foreach (SHADER_FILE ${SHADER_FILES})
     add_custom_command(TARGET REA POST_BUILD
             COMMAND ${glslc_executable}
             -o ${SPIRV_OUTPUT}
-            #-g # Uncomment to enable debug infos
+            -g # Uncomment to enable debug infos
             $<TARGET_FILE_DIR:REA>/${SHADER_FILE}
             DEPENDS ${CMAKE_SOURCE_DIR}/${SHADER_FILE}
             RESULT_VARIABLE glslang_result

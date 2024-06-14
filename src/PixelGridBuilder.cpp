@@ -1,6 +1,7 @@
 #include "../include/REA/PixelGridBuilder.hpp"
 
 #include <algorithm>
+#include <map>
 
 namespace REA
 {
@@ -30,7 +31,7 @@ namespace REA
 		{
 			pixelGrid.PixelLookup.push_back({
 				                                pixelCreateInfo.Name,
-				                                { pixelCreateInfo.ID, 0, 0, pixelCreateInfo.Data.BaseTemperature }
+				                                { pixelCreateInfo.ID, static_cast<uint8_t>(pixelCreateInfo.Data.BaseCharge), {0, 0}, pixelCreateInfo.Data.BaseTemperature }
 			                                });
 			pixelGrid.PixelColorLookup.push_back(pixelCreateInfo.Color);
 			pixelGrid.PixelDataLookup.push_back(pixelCreateInfo.Data);

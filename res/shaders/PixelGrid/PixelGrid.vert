@@ -1,23 +1,23 @@
 #version 450
 
-layout(location = 0) in uint inIndex;
-
-layout(location = 0) out vec2 fragPosition;
-
 #include "../globals.glsl"
 
-const vec2 POSITIONS[4] = vec2[4] (
-    vec2(0.0f, 1.0f),
-    vec2(1.0f, 1.0f),
-    vec2(0.0f, 0.0f),
-    vec2(1.0f, 0.0f)
+layout(location = 0) in uint a_Index;
+
+layout(location = 0) out vec2 v_PixelPosition;
+
+const vec2 POSITION[4] = vec2[4] (
+    vec2(-1.0f, 1.0f),  // Top Left
+    vec2(1.0f, 1.0f),   // Top  Right
+    vec2(-1.0f, -1.0f), // Bottom Left
+    vec2(1.0f, -1.0f)   // Bottom Right
 );
 
-const vec2 POSITIONS_NDC[4] = vec2[4] (
-    vec2(-1.0f, 1.0f),
-    vec2(1.0f, 1.0f),
-    vec2(-1.0f, -1.0f),
-    vec2(1.0f, -1.0f)
+const vec2 UV[4] = vec2[4] (
+    vec2(0.0f, 1.0f), // Top Left
+    vec2(1.0f, 1.0f), // Top  Right
+    vec2(0.0f, 0.0f), // Bottom Left
+    vec2(1.0f, 0.0f)  // Bottom Right
 );
 
 layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
@@ -31,14 +31,7 @@ layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
 } gridInfo;
 
 void main() {
-    float height = gridInfo.height;
-    float width = float(gridInfo.width) / float(height);
+    gl_Position = vec4(POSITION[a_Index], 0.0f, 1.0f);
 
-    gl_Position =  vec4(POSITIONS_NDC[inIndex], 0.0f, 1.0f);
-
-    //vec2 position = (POSITIONS[inIndex] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
-    //fragPosition = vec2(clamp(position.x, 0, gridInfo.width), clamp(position.y, 0, gridInfo.height));
-
-    fragPosition = (POSITIONS[inIndex] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
-
+    v_PixelPosition = (UV[a_Index] * (vec2(gridInfo.width, gridInfo.height) / gridInfo.zoom)) + gridInfo.offset;
 }

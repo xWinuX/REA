@@ -10,63 +10,84 @@ namespace REA::System
 		{
 			Component::PixelGrid& pixelGrid = pixelGrids[i];
 
-			int32_t width  = pixelGrid.Width;
-			int32_t height = pixelGrid.Height;
+			for (int pixelIndex = 0; pixelIndex < pixelGrid.ReadOnlyPixels.size(); ++pixelIndex)
+			{
+				const int y = pixelIndex / pixelGrid.Width;
+				const int x = pixelIndex % pixelGrid.Width;
 
-			_indexes = std::ranges::iota_view<size_t, size_t>(1, 1'000'000);
-			std::for_each(std::execution::par,
-			              _indexes.begin(),
-			              _indexes.end(),
-			              [this, width, height, pixelGrid](const size_t i)
-			              {
-				              const int y     = i / width;
-				              const int x     = i % width;
-				              const int index = y * width + x;
+				const int bottomIndex      = pixelIndex - pixelGrid.Width;
+				const int bottomRightIndex = pixelIndex - pixelGrid.Width + 1;
+				const int bottomLeftIndex  = pixelIndex - pixelGrid.Width - 1;
 
-				              const auto& tileIDs    = pixelGrid.PixelLookup;
-				              auto&       newTileIDs = _staticGrid.PixelLookup;
+				bool atTheBottom    = y == 0;
+				bool atTheRightEdge = x == pixelGrid.Width - 1;
+				bool atTheLeftEdge  = x == 0;
 
-				              const Pixel& pixel = pixelGrid.PixelLookup[index];
+				if (pixelGrid.ReadOnlyPixels[pixelIndex] == 1)
+				{
+					if (!atTheBottom && pixelGrid.ReadOnlyPixels[bottomIndex] == 0)
+					{
+						pixelGrid.ReadOnlyPixels[bottomIndex] = 1;
+						pixelGrid.ReadOnlyPixels[pixelIndex]  = 0;
+						continue;
+					}
 
-				              int liveNeighbors = 0;
+					if (!atTheRightEdge && pixelGrid.ReadOnlyPixels[bottomRightIndex] == 0)
+					{
+						pixelGrid.ReadOnlyPixels[bottomRightIndex] = 1;
+						pixelGrid.ReadOnlyPixels[pixelIndex]       = 0;
+						continue;
+					}
 
-				              // Top left neighbor
-				              if (x - 1 >= 0 && y - 1 >= 0 && tileIDs[(y - 1) * width + (x - 1)].PixelState.PixelID == 1) { liveNeighbors++; }
+					if (!atTheLeftEdge && pixelGrid.ReadOnlyPixels[bottomLeftIndex] == 0)
+					{
+						pixelGrid.ReadOnlyPixels[bottomLeftIndex] = 1;
+						pixelGrid.ReadOnlyPixels[pixelIndex]      = 0;
+					}
+				}
 
-				              // Top neighbor
-				              if (y - 1 >= 0 && tileIDs[(y - 1) * width + x].PixelState.PixelID == 1) { liveNeighbors++; }
 
-				              // Top right neighbor
-				              if (x + 1 < width && y - 1 >= 0 && tileIDs[(y - 1) * width + (x + 1)].PixelState.PixelID == 1) { liveNeighbors++; }
-
-				              // Left neighbor
-				              if (x - 1 >= 0 && tileIDs[y * width + (x - 1)].PixelState.PixelID == 1) { liveNeighbors++; }
-
-				              // Right neighbor
-				              if (x + 1 < width && tileIDs[y * width + (x + 1)].PixelState.PixelID == 1) { liveNeighbors++; }
-
-				              // Bottom left neighbor
-				              if (x - 1 >= 0 && y + 1 < height && tileIDs[(y + 1) * width + (x - 1)].PixelState.PixelID == 1) { liveNeighbors++; }
-
-				              // Bottom neighbor
-				              if (y + 1 < height && tileIDs[(y + 1) * width + x].PixelState.PixelID == 1) { liveNeighbors++; }
-
-				              // Bottom right neighbor
-				              if (x + 1 < width && y + 1 < height && tileIDs[(y + 1) * width + (x + 1)].PixelState.PixelID == 1) { liveNeighbors++; }
-
-				              newTileIDs[index].PixelState.PixelID = pixel.PixelState.PixelID;
-
-				              if (pixel.PixelState.PixelID == 1) { if (liveNeighbors < 2 || liveNeighbors > 3) { newTileIDs[index].PixelState.PixelID = 0; } }
-				              else
-				              {
-					              if (liveNeighbors == 3)
-					              {
-						              newTileIDs[index].PixelState.PixelID = 1; // Resurrect
-					              }
-				              }
-			              });
-
-			std::swap(pixelGrid, _staticGrid);
+			}
 		}
 	}
 }
+
+
+/*
+// Get 2D position in the grid
+const int y = pixelIndex / pixelGrid.Width;
+const int x = pixelIndex % pixelGrid.Width;
+
+// Count neighbours
+int aliveNeighbours = 0;
+for (int yOffset = -1; yOffset <= 1; ++yOffset)
+{
+	for (int xOffset = -1; xOffset <= 1; ++xOffset)
+	{
+		// Skip self
+		if (xOffset == 0 && yOffset == 0) { continue; }
+
+		const int checkX = x + xOffset;
+		const int checkY = y + yOffset;
+
+		// Only check if not out of grid bounds
+		if (checkX >= 0 && checkX < pixelGrid.Width && checkY >= 0 && checkY < pixelGrid.Height)
+		{
+			aliveNeighbours += pixelGrid.ReadOnlyPixels[checkY * pixelGrid.Width + checkX];
+		}
+	}
+}
+
+// Write current Pixel to write only grid incase none of the conditions below apply
+pixelGrid.WriteOnlyPixels[pixelIndex] = pixelGrid.ReadOnlyPixels[pixelIndex];
+
+if (pixelGrid.ReadOnlyPixels[pixelIndex] == 1)
+{
+	// Die
+	if (aliveNeighbours < 2 || aliveNeighbours > 3) { pixelGrid.WriteOnlyPixels[pixelIndex] = 0; }
+}
+else
+{
+	// Live
+	if (aliveNeighbours == 3) { pixelGrid.WriteOnlyPixels[pixelIndex] = 1; }
+}*/

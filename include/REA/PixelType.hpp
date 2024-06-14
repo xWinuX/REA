@@ -15,6 +15,8 @@ namespace REA
 		Stone,
 		Fire,
 		Smoke,
+		Spark,
+		Iron,
 		MAX_VALUE,
 	};
 }

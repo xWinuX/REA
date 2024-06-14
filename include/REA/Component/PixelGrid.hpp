@@ -12,11 +12,14 @@ namespace REA::Component
 	{
 		Pixel::State* PixelState = nullptr;
 
-		int32_t Width  = 0;
-		int32_t Height = 0;
+		int32_t Width  = 500;
+		int32_t Height = 500;
 
 		std::vector<Pixel>       PixelLookup{};
 		std::vector<Pixel::Data> PixelDataLookup;
 		std::vector<Color>       PixelColorLookup{};
+
+		std::vector<uint32_t> ReadOnlyPixels  = std::vector<uint32_t>(Width * Height, 0);
+		std::vector<uint32_t> WriteOnlyPixels = std::vector<uint32_t>(Width * Height, 0);
 	};
 }

@@ -10,10 +10,10 @@ layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
 } simulationData;
 
 layout(std430, set = 1, binding = 1) readonly buffer na_s_PixelSSBOIn {
-    Pixel readOnlyPixels[1000000];
+    Pixel readOnlyPixels[NumPixels];
 };
 
 layout(std430, set = 1, binding = 2) writeonly buffer s_Pixels {
-    Pixel pixels[1000000];
+    Pixel pixels[NumPixels];
 };
 

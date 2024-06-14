@@ -14,8 +14,11 @@ namespace REA
 
 		enum Flags : uint32_t
 		{
-			Solid   = 1 << 0,
-			Gravity = 1 << 1,
+			Solid               = 1 << 7,
+			Gravity             = 1 << 8,
+			Electricity         = 1 << 9,
+			ElectricityEmitter  = 1 << 10,
+			ElectricityReceiver = 1 << 11,
 		};
 
 		/**
@@ -23,10 +26,16 @@ namespace REA
 		 */
 		struct State
 		{
-			ID      PixelID     = 0;
-			uint8_t H           = 0;
-			uint8_t Pressure    = 0;
-			float   Temperature = 0.0f;
+			ID      PixelID = 0;
+			uint8_t Charge  = 0;
+
+			struct
+			{
+				uint8_t H  : 4;
+				uint8_t Pressure: 4;
+			};
+
+			float Temperature = 0.0f;
 		};
 
 		/**
@@ -44,6 +53,9 @@ namespace REA
 			uint32_t         LowerTemperatureLimitPixelID = 0;
 			float            HighTemperatureLimit         = 1'000'000;
 			uint32_t         HighTemperatureLimitPixelID  = 0;
+			float            TemperatureConversion        = 0.0f;
+			uint32_t         BaseCharge                   = 0;
+			float            ChargeAbsorbtionChance       = 0.0f;
 		};
 
 		std::string Name = "NAME_HERE";

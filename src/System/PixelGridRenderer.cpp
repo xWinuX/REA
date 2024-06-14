@@ -2,6 +2,7 @@
 
 #include <execution>
 #include <SplitEngine/Contexts.hpp>
+#include <SplitEngine/Debug/Performance.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Shader.hpp>
 
@@ -42,7 +43,7 @@ namespace REA::System
 
 		for (int i = 0; i < entities.size(); ++i)
 		{
-			const Component::PixelGrid&         pixelGrid         = pixelGrids[i];
+			Component::PixelGrid&               pixelGrid         = pixelGrids[i];
 			const Component::PixelGridRenderer& pixelGridRenderer = pixelGridRenderers[i];
 			SSBO_GridInfo*                      gridInfo          = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
@@ -54,6 +55,13 @@ namespace REA::System
 			gridInfo->renderMode      = pixelGridRenderer.RenderMode;
 			size_t size               = std::min(pixelGrid.PixelColorLookup.size(), std::size(gridInfo->colorLookup));
 			if (_sameGridCounter < Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT) { for (int i = 0; i < size; ++i) { gridInfo->colorLookup[i] = pixelGrid.PixelColorLookup[i]; } }
+
+
+			Pixel::State* pixels = _material->GetProperties().GetBufferData<SSBO_Pixels>(0)->Pixels;
+
+			pixelGrid.PixelState = pixels;
+
+			//for (int i = 0; i < pixelGrid.ReadOnlyPixels.size(); ++i) { pixels[i].PixelID = pixelGrid.ReadOnlyPixels[i]; }
 
 			_material->Update();
 

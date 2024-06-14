@@ -52,7 +52,160 @@ void main()
     Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
 
     uint pixelID = middleCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu;
+
     PixelData middleCenterPixelData = simulationData.pixelLookup[pixelID];
+
+    uint direction = getDirection(middleCenterPixel.PixelID16_Temperature8_Pressure8);
+    uint charge = getCharge(middleCenterPixel.PixelID16_Temperature8_Pressure8);
+
+    /* if (charge > 0 && bitsetHas(middleCenterPixelData.Flags, ElectricityReceiver))
+     {
+         charge--;
+     }*/
+
+    if (bitsetHas(middleCenterPixelData.Flags, Electricity))
+    {
+        PixelData topCenterPixelData = simulationData.pixelLookup[topCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+        PixelData middleRightPixelData = simulationData.pixelLookup[middleRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+        PixelData middleLeftPixelData = simulationData.pixelLookup[middleLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+        PixelData bottomCenterPixelData = simulationData.pixelLookup[bottomCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+
+        uint rightCharge    = getCharge(middleRightPixel.PixelID16_Temperature8_Pressure8);
+        uint topCharge      = getCharge(topCenterPixel.PixelID16_Temperature8_Pressure8);
+        uint leftCharge     = getCharge(middleLeftPixel.PixelID16_Temperature8_Pressure8);
+        uint bottomCharge   = getCharge(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+
+        uint rightDir = getDirection(middleRightPixel.PixelID16_Temperature8_Pressure8);
+        uint topDir = getDirection(topCenterPixel.PixelID16_Temperature8_Pressure8);
+        uint leftDir = getDirection(middleLeftPixel.PixelID16_Temperature8_Pressure8);
+        uint bottomDir = getDirection(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+
+        bool rightCond = bitsetHas(middleRightPixelData.Flags, Electricity);
+        bool topCond = bitsetHas(topCenterPixelData.Flags, Electricity);
+        bool leftCond = bitsetHas(middleLeftPixelData.Flags, Electricity);
+        bool bottomCond = bitsetHas(bottomCenterPixelData.Flags, Electricity);
+
+
+        bool rightEmitCond = bitsetHas(middleRightPixelData.Flags, ElectricityEmitter);
+        bool topEmitCond = bitsetHas(topCenterPixelData.Flags, ElectricityEmitter);
+        bool leftEmitCond = bitsetHas(middleLeftPixelData.Flags, ElectricityEmitter);
+        bool bottomEmitCond = bitsetHas(bottomCenterPixelData.Flags, ElectricityEmitter);
+
+        /*
+                if (simulationData.timer % 2 == 0)
+                {
+                    direction = 0;
+
+                    uint minCharge0 = min(rightCharge + uint(!rightCond) * 1000, topCharge + uint(!topCond) * 1000);
+                    uint minCharge1 = min(leftCharge + uint(!leftCond) * 1000, bottomCharge + uint(!bottomCond) * 1000);
+                    uint minCharge = min(minCharge0, minCharge1);
+
+                    if (rightCond && rightCharge < MaxCharge) { direction |= Right; }
+
+                    if (leftCond && leftCharge < MaxCharge) { direction |= Left; }
+
+                    if (topCond && topCharge < MaxCharge) { direction |= Up; }
+
+                    if (bottomCond && bottomCharge < MaxCharge) { direction |= Down; }
+                }
+                else if (!bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter))
+                {
+                    uint numDirLost = 0;
+                    uint chargeGained = 0;
+                    if (bitsetHas(rightDir, Left)) {
+                        uint numOtherDirs = uint(bitsetHas(rightDir, Right)) + uint(bitsetHas(rightDir, Up)) + uint(bitsetHas(rightDir, Down)) + 1;
+                        chargeGained += uint(ceil(rightCharge/float(numOtherDirs)));
+                        numDirLost++;
+                    }
+
+                    if (bitsetHas(topDir, Down)) {
+                        uint numOtherDirs = uint(bitsetHas(topDir, Right)) + uint(bitsetHas(topDir, Up)) + uint(bitsetHas(topDir, Left)) + 1;
+                        chargeGained += uint(ceil(topCharge/float(numOtherDirs)));
+                        numDirLost++;
+                    }
+
+                    if (bitsetHas(leftDir, Right)) {
+                        uint numOtherDirs = uint(bitsetHas(leftDir, Down)) + uint(bitsetHas(leftDir, Up)) + uint(bitsetHas(leftDir, Left)) + 1;
+                        chargeGained += uint(ceil(leftCharge/float(numOtherDirs)));
+                        numDirLost++;
+                    }
+
+                    if (bitsetHas(bottomDir, Up)) {
+                        uint numOtherDirs = uint(bitsetHas(bottomDir, Right)) + uint(bitsetHas(bottomDir, Down)) + uint(bitsetHas(bottomDir, Left)) + 1;
+                        chargeGained += uint(ceil(bottomCharge/float(numOtherDirs)));
+                        numDirLost++;
+                    }
+
+                    uint chargeLost = uint(bitsetHas(direction, Right)) + uint(bitsetHas(direction, Up)) + uint(bitsetHas(direction, Left)) + uint(bitsetHas(direction, Down));
+
+                    if (chargeLost != 0) {
+                        charge = 0;
+                    }
+
+                    charge = clamp(charge + chargeGained, 0, 255);
+                }*/
+
+        /*
+        if (bitsetHas(rightDir, Left) && rightCharge > 0) {
+
+        }*/
+
+
+
+
+
+
+        /*
+                int hor = 0;
+                int ver = 0;
+
+                uint rightDir = getDirection(middleRightPixel.PixelID16_Temperature8_Pressure8);
+                uint topDir = getDirection(topCenterPixel.PixelID16_Temperature8_Pressure8);
+                uint leftDir = getDirection(middleLeftPixel.PixelID16_Temperature8_Pressure8);
+                uint bottomDir = getDirection(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+
+                hor += int(bitsetHas(rightDir, Right));
+                hor += int(bitsetHas(topDir, Right));
+                hor += int(bitsetHas(leftDir, Right));
+                hor += int(bitsetHas(bottomDir, Right));
+
+                hor -= int(bitsetHas(rightDir, Left));
+                hor -= int(bitsetHas(topDir, Left));
+                hor -= int(bitsetHas(leftDir, Left));
+                hor -= int(bitsetHas(bottomDir, Left));
+
+                ver += int(bitsetHas(rightDir, Up));
+                ver += int(bitsetHas(topDir, Up));
+                ver += int(bitsetHas(leftDir, Up));
+                ver += int(bitsetHas(bottomDir, Up));
+
+                ver -= int(bitsetHas(rightDir, Down));
+                ver -= int(bitsetHas(topDir, Down));
+                ver -= int(bitsetHas(leftDir, Down));
+                ver -= int(bitsetHas(bottomDir, Down));
+
+                if (hor > 0) { direction |= Right; }
+                else if (hor < 0) { direction |= Left; }
+
+                if (ver > 0) { direction |= Up; }
+                else if (ver < 0) { direction |= Down; }*/
+    }
+
+
+    if (bitsetHas(middleCenterPixelData.Flags, Electricity))
+    {
+        int aroundCharge = 0;
+
+        uint maxCharge0 = max(getCharge(middleRightPixel.PixelID16_Temperature8_Pressure8), getCharge(topCenterPixel.PixelID16_Temperature8_Pressure8));
+        uint maxCharge1 = max(getCharge(middleLeftPixel.PixelID16_Temperature8_Pressure8), getCharge(bottomCenterPixel.PixelID16_Temperature8_Pressure8));
+
+        uint maxCharge = max(maxCharge0, maxCharge1);
+
+        if (!bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter)) {
+            charge = uint(clamp(int(maxCharge)-1, 0, 255));
+        }
+    }
+
     float temperatureResistance = middleCenterPixelData.TemperatureResistance;
 
     float baseTemperature = middleCenterPixel.Temperature;
@@ -73,12 +226,19 @@ void main()
 
     if (temperature >= middleCenterPixelData.HighTemperatureLimit) {
         pixelID = middleCenterPixelData.HighTemperatureLimitPixelID;
+        PixelData newPixelData = simulationData.pixelLookup[pixelID];
+        temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
     } else if (temperature < middleCenterPixelData.LowerTemperatureLimit) {
         pixelID =  middleCenterPixelData.LowerTemperatureLimitPixelID;
+        PixelData newPixelData = simulationData.pixelLookup[pixelID];
+        temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
     }
 
-    middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0xFF000000u;
+    middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0x0F000000u;
+    //middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0xF0FF0000u;
     middleCenterPixel.PixelID16_Temperature8_Pressure8 |= pixelID;
+    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= charge << 16u;
+    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= direction << 28u;
     middleCenterPixel.Temperature = temperature;
 
     // Write pixels
