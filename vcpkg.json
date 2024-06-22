@@ -1,26 +1,20 @@
 {
-  "name": "rea",
-  "version-string": "1.0.0",
-  "builtin-baseline": "000d1bda1ffa95a73e0b40334fa4103d6f4d3d48",
-  "overrides": [
-    {
-      "name": "glm",
-      "version": "0.9.9.8#2"
-    }
-  ],
-  "dependencies": [
-    {
-      "name": "split-engine",
-      "version>=": "1.4.2"
-    },
-    {
-      "name": "imgui",
-      "features": [
-        "sdl2-binding",
-        "vulkan-binding",
-        "docking-experimental"
-      ],
-      "version>=": "1.90"
-    }
-  ]
+  "name" : "rea",
+  "version-string" : "1.0.0",
+  "builtin-baseline" : "000d1bda1ffa95a73e0b40334fa4103d6f4d3d48",
+  "overrides" : [ {
+    "name" : "glm",
+    "version" : "0.9.9.8#2"
+  } ],
+  "dependencies" : [ {
+    "name" : "split-engine",
+    "version>=" : "1.6.0"
+  }, {
+    "name" : "imgui",
+    "features" : [ "sdl2-binding", "vulkan-binding", "docking-experimental" ],
+    "version>=" : "1.90"
+  }, {
+    "name" : "box2d",
+    "version>=" : "2.4.1#3"
+  } ]
 }

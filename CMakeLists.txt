@@ -8,6 +8,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 project(REA)
 
 add_compile_definitions(SE_DEBUG_LOG)
+add_compile_definitions(B2_USER_SETTINGS)
 
 file(DOWNLOAD
         https://raw.githubusercontent.com/juliettef/IconFontCppHeaders/main/IconsFontAwesome6.h
@@ -55,14 +56,18 @@ add_executable(
         include/REA/Stage.hpp
         ${CMAKE_SOURCE_DIR}/external/include/IconsFontAwesome.h
         include/REA/PixelType.hpp
-        src/Color.cpp
-        include/REA/Color.hpp
         src/Math.cpp
         include/REA/Math.hpp
         src/PixelGridBuilder.cpp
         include/REA/PixelGridBuilder.hpp
         include/REA/Context/ImGui.hpp
         include/REA/Component/PixelGridRenderer.hpp
+        include/REA/Component/Collider.hpp
+        src/PhysicsMaterial.cpp
+        include/REA/PhysicsMaterial.hpp
+        include/b2_user_settings.h
+        src/System/PhysicsDebugRenderer.cpp
+        include/REA/System/PhysicsDebugRenderer.hpp
 )
 
 target_include_directories(REA PRIVATE include)
@@ -74,6 +79,9 @@ target_link_libraries(REA PRIVATE SplitEngine::SplitEngine)
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(REA PRIVATE imgui::imgui)
 
+find_package(box2d CONFIG REQUIRED)
+target_link_libraries(REA PRIVATE box2d::box2d)
+
 add_custom_command(TARGET REA POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:REA>/res)
@@ -81,10 +89,12 @@ add_custom_command(TARGET REA POST_BUILD
 add_custom_target(CopyResources ALL DEPENDS ${CMAKE_SOURCE_DIR}/res)
 
 set(SHADER_FILES
-        "res/shaders/debug/Debug.vert"
-        "res/shaders/debug/Debug.frag"
+        "res/shaders/Sprite/Sprite.vert"
+        "res/shaders/Sprite/Sprite.frag"
         "res/shaders/PixelGrid/PixelGrid.vert"
         "res/shaders/PixelGrid/PixelGrid.frag"
+        "res/shaders/PhysicsDebug/PhysicsDebug.vert"
+        "res/shaders/PhysicsDebug/PhysicsDebug.frag"
         "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp"
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"

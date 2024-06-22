@@ -9,34 +9,39 @@ namespace REA
 		Fire,
 	};
 
-	enum class Shader
+	namespace Asset
 	{
-		Sprite,
-		PixelGrid,
-		Comp_PixelGrid_Idle,
-		Comp_PixelGrid_Fall,
-		Comp_PixelGrid_Accumulate,
-	};
+		enum class Shader
+		{
+			Sprite,
+			PixelGrid,
+			PhysicsDebug,
+			Comp_PixelGrid_Idle,
+			Comp_PixelGrid_Fall,
+			Comp_PixelGrid_Accumulate,
+		};
 
-	enum class Material
-	{
-		Sprite,
-		PixelGrid,
-	};
+		enum class Material
+		{
+			Sprite,
+			PixelGrid,
+			PhysicsDebug,
+		};
 
-	enum class Texture
-	{
-		Carsten,
-	};
+		enum class Sprite
+		{
+			Floppa,
+			BlueBullet,
+		};
 
-	enum class Sprite
-	{
-		Floppa,
-		BlueBullet,
-	};
+		enum class SoundEffect
+		{
+			SFX,
+		};
 
-	enum class SoundEffect
-	{
-		SFX,
-	};
+		enum class PhysicsMaterial
+		{
+			Defaut,
+		};
+	}
 }

@@ -7,6 +7,10 @@ namespace REA
 	{
 		//BeginFrame =  20
 
+		PhysicsManagement = 49,
+
+		Physics = 50,
+
 		Gameplay = 100,
 
 		GridComputeEnd = 101,

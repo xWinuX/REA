@@ -6,9 +6,9 @@
 #include <imgui_impl_vulkan.h>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Systems.hpp>
+#include <SplitEngine/DataStructures.hpp>
 
 #include "IconsFontAwesome.h"
-#include "REA/Color.hpp"
 #include "REA/Context/ImGui.hpp"
 
 namespace REA::System
@@ -57,14 +57,12 @@ namespace REA::System
 		imGuiStyle.ChildRounding = 5.0f;
 		imGuiStyle.GrabRounding = 5.0f;
 
-
-
 		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
 
 		Color dangerColor = Color(0xFF4A48FF);
-		imGuiContext->ColorDanger = static_cast<ImVec4>(dangerColor);
-		imGuiContext->ColorDangerHover = static_cast<ImVec4>(dangerColor * 1.5f);
-		imGuiContext->ColorDangerClicked = static_cast<ImVec4>(dangerColor * 2.0f);
+		imGuiContext->ColorDanger = dangerColor.ConvertToType<ImVec4>();
+		imGuiContext->ColorDangerHover = (dangerColor * 1.5f).ConvertToType<ImVec4>();
+		imGuiContext->ColorDangerClicked = (dangerColor * 2.0f).ConvertToType<ImVec4>();
 
 		ImGui_ImplSDL2_InitForVulkan(window);
 

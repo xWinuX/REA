@@ -33,7 +33,7 @@ namespace REA::System
 		for (int i = 0; i < packingData.PackingInfos.size(); ++i)
 		{
 			Tools::ImagePacker::PackingInfo packingInfo = packingData.PackingInfos[i];
-			textureStore->Textures[i].PageIndexAndSize  = { packingInfo.PageIndex, packingInfo.Size.x / 100.0f, packingInfo.Size.y / 100.0f };
+			textureStore->Textures[i].PageIndexAndSize  = { packingInfo.PageIndex, packingInfo.Size.x, packingInfo.Size.y };
 			textureStore->Textures[i].UVs[0]            = { packingInfo.UVTopLeft, 0.0f, 0.0f };
 			textureStore->Textures[i].UVs[1]            = { packingInfo.UVTopRight, 0.0f, 0.0f };
 			textureStore->Textures[i].UVs[2]            = { packingInfo.UVBottomLeft, 0.0f, 0.0f };
@@ -83,31 +83,22 @@ namespace REA::System
 
 			memcpy(objectBuffer->positions.data() + numEntities, transformComponents, entities.size() * sizeof(glm::vec4));
 
-			_indexes = std::ranges::iota_view((size_t)0, entities.size());
-			std::for_each(std::execution::par,
+			_indexes = std::ranges::iota_view(static_cast<size_t>(0), entities.size());
+
+			std::for_each(std::execution::par_unseq,
 			              _indexes.begin(),
 			              _indexes.end(),
-			              [this, objectBuffer, spriteComponents, contextProvider, &numEntities, deltaTime](size_t i)
+			              [this, spriteComponents, deltaTime, objectBuffer, numEntities](const size_t i)
 			              {
 				              Component::SpriteRenderer& spriteAnimatorComponent = spriteComponents[i];
 				              SpriteTexture*             sprite                  = spriteAnimatorComponent.SpriteTexture.Get();
-				              size_t                     numSubSprites           = sprite->_numSubSprites;
-				              float                      animationSpeed          = spriteAnimatorComponent.AnimationSpeed;
 
-				              if (numSubSprites > 1 && animationSpeed > 0.0f)
-				              {
-					              float currentFrame     = spriteAnimatorComponent.CurrentFrame;
-					              float animationAdvance = animationSpeed * deltaTime;
+				              const float animationAdvance = spriteAnimatorComponent.AnimationSpeed * deltaTime;
+				              const float newCurrentFrame  = spriteAnimatorComponent.CurrentFrame + animationAdvance;
 
-					              float    newCurrentFrame     = currentFrame + animationAdvance;
-					              uint32_t castNewCurrentFrame = static_cast<uint32_t>(newCurrentFrame);
+				              spriteAnimatorComponent.CurrentFrame = Math::FastFmod(newCurrentFrame, static_cast<float>(sprite->_numSubSprites));
 
-					              if (castNewCurrentFrame >= numSubSprites) { spriteAnimatorComponent.CurrentFrame = Math::FastFmod(newCurrentFrame, static_cast<float>(numSubSprites)); }
-					              else { spriteAnimatorComponent.CurrentFrame = newCurrentFrame; }
-
-					              objectBuffer->textureIDs[numEntities + i] = sprite->GetTextureID(static_cast<uint32_t>(spriteAnimatorComponent.CurrentFrame));
-				              }
-				              else { objectBuffer->textureIDs[numEntities + i] = sprite->GetTextureID(0); }
+				              objectBuffer->textureIDs[numEntities + i] = sprite->GetTextureID(static_cast<uint32_t>(spriteAnimatorComponent.CurrentFrame));
 			              });
 
 			numEntities += entities.size();

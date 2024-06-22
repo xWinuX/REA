@@ -4,8 +4,7 @@
 #include <SplitEngine/ECS/System.hpp>
 #include <SplitEngine/Rendering/Material.hpp>
 #include <SplitEngine/Rendering/Model.hpp>
-
-#include "REA/Color.hpp"
+#include <SplitEngine/DataStructures.hpp>
 
 #include "REA/Component/PixelGrid.hpp"
 #include "REA/Component/PixelGridRenderer.hpp"

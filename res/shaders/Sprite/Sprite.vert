@@ -13,17 +13,6 @@ struct TextureData {
     vec4[4] uvs;
 };
 
-/**
- *  Uniform Buffers and Shader Storage Objects are double buffered by default and host visible, coherant and cached
- *  Use the following prefixes to change that behaviour.
- *  singleInst_, si_ -> Disables double buffering so buffer will only exist once
- *  deviceLocal_, dl_ -> Makes buffer device local, buffer is not host mapped and data needs to be staged into it.
- *  noCache_, nc_ -> Removes cached bit
- *  Prefixes can be chained and are delimited by "_" by default
- *  Because of that the delimter can't be used anywhere in the name itself
- *  Prefixes and the delimiter can all be changed by passign a modified ApplicationInfo struct to the Application constructor
- */
-
 layout(std140, set = 1, binding = 0) readonly buffer si_TextureStore {
     TextureData textures[10240];
 } textureStore;
@@ -35,10 +24,10 @@ layout(std430, set = 2, binding = 0) readonly buffer ObjectBuffer {
 } objectBuffer;
 
 const vec2 POSITIONS[4] = vec2[4] (
-    vec2(-1.0f, 1.0),
-    vec2(1.0f, 1.0f),
-    vec2(-1.0f, -1.0f),
-    vec2(1.0f, -1.0f)
+    vec2(-0.5f, 0.5),
+    vec2(0.5f, 0.5f),
+    vec2(-0.5f, -0.5f),
+    vec2(0.5f, -0.5f)
 );
 
 void main() {
@@ -50,11 +39,13 @@ void main() {
 
     mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
-    vec2 rotatedPosition = rotationMatrix * (POSITIONS[inIndex] * vec2(textureData.pageIndexAndSize.y, textureData.pageIndexAndSize.z));
+    float pixelScaling = cameraProperties.pixelsPerUnit / cameraProperties.pixelSize;
+    vec2 scaledPosition = (POSITIONS[inIndex] * vec2(textureData.pageIndexAndSize.y, textureData.pageIndexAndSize.z)) / (cameraProperties.pixelsPerUnit);
+    vec2 rotatedPosition = rotationMatrix * scaledPosition;
 
     vec3 adjustedPosition = vec3(rotatedPosition + position.xy, position.z);
 
-    gl_Position = cameraProperties.viewProj *  vec4(adjustedPosition, 1.0);
+    gl_Position = cameraProperties.proj * cameraProperties.view * vec4(adjustedPosition, 1.0);
     fragColor = vec4(1.0f, 1.0f, 1.0f, float(i < objectBuffer.numObjects));
     fragTexCoord = textureData.uvs[inIndex].xy;
     textureIndex = int(textureData.pageIndexAndSize.x);

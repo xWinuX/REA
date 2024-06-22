@@ -13,11 +13,11 @@ namespace REA
 		public:
 			struct CreateInfo
 			{
-					uint64_t                         PackerID;
-					Tools::ImagePacker::PackingData& PackingData;
+				uint64_t                         PackerID;
+				Tools::ImagePacker::PackingData& PackingData;
 			};
 
-			 explicit SpriteTexture(const CreateInfo& createInfo);
+			explicit SpriteTexture(const CreateInfo& createInfo);
 
 			[[nodiscard]] size_t GetNumSubSprites() const;
 

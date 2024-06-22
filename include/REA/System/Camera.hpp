@@ -22,17 +22,16 @@ namespace REA::System
 			             uint8_t                stage) override;
 
 		private:
-			glm::vec3 eye;
-			glm::vec3 center;
-			glm::vec3 up;
+			float _pixelsPerUnit = 16.0f;
+			float _pixelSize = 10.0f;
 
 			struct CameraUBO
 			{
+				glm::mat4 identity;
 				glm::mat4 view;
-				glm::mat4 viewIdentity;
 				glm::mat4 proj;
-				glm::mat4 orthoProj;
-				glm::mat4 viewProj;
+				float     pixelSize;
+				float     pixelsPerUnit;
 			};
 	};
 }

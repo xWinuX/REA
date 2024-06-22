@@ -40,6 +40,7 @@ uint getDirection(uint packedData) {
 }
 
 const uint NumPixels = 1000000;
+const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));
 
 const int MaxCharge = 255;
 

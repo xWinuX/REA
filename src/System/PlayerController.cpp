@@ -1,6 +1,7 @@
 #include "REA/System/PlayerController.hpp"
 
 #include <SplitEngine/Application.hpp>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 
 #include "REA/Assets.hpp"
@@ -10,12 +11,9 @@
 
 namespace REA::System
 {
-	PlayerController::PlayerController(const AssetHandle<SpriteTexture> bulletSprite):
-		_bulletSprite(bulletSprite) {}
-
 	void PlayerController::Execute(Component::Transform*  transformComponents,
 	                               Component::Player*     playerComponents,
-	                               Component::Physics*    physicsComponents,
+	                               Component::Collider*   colliderComponents,
 	                               std::vector<uint64_t>& entities,
 	                               ECS::ContextProvider&  contextProvider,
 	                               uint8_t                stage)
@@ -24,20 +22,17 @@ namespace REA::System
 		{
 			Component::Transform& transformComponent = transformComponents[i];
 			Component::Player&    playerComponent    = playerComponents[i];
-			Component::Physics&   physicsComponent   = physicsComponents[i];
+			Component::Collider&  collider           = colliderComponents[i];
 
 			glm::vec2 inputAxis = Input::GetAxis2DActionDown(InputAction::Move);
 
-			glm::vec2 direction = glm::normalize(glm::vec3(Input::GetMousePosition(), 0.0f) - transformComponent.Position);
 
-			transformComponent.Rotation = glm::degrees(glm::atan(direction.y, direction.x));
-			physicsComponent.Velocity   = glm::vec3(inputAxis * 10.0f, 0.0f);
-
-			if (Input::GetButtonActionDown(InputAction::Fire))
+			if (collider.Body != nullptr)
 			{
-				contextProvider.Registry->CreateEntity<Component::Transform, Component::Physics, Component::SpriteRenderer>({ transformComponent.Position, transformComponent.Rotation },
-				                                                                                                    { false, glm::vec3(direction.x, -direction.y, 0.0f) * 3.0f },
-				                                                                                                    { _bulletSprite, 5.0f });
+				b2Vec2 force = { inputAxis.x, inputAxis.y };
+				force *= 10.0f;
+				b2Vec2 point = { 0, 0 };
+				collider.Body->SetLinearVelocity(force);
 			}
 		}
 	}
