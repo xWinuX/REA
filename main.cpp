@@ -228,8 +228,21 @@ int main()
 		                                                                                                                 pipelineCreateInfo
 	                                                                                                                 });
 
+	pipelineCreateInfo.AssemblyStateCreateInfo.primitiveRestartEnable = vk::False;
+	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineStrip;
+	AssetHandle<Rendering::Shader> marchingSquareDebugShader          = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::MarchingSquare,
+	                                                                                                                 {
+		                                                                                                                 {
+			                                                                                                                 "res/shaders/PhysicsDebug/PhysicsDebug.vert",
+			                                                                                                                 "res/shaders/PhysicsDebug/PhysicsDebug.frag"
+		                                                                                                                 },
+		                                                                                                                 pipelineCreateInfo
+	                                                                                                                 });
+
 
 	AssetHandle<Rendering::Material> physicsDebugMaterial = assetDatabase.CreateAsset<Rendering::Material>(Asset::Material::PhysicsDebug, { physicsDebugShader });
+
+	AssetHandle<Rendering::Material> marchingSqaureDebugMaterial = assetDatabase.CreateAsset<Rendering::Material>(Asset::Material::MarchingSquare, { marchingSquareDebugShader });
 
 
 	AssetHandle<Rendering::Shader> pixelGridShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::PixelGrid,
@@ -245,7 +258,6 @@ int main()
 	Tools::ImagePacker texturePacker = Tools::ImagePacker();
 
 	uint64_t floppaPackerID     = texturePacker.AddImage("res/textures/Floppa.png");
-	uint64_t carstenPackerID    = texturePacker.AddImage("res/textures/Carsten.png");
 	uint64_t blueBulletPackerID = texturePacker.AddRelatedImages(Tools::ImageSlicer::Slice("res/textures/BlueBullet.png", { 3 }));
 
 	Tools::ImagePacker::PackingData packingData = texturePacker.Pack(2048);
@@ -265,6 +277,10 @@ int main()
 			                                                                                                         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
 		                                                                                                         }
 	                                                                                                         });
+
+	AssetHandle<Rendering::Shader> marchingSquareShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_MarchingSquare,
+	                                                                                                   { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
+
 
 	AssetHandle<PhysicsMaterial> defaultPhysicsMaterial = assetDatabase.CreateAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut, { .Density = 1.0f });
 
@@ -296,9 +312,17 @@ int main()
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
 		.FallingSimulation = pixelGridComputeFall,
-		.AccumulateSimulation = pixelGridComputeAccumulate
+		.AccumulateSimulation = pixelGridComputeAccumulate,
+		.MarchingSquareAlgorithm = marchingSquareShader
 	};
-	ecs.AddSystem<System::PixelGridSimulation>({ { Stage::GridComputeEnd, 1000 }, { Stage::GridComputeBegin, 1000 }, }, simulationShaders);
+	ECS::Registry::SystemHandle<System::PixelGridSimulation> simulation = ecs.AddSystem<System::PixelGridSimulation>({
+		                                                                                                                 { Stage::GridComputeEnd, 1000 },
+		                                                                                                                 { Stage::GridComputeBegin, 1000 },
+		                                                                                                                 { Stage::Rendering, 4 },
+	                                                                                                                 },
+	                                                                                                                 simulationShaders);
+
+	simulation.System->DebugMaterial = marchingSqaureDebugMaterial;
 	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	// Rendering
@@ -318,11 +342,11 @@ int main()
 	                                                                                                        { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
 	                                                                                                        { floppaSprite, 1.0f, 0 });
 
-/*	boxShape.SetAsBox(0.5f, 0.5f);
-	uint64_t floor2 = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 10.0f, -10.0f } },
-	                                                                                                         { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
-	                                                                                                         { carstenSprite, 1.0f, 0 });
-*/
+	/*	boxShape.SetAsBox(0.5f, 0.5f);
+		uint64_t floor2 = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 10.0f, -10.0f } },
+		                                                                                                         { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
+		                                                                                                         { carstenSprite, 1.0f, 0 });
+	*/
 
 	boxShape.SetAsBox(0.5f, 0.5f);
 	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 0.0f, -10.0f } },

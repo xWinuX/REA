@@ -69,8 +69,8 @@ namespace REA::System
 			const uint32_t height = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
 
 			float left   = 0.0f;
-			float right  = static_cast<float>(width) / (_pixelSize * _pixelsPerUnit);
-			float bottom = static_cast<float>(height) / (_pixelSize * _pixelsPerUnit);
+			float right  = static_cast<float>(width) / (_pixelSize);
+			float bottom = static_cast<float>(height) / (_pixelSize);
 			float top    = 0.0f;
 
 			glm::vec3 windowSize = glm::vec3(right, bottom, 0.0f);

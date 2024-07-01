@@ -82,6 +82,9 @@ target_link_libraries(REA PRIVATE imgui::imgui)
 find_package(box2d CONFIG REQUIRED)
 target_link_libraries(REA PRIVATE box2d::box2d)
 
+find_package(CDT CONFIG REQUIRED)
+target_link_libraries(REA PRIVATE CDT::CDT)
+
 add_custom_command(TARGET REA POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:REA>/res)
@@ -98,6 +101,7 @@ set(SHADER_FILES
         "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp"
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
+        "res/shaders/MarchingSquare/MarchingSquare.comp"
 )
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)

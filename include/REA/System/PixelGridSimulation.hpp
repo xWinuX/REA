@@ -16,9 +16,13 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> IdleSimulation;
 				AssetHandle<Rendering::Shader> FallingSimulation;
 				AssetHandle<Rendering::Shader> AccumulateSimulation;
+				AssetHandle<Rendering::Shader> MarchingSquareAlgorithm;
 			};
 
 			PixelGridSimulation(const SimulationShaders& simulationShaders);
+
+
+			AssetHandle<Rendering::Material> DebugMaterial;
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
@@ -35,17 +39,29 @@ namespace REA::System
 				Pixel::Data pixelLookup[1024];
 			};
 
+			struct SSBO_MarchingCubes
+			{
+				uint32_t             numSegments = 0;
+				alignas(8) glm::vec2 segments[100000];
+			};
+
 			uint32_t _fif = 1;
+
+			float _lineSimplificationTolerance = 0.5f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;
 
 			SimulationShaders _shaders;
 
+			std::ranges::iota_view<size_t, size_t> _indexes;
+
 			bool _paused = true;
 			bool _doStep = false;
 
 			bool _firstUpdate = true;
+
+			Rendering::Vulkan::Buffer _vertexBuffer;
 
 			void CmdWaitForPreviousComputeShader();
 

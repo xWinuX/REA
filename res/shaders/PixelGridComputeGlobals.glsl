@@ -16,4 +16,3 @@ layout(std430, set = 1, binding = 1) readonly buffer na_s_PixelSSBOIn {
 layout(std430, set = 1, binding = 2) writeonly buffer s_Pixels {
     Pixel pixels[NumPixels];
 };
-

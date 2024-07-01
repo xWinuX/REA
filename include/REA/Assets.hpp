@@ -16,9 +16,11 @@ namespace REA
 			Sprite,
 			PixelGrid,
 			PhysicsDebug,
+			MarchingSquare,
 			Comp_PixelGrid_Idle,
 			Comp_PixelGrid_Fall,
 			Comp_PixelGrid_Accumulate,
+			Comp_MarchingSquare,
 		};
 
 		enum class Material
@@ -26,6 +28,7 @@ namespace REA
 			Sprite,
 			PixelGrid,
 			PhysicsDebug,
+			MarchingSquare,
 		};
 
 		enum class Sprite

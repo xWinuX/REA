@@ -30,7 +30,7 @@ namespace REA::System
 			if (collider.Body != nullptr)
 			{
 				b2Vec2 force = { inputAxis.x, inputAxis.y };
-				force *= 10.0f;
+				force *= 100.0f;
 				b2Vec2 point = { 0, 0 };
 				collider.Body->SetLinearVelocity(force);
 			}
