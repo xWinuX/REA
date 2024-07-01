@@ -362,7 +362,7 @@ int main()
 	PixelGridBuilder     pixelGridBuilder{};
 	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1000, 1000 }).WithPixelData(std::move(pixelLookup)).Build();
 
-	ecs.CreateEntity<Component::PixelGrid, Component::PixelGridRenderer>(std::move(pixelGrid), {});
+	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), {defaultPhysicsMaterial}, {});
 
 	// Run Game
 	application.Run();

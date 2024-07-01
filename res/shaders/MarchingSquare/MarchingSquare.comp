@@ -1,141 +1,62 @@
 #version 450
 
-struct PixelData {
-    uint Flags;
-    uint Density;
-    uint Spread;
-    float TemperatureResistance;
-    float BaseTemperature;
-    float LowerTemperatureLimit;
-    uint LowerTemperatureLimitPixelID;
-    float HighTemperatureLimit;
-    uint HighTemperatureLimitPixelID;
-    float TemperatureConversion;
-    uint BaseCharge;
-    float ChargeAbsorbtionChance;
-};
-
-struct Pixel {
-    uint PixelID16_Temperature8_Pressure8;
-    float Temperature;
-};
-
-bool bitsetHas(uint bitset, uint bits) {
-    return (bitset & bits) == bits;
-}
-
-bool bitsetIs(uint bitset, uint bits) {
-    return bitset == bits;
-}
-
-
-uint getPixelID(uint packedData) {
-    return packedData & 0xFFFFu;
-}
-
-uint getCharge(uint packedData) {
-    return (packedData >> 16u) & 0xFFu;
-}
-
-uint getDirection(uint packedData) {
-    return (packedData >> 28u) & 0xFu;
-}
-
-const uint NumPixels = 1000000;
-const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));
-
-const int MaxCharge = 255;
-
-const uint Solid = 1u << 7u;
-const uint Gravity = 1u << 8u;
-const uint Electricity = 1u << 9u;
-const uint ElectricityEmitter = 1u << 10u;
-const uint ElectricityReceiver = 1u << 11u;
-
-const uint Right = 1u << 0u;
-const uint Up = 1u << 1u;
-const uint Left = 1u << 2u;
-const uint Down = 1u << 3u;
-
-const uint RenderMode_Normal = 0;
-const uint RenderMode_Temperature = 1;
-
-layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
-    float deltaTime;
-    uint timer;
-    float rng;
-    uint width;
-    uint height;
-    PixelData pixelLookup[1024];
-} simulationData;
-
-layout(std430, set = 1, binding = 1) readonly buffer na_s_PixelSSBOIn {
-    Pixel readOnlyPixels[NumPixels];
-};
-
-layout(std430, set = 1, binding = 2) writeonly buffer s_Pixels {
-    Pixel pixels[NumPixels];
-};
-
+#include "../PixelGridComputeGlobals.glsl"
 
 layout(std430, set = 1, binding = 3) writeonly buffer s_c_MarchingSquares {
     uint numSegments;
     vec2 segments[100000];
 };
 
-
-
-
 const uint caseLookup[16] = {
-0, // 0000 0
-3, // 0001 1
-5, // 0010 2
-2, // 0011 3
-4, // 0100 4
-7, // 0101 5
-1, // 0110 6
-6, // 0111 7
-6, // 1000 8
-1, // 1001 9
-7, // 1010 10
-4, // 1011 11
-2, // 1100 12
-5, // 1101 13
-3, // 1110 14
-0, // 1111 15
+    0, // 0000 0
+    3, // 0001 1
+    5, // 0010 2
+    2, // 0011 3
+    4, // 0100 4
+    7, // 0101 5
+    1, // 0110 6
+    6, // 0111 7
+    6, // 1000 8
+    1, // 1001 9
+    7, // 1010 10
+    4, // 1011 11
+    2, // 1100 12
+    5, // 1101 13
+    3, // 1110 14
+    0, // 1111 15
 };
 
 
 const int edgeLookup[8][4] = {
-{ -1, -1, -1, -1 }, // Nothing 0
-{ 0, 2, -1, -1 }, // Column 1
-{ 1, 3, -1, -1 }, // Row 2
-{ 0, 3, -1, -1 }, // Bottom Left Corner 3
-{ 1, 2, -1, -1 }, // Top Right Corner 4
-{ 0, 1, -1, -1 }, // Bottom Right Corner 5
-{ 2, 3, -1, -1 }, // Top Left Corner 6
-{ -1, -1, -1, -1 }, // AMBG
+    { -1, -1, -1, -1 }, // Nothing 0
+    { 0, 2, -1, -1 },   // Column 1
+    { 1, 3, -1, -1 },   // Row 2
+    { 0, 3, -1, -1 },   // Bottom Left Corner 3
+    { 1, 2, -1, -1 },   // Top Right Corner 4
+    { 0, 1, -1, -1 },   // Bottom Right Corner 5
+    { 2, 3, -1, -1 },   // Top Left Corner 6
+    { -1, -1, -1, -1 }, // AMBG
 };
 
 
 
 const vec2 edgeOffsets[4] = vec2[4](
-vec2(0.5f, 0.0f), // 0 -> midpoint of edge between 0 and 1
-vec2(1.0f, 0.5f), // 1 -> midpoint of edge between 1 and 2
-vec2(0.5f, 1.0f), // 2 -> midpoint of edge between 2 and 3
-vec2(0.0f, 0.5f)// 3 -> midpoint of edge between 3 and 0
+    vec2(0.5f, 0.0f), // 0 -> midpoint of edge between 0 and 1
+    vec2(1.0f, 0.5f), // 1 -> midpoint of edge between 1 and 2
+    vec2(0.5f, 1.0f), // 2 -> midpoint of edge between 2 and 3
+    vec2(0.0f, 0.5f)  // 3 -> midpoint of edge between 3 and 0
 );
 
 
 const uint connectionLookup[8] = {
-0, // Nothing
-0, // Column
-1, // Row
-1, // Bottom Left Corner
-1, // Top Right Corner
-1, // Bottom Right Corner
-0, // Top Left Corner
-0, // AMBG
+    0, // Nothing
+    0, // Column
+    1, // Row
+    1, // Bottom Left Corner
+    1, // Top Right Corner
+    1, // Bottom Right Corner
+    0, // Top Left Corner
+    0, // AMBG
 };
 
 

@@ -23,6 +23,7 @@
 #include "REA/Context/ImGui.hpp"
 
 #include "CDT.h"
+#include "REA/MarchingSquareMesherUtils.hpp"
 
 namespace REA::System
 {
@@ -121,13 +122,11 @@ namespace REA::System
 				if (ImGui::Button(ICON_FA_FORWARD_STEP, { 50, 50 })) { _doStep = true; }
 			}
 
-			ImGui::SliderFloat("Line Simplification Tolerance", &_lineSimplificationTolerance, 0.0f, 10.0f);
+			ImGui::SliderFloat("Line Simplification Tolerance", &_lineSimplificationTolerance, 0.0f, 100.0f);
 			ImGui::End();
 		}
 
-		LOG("num pixelgrid archetypes {0}", archetypes.size());
-
-		System<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
+		System<Component::PixelGrid, Component::Collider>::ExecuteArchetypes(archetypes, contextProvider, stage);
 	}
 
 	glm::uvec2 PixelGridSimulation::GetMargolusOffset(uint32_t frame)
@@ -153,174 +152,12 @@ namespace REA::System
 		CDT::V2d<float> endPoint;
 	};
 
-	void dfs(const std::vector<std::vector<uint32_t>>& adjacencyList, uint32_t nodeIndex, std::unordered_set<uint32_t>& visited, std::vector<uint32_t>& component)
+	void PixelGridSimulation::Execute(Component::PixelGrid*  pixelGrids,
+	                                  Component::Collider*   colliders,
+	                                  std::vector<uint64_t>& entities,
+	                                  ECS::ContextProvider&  contextProvider,
+	                                  uint8_t                stage)
 	{
-		std::stack<uint32_t> stack;
-		stack.push(nodeIndex);
-
-		while (!stack.empty())
-		{
-			uint32_t currentNode = stack.top();
-			stack.pop();
-
-			if (visited.contains(currentNode)) continue;
-
-			visited.insert(currentNode);
-			component.push_back(currentNode);
-
-			for (const uint32_t neighborIndex: adjacencyList[currentNode]) { if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); } }
-		}
-	}
-
-	void buildAdjacencyList(std::vector<std::vector<uint32_t>>& adjacencyList, const std::vector<CDT::Edge>& edges)
-	{
-		for (const auto& edge: edges)
-		{
-			adjacencyList[edge.v1()].push_back(edge.v2());
-			adjacencyList[edge.v2()].push_back(edge.v1());
-		}
-	}
-
-	std::vector<std::vector<uint32_t>> findConnectedComponents(const std::vector<std::vector<uint32_t>>& adjacencyList)
-	{
-		std::unordered_set<uint32_t>       visited;
-		std::vector<std::vector<uint32_t>> components;
-
-		for (uint32_t vertexID = 0; vertexID < adjacencyList.size(); ++vertexID)
-		{
-			if (!visited.contains(vertexID))
-			{
-				std::vector<uint32_t> component;
-				dfs(adjacencyList, vertexID, visited, component);
-				components.push_back(std::move(component));
-			}
-		}
-
-		return components;
-	}
-
-	std::vector<CDT::V2d<float>> sortPolyline(std::vector<std::vector<uint32_t>>& adjacencyList, const std::vector<uint32_t>& polylineIndices, std::span<CDT::V2d<float>>& vertices)
-	{
-		std::vector<CDT::V2d<float>> sortedPolyline;
-
-		if (polylineIndices.empty()) { return sortedPolyline; }
-
-		std::unordered_set<uint32_t> visited;
-		uint32_t                     currentIndex = polylineIndices[0];
-		CDT::V2d<float>              current      = vertices[currentIndex];
-		visited.insert(currentIndex);
-
-		sortedPolyline.push_back(current);
-		while (sortedPolyline.size() < polylineIndices.size() - 1)
-		{
-			bool found = false;
-			for (uint32_t neighbor: adjacencyList[currentIndex])
-			{
-				if (visited.contains(neighbor)) continue;
-				sortedPolyline.push_back(vertices[neighbor]);
-				visited.insert(neighbor);
-				currentIndex = neighbor;
-				current      = vertices[currentIndex];
-				found        = true;
-				break;
-			}
-			if (!found) break;
-		}
-
-		return sortedPolyline;
-	}
-
-	std::vector<std::vector<CDT::V2d<float>>> separateAndSortPolylines(std::vector<std::vector<uint32_t>>& adjacencyList,
-	                                                                   std::span<CDT::V2d<float>>&         vertices,
-	                                                                   std::vector<CDT::Edge>&             edges)
-	{
-		std::vector<std::vector<CDT::V2d<float>>> polylines;
-		if (vertices.size() > 0 && edges.size() > 0)
-		{
-			//BENCHMARK_BEGIN
-			buildAdjacencyList(adjacencyList, edges);
-			//BENCHMARK_END("build adjacent")
-
-			std::vector<std::vector<uint32_t>> components;
-			//BENCHMARK_BEGIN
-			components = findConnectedComponents(adjacencyList);
-			//BENCHMARK_END("findConnected")
-
-			//BENCHMARK_BEGIN
-			for (const auto& component: components)
-			{
-				std::vector<CDT::V2d<float>> sortedPolyline = sortPolyline(adjacencyList, component, vertices);
-				polylines.push_back(std::move(sortedPolyline));
-			}
-			//BENCHMARK_END("sort polyline")
-		}
-		return polylines;
-	}
-
-
-	// Function to calculate the perpendicular distance from a point to a line
-	float perpendicularDistance(const CDT::V2d<float>& p, const CDT::V2d<float>& lineStart, const CDT::V2d<float>& lineEnd)
-	{
-		float dx     = lineEnd.x - lineStart.x;
-		float dy     = lineEnd.y - lineStart.y;
-		float area   = glm::abs(dx * (lineStart.y - p.y) - dy * (lineStart.x - p.x));
-		float bottom = glm::sqrt(dx * dx + dy * dy);
-		return area / bottom;
-	}
-
-	// Recursive function to simplify the line
-	void douglasPeucker(const std::vector<CDT::V2d<float>>& points, float epsilon, std::vector<CDT::V2d<float>>& result)
-	{
-		if (points.size() < 2) { throw std::invalid_argument("Not enough points to simplify"); }
-
-		std::vector<bool> include(points.size(), false);
-		include[0] = include[points.size() - 1] = true;
-
-		std::stack<std::pair<size_t, size_t>> toProcess;
-		toProcess.emplace(0, points.size() - 1);
-
-		while (!toProcess.empty())
-		{
-			auto [start, end] = toProcess.top();
-			toProcess.pop();
-
-			double maxDist = 0.0;
-			size_t index   = start;
-
-			for (size_t i = start + 1; i < end; ++i)
-			{
-				double dist = perpendicularDistance(points[i], points[start], points[end]);
-				if (dist > maxDist)
-				{
-					index   = i;
-					maxDist = dist;
-				}
-			}
-
-			if (maxDist > epsilon)
-			{
-				include[index] = true;
-				toProcess.emplace(start, index);
-				toProcess.emplace(index, end);
-			}
-		}
-
-		for (size_t i = 0; i < points.size(); ++i) { if (include[i]) { result.push_back(points[i]); } }
-	}
-
-	std::vector<CDT::V2d<float>> simplifyPolyline(const std::vector<CDT::V2d<float>>& points, float epsilon)
-	{
-		std::vector<CDT::V2d<float>> result;
-		douglasPeucker(points, epsilon, result);
-		return result;
-	}
-
-	std::vector<std::vector<uint32_t>> _adjacencyList;
-
-
-	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
-	{
-		LOG("entiteis {0}", entities.size());
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
@@ -329,6 +166,7 @@ namespace REA::System
 			Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
 
 			Component::PixelGrid& pixelGrid = pixelGrids[i];
+			Component::Collider&  collider  = colliders[i];
 
 			if (stage == Stage::GridComputeEnd)
 			{
@@ -470,160 +308,73 @@ namespace REA::System
 
 				DebugMaterial->Bind(commandBuffer);
 
-				Rendering::Vulkan::Buffer& buffer = _shaders.MarchingSquareAlgorithm->GetProperties().GetBuffer(3);
-				LOG("fif {0}", _fif);
-				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(3, _fif);
+				Rendering::Vulkan::Buffer& buffer        = _shaders.MarchingSquareAlgorithm->GetProperties().GetBuffer(3);
+				SSBO_MarchingCubes*        marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(3, _fif);
 
-
-				//BENCHMARK_BEGIN
-				std::vector<CDT::V2d<float>> vertices = std::vector<CDT::V2d<float>>(marchingCubes->numSegments * 2);
-				std::vector<CDT::Edge>       edges    = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
+				/*
+				LineSegment* lineSegment = reinterpret_cast<LineSegment*>(&marchingCubes->segments[0]);
 
 				BENCHMARK_BEGIN
-					memcpy(vertices.data(), marchingCubes->segments, marchingCubes->numSegments * 2 * sizeof(CDT::V2d<float>));
-					for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
-				BENCHMARK_END("create edge buffer")
+				std::sort(lineSegment,
+				          lineSegment + marchingCubes->numSegments,
+				          [](const LineSegment& lineSegment1, const LineSegment& lineSegment2)
+				          {
+					          return (lineSegment1.startPoint.x + lineSegment1.startPoint.y + lineSegment1.endPoint.x + lineSegment1.endPoint.y) > (
+						                 lineSegment2.startPoint.x + lineSegment2.startPoint.y + lineSegment2.endPoint.x + lineSegment2.endPoint.y);
+				          });
+				BENCHMARK_END("sort lines")*/
 
-				//LineSegment* lineSegments = reinterpret_cast<LineSegment*>(&marchingCubes->segments);
-				//std::vector<std::vector<LineSegment>> polygons;
+				std::vector<CDT::Edge> edges = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
+				for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
-				std::span<CDT::V2d<float>> segmentsSpan;
+				std::span<CDT::V2d<float>> segmentsSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->segments[0]), marchingCubes->numSegments * 2);
 
-				if (marchingCubes->numSegments > 0)
+				LOG("num segments {0}", segmentsSpan.size());
+
+				MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(segmentsSpan, edges);
+
+				LOG("num segments {0}", segmentsSpan.size());
+
+				std::vector<MarchingSquareMesherUtils::Polyline> polylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(segmentsSpan, edges);
+
+				for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 				{
-					BENCHMARK_BEGIN
-
-						glm::vec2*                segmentBegin = &marchingCubes->segments[0];
-						glm::vec2*                segmentEnd   = &marchingCubes->segments[marchingCubes->numSegments * 2];
-						const CDT::DuplicatesInfo di           = CDT::FindDuplicates<float>(segmentBegin,
-						                                                                    segmentEnd,
-						                                                                    [](const glm::vec2& vert) { return vert.x; },
-						                                                                    [](const glm::vec2& vert) { return vert.y; });
-
-
-						glm::vec2* newEnd = remove_at(segmentBegin, segmentEnd, di.duplicates.begin(), di.duplicates.end());
-
-						size_t numVertices = std::distance(segmentBegin, newEnd);
-
-						//segmentsSpan = std::span<CDT::V2d<float>>(reinterpret_cast<CDT::V2d<float>*>(segmentBegin), numVertices);
-
-						//CDT::RemapEdges(edges, di.mapping);
-
-						CDT::RemoveDuplicatesAndRemapEdges(vertices, edges);
-
-					BENCHMARK_END("remove duplicated and remap edges")
+					polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
 				}
 
-				segmentsSpan = std::span(vertices);
-
-				LOG("Previous size {0} New Size {1}", marchingCubes->numSegments*2, segmentsSpan.size());
-
-				std::vector<std::vector<CDT::V2d<float>>> polyLines;
-				_adjacencyList.resize(segmentsSpan.size());
-				//BENCHMARK_BEGIN
-				polyLines = separateAndSortPolylines(_adjacencyList, segmentsSpan, edges);
-				//BENCHMARK_END("Polyline generation")
-				for (std::vector<uint32_t>& adjacencyList: _adjacencyList) { adjacencyList.clear(); }
-
-				//BENCHMARK_BEGIN
-				//for (std::vector<CDT::V2d<float>>& polyLine: polyLines) { polyLine = simplifyPolyline(polyLine, _lineSimplificationTolerance); }
-				//BENCHMARK_END("Line simplification")
-
-
-				LOG("num polylines {0}", polyLines.size());
-
-				/*LOG("-- Vertices:");
-				int i = 0;
-				for (CDT::V2d<float> vertex : vertices)
+				if (!polylines.empty())
 				{
-					LOG("[{0}] vertex x: {1} y: {2}", i, vertex.x, vertex.y);
-					i++;
+					_vertexBuffer.CopyData(polylines[0].Vertices.data(), polylines[0].Vertices.size() * sizeof(CDT::V2d<float>));
+					MarchingSquareMesherUtils::GenerateTriangulation(polylines[0]);
 				}
 
-				LOG("-- Edges:");
-				i = 0;
-				for (CDT::Edge& edge : edges)
+				/*
+				if (!cdt.vertices.empty())
 				{
-					LOG("[{0}] edge start: {1} end: {2}", i,  edge.v1(), edge.v2());
-					i++;
-				}
-
-				_adjacencyList.resize(vertices.size());
-				buildAdjacencyList(_adjacencyList, edges);
-
-				LOG("-- Adjency:");
-				i = 0;
-				for (std::vector<uint32_t> adjacencyList : _adjacencyList)
-				{
-					LOG("[{0}] adjency ({1})", i, adjacencyList.size());
-					int j = 0;
-					for (auto list: adjacencyList)
+					if (collider.Body != nullptr)
 					{
-						LOG(" [{0}] {1}", j, list);
-						j++;
+						for (b2Fixture* staticFixture: _staticFixtures) { collider.Body->DestroyFixture(staticFixture); }
+						_staticFixtures.clear();
+
+						b2FixtureDef                 fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
+						std::vector<CDT::V2d<float>> v          = std::vector<CDT::V2d<float>>(3);
+
+						for (CDT::Triangle triangle: cdt.triangles)
+						{
+							v[0] = cdt.vertices[triangle.vertices[2]];
+							v[1] = cdt.vertices[triangle.vertices[1]];
+							v[2] = cdt.vertices[triangle.vertices[0]];
+
+							b2PolygonShape polygonShape;
+							polygonShape.Set(reinterpret_cast<const b2Vec2*>(v.data()), v.size());
+							fixtureDef.shape = &polygonShape;
+							_staticFixtures.push_back(collider.Body->CreateFixture(&fixtureDef));
+						}
 					}
-					i++;
 				}
-
-				std::vector<std::vector<uint32_t>> connected = findConnectedComponents(_adjacencyList);
-
-				LOG("num connected {0}", connected.size());*/
-
-
-				//BENCHMARK_END("Remove duplicates")
-
-				//LineSegment* lineSegment = reinterpret_cast<LineSegment*>(marchingCubes->segments);
-				/*std::vector<std::vector<LineSegment>> polyLines;
-				BENCHMARK_BEGIN
-					polyLines = separateAndSortPolylines(_adjacencyList, vertices, edges);
-				BENCHMARK_END("Polyline generation")
-
-
-
-				LOG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! num polylines {0}", polyLines.size());*/
-
-
-				/*CDT::Triangulation<float> cdt = CDT::Triangulation<float>();
-
-				BENCHMARK_BEGIN
-					cdt.insertVertices(vertices);
-					cdt.insertEdges(edges);
-				BENCHMARK_END("insert vertices")
-
-				BENCHMARK_BEGIN
-					cdt.eraseOuterTrianglesAndHoles();
-				BENCHMARK_END("erase super triangle")
-	*/
-				//BENCHMARK_BEGIN
-				//_vertexBuffer.CopyData(cdt.vertices.data(), cdt.vertices.size() * sizeof(CDT::V2d<float>));
-				//_vertexBuffer.CopyData(vertices.data(), vertices.size() * sizeof(CDT::V2d<float>));
-				//_vertexBuffer.CopyData(marchingCubes->segments, marchingCubes->numSegments * 2 * sizeof(glm::vec2));
-				//BENCHMARK_END("copy to vertex buffer")
-
-
-				glm::vec2* vertex = _vertexBuffer.GetMappedData<glm::vec2>();
-
-				size_t numPoints = 0;
-				for (std::vector<CDT::V2d<float>>& points: polyLines)
-				{
-					size_t size = points.size() * sizeof(CDT::V2d<float>);
-					memcpy(vertex + numPoints, points.data(), size);
-					numPoints += points.size();
-				}
-
-
-				/*uint16_t* index = reinterpret_cast<uint16_t*>(_vertexBuffer.GetMappedData<glm::vec2>() + _vertexBuffer.GetDataElementNum(0));
-
 
 				size_t j = 0;
-				for (CDT::Edge& edge: edges)
-				{
-					index[j]     = edge.v1();
-					index[j + 1] = edge.v2();
-					j += 2;
-				}*/
-
-				/*size_t j = 0;
+				uint16_t* index = reinterpret_cast<uint16_t*>(_vertexBuffer.GetMappedData<glm::vec2>() + _vertexBuffer.GetDataElementNum(0));
 				for (CDT::Triangle triangle: cdt.triangles)
 				{
 					index[j]     = triangle.vertices[0];
@@ -632,13 +383,12 @@ namespace REA::System
 					j += 3;
 				}*/
 
-
 				size_t offset = 0;
-
+				size_t size   = polylines.empty() ? 0 : polylines[0].Vertices.size();
 				commandBuffer.bindVertexBuffers(0, _vertexBuffer.GetVkBuffer(), offset);
 				//commandBuffer.bindIndexBuffer(_vertexBuffer.GetVkBuffer(), _vertexBuffer.GetSizeInBytes(0), vk::IndexType::eUint16);
-				//commandBuffer.drawIndexed(edges.size() * 2, 1, 0, 0, 0);
-				commandBuffer.draw(numPoints, 1, 0, 0);
+				//commandBuffer.drawIndexed(j, 1, 0, 0, 0);
+				commandBuffer.draw(size, 1, 0, 0);
 			}
 		}
 	}

@@ -4,11 +4,12 @@
 #include <SplitEngine/Rendering/Shader.hpp>
 #include <SplitEngine/Rendering/Vulkan/CommandBuffer.hpp>
 
+#include "REA/Component/Collider.hpp"
 #include "REA/Component/PixelGrid.hpp"
 
 namespace REA::System
 {
-	class PixelGridSimulation final : public ECS::System<Component::PixelGrid>
+	class PixelGridSimulation final : public ECS::System<Component::PixelGrid, Component::Collider>
 	{
 		public:
 			struct SimulationShaders
@@ -26,7 +27,7 @@ namespace REA::System
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
-			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage) override;
+			void Execute(Component::PixelGrid* pixelGrids, Component::Collider* colliders, std::vector<uint64_t>& entities, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
 		private:
 			struct UBO_SimulationData
@@ -62,6 +63,8 @@ namespace REA::System
 			bool _firstUpdate = true;
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
+
+			std::vector<b2Fixture*> _staticFixtures;
 
 			void CmdWaitForPreviousComputeShader();
 

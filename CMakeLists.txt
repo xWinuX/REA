@@ -68,6 +68,8 @@ add_executable(
         include/b2_user_settings.h
         src/System/PhysicsDebugRenderer.cpp
         include/REA/System/PhysicsDebugRenderer.hpp
+        src/MarchingSquareMesherUtils.cpp
+        include/REA/MarchingSquareMesherUtils.hpp
 )
 
 target_include_directories(REA PRIVATE include)
