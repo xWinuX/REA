@@ -286,6 +286,8 @@ int main()
 
 	ECS::Registry& ecs = application.GetECSRegistry();
 
+	ecs.SetEnableStatistics(true);
+
 	ecs.RegisterComponent<Component::Transform>();
 	ecs.RegisterComponent<Component::SpriteRenderer>();
 	ecs.RegisterComponent<Component::Physics>();
