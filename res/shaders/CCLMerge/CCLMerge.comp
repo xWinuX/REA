@@ -1,0 +1,54 @@
+// Source: https://github.com/ogukei/filum-example/tree/master
+// Which uses the method described here: https://www.academia.edu/29842500/
+
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+#include "../CCLShared.glsl"
+
+layout(push_constant) uniform PushConstant {
+    uint step_index;
+};
+
+int findRoot(uint index) {
+    int v = labels[index];
+    if (v < 0) {
+        return v;
+    }
+    int w = int(index);
+    while (v != w) {
+        w = v;
+        v = labels[v];
+    }
+    return v;
+}
+
+void merge(uint x0) {
+    uint x1 = x0 + 1;
+    for (uint y = 0; y < simulationData.height; ++y) {
+        uint i0 = (y) * simulationData.width + (x0);
+        uint i1 = (y) * simulationData.width + (x1);
+        if (labels[i0] >= 0 && labels[i1] >= 0) {
+            int v0 = findRoot(i0);
+            int v1 = findRoot(i1);
+            labels[max(v0, v1)] = labels[min(v0, v1)];
+        }
+    }
+}
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    uint id = gl_GlobalInvocationID.x;
+
+    if (id > (simulationData.width >> (step_index + 1))) {
+        return;
+    }
+
+    uint steps = simulationData.width / (simulationData.width >> (step_index + 1));
+
+
+
+    uint x0 = (id * steps) + (1 << step_index) - 1;
+    merge(x0);
+}

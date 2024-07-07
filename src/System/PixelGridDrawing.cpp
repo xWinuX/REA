@@ -84,7 +84,7 @@ namespace REA::System
 
 
 			ImGui::Separator();
-			ImGui::SliderInt("Brush Size", &_radius, 1, 50);
+			ImGui::SliderInt("Brush Size", &_radius, 1, 100);
 			ImGui::Separator();
 
 			ImGui::Spacing();

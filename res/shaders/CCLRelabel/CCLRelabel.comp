@@ -1,0 +1,34 @@
+// Source: https://github.com/ogukei/filum-example/tree/master
+// Which uses the method described here: https://www.academia.edu/29842500/
+
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+#include "../CCLShared.glsl"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+int findRoot(uint index) {
+    int v = atomicAdd(labels[index], 0);
+    if (v < 0) {
+        return v;
+    }
+    int w = int(index);
+    while (v != w) {
+        w = v;
+        v = atomicAdd(labels[v], 0);
+    }
+    return v;
+}
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+
+    if (id > NumPixels) {
+        return;
+    }
+
+    int v = findRoot(id);
+    if (v >= 0) {
+        atomicExchange(labels[id], v);
+    }
+}

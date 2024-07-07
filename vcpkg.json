@@ -8,7 +8,7 @@
   } ],
   "dependencies" : [ {
     "name" : "split-engine",
-    "version>=" : "1.6.0"
+    "version>=" : "1.6.1"
   }, {
     "name" : "imgui",
     "features" : [ "sdl2-binding", "vulkan-binding", "docking-experimental" ],

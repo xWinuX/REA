@@ -1,0 +1,26 @@
+// Source: https://github.com/ogukei/filum-example/tree/master
+// Which uses the method described here: https://www.academia.edu/29842500/
+
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+#include "../CCLShared.glsl"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+
+    if (x > simulationData.width) {
+        return;
+    }
+
+    for (uint y = 1; y < simulationData.height; ++y)
+    {
+        uint index = (y) * simulationData.width + (x);
+        uint bottomIndex = (y-1) * simulationData.width + (x);
+
+        if (labels[bottomIndex] >= 0 && labels[index] >= 0) {
+            labels[index] = labels[bottomIndex];
+        }
+    }
+}

@@ -3,7 +3,7 @@
     {
       "kind": "git",
       "repository": "https://github.com/xWinuX/vcpkg-registry",
-      "baseline": "1814668bca14a73d786b781eed42ba826fc34ee0",
+      "baseline": "f45cec02179230317cdd38fdda3e861fa00fde51",
       "packages": [
         "split-engine"
       ]

@@ -104,6 +104,10 @@ set(SHADER_FILES
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
         "res/shaders/MarchingSquare/MarchingSquare.comp"
+        "res/shaders/CCLInitialize/CCLInitialize.comp"
+        "res/shaders/CCLColumn/CCLColumn.comp"
+        "res/shaders/CCLMerge/CCLMerge.comp"
+        "res/shaders/CCLRelabel/CCLRelabel.comp"
 )
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)

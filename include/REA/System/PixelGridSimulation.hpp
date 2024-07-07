@@ -18,6 +18,10 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> FallingSimulation;
 				AssetHandle<Rendering::Shader> AccumulateSimulation;
 				AssetHandle<Rendering::Shader> MarchingSquareAlgorithm;
+				AssetHandle<Rendering::Shader> CCLInitialize;
+				AssetHandle<Rendering::Shader> CCLColumn;
+				AssetHandle<Rendering::Shader> CCLMerge;
+				AssetHandle<Rendering::Shader> CCLRelabel;
 			};
 
 			PixelGridSimulation(const SimulationShaders& simulationShaders);

@@ -197,7 +197,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
+		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
 	                                      });
 
 	application.GetWindow().SetSize(1000, 1000);
@@ -282,6 +282,14 @@ int main()
 	                                                                                                   { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
 
 
+	// CCL
+	auto cclInitialize = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLInitialize, { { "res/shaders/CCLInitialize/CCLInitialize.comp" } });
+	auto cclColumn     = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLColumn, { { "res/shaders/CCLColumn/CCLColumn.comp" } });
+	auto cclMerge      = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLMerge, { { "res/shaders/CCLMerge/CCLMerge.comp" } });
+	auto cclRelabel    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLRelabel, { { "res/shaders/CCLRelabel/CCLRelabel.comp" } });
+
+
+
 	AssetHandle<PhysicsMaterial> defaultPhysicsMaterial = assetDatabase.CreateAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut, { .Density = 1.0f });
 
 	ECS::Registry& ecs = application.GetECSRegistry();
@@ -315,10 +323,16 @@ int main()
 		.IdleSimulation = pixelGridComputeIdle,
 		.FallingSimulation = pixelGridComputeFall,
 		.AccumulateSimulation = pixelGridComputeAccumulate,
-		.MarchingSquareAlgorithm = marchingSquareShader
+		.MarchingSquareAlgorithm = marchingSquareShader,
+		.CCLInitialize = cclInitialize,
+		.CCLColumn = cclColumn,
+		.CCLMerge = cclMerge,
+		.CCLRelabel = cclRelabel,
 	};
+
 	ECS::Registry::SystemHandle<System::PixelGridSimulation> simulation = ecs.AddSystem<System::PixelGridSimulation>({
 		                                                                                                                 { Stage::GridComputeEnd, 1000 },
+		                                                                                                                 { Stage::GridComputeHalted, 1000 },
 		                                                                                                                 { Stage::GridComputeBegin, 1000 },
 		                                                                                                                 { Stage::Rendering, 4 },
 	                                                                                                                 },
@@ -364,7 +378,7 @@ int main()
 	PixelGridBuilder     pixelGridBuilder{};
 	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1000, 1000 }).WithPixelData(std::move(pixelLookup)).Build();
 
-	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), {defaultPhysicsMaterial}, {});
+	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 
 	// Run Game
 	application.Run();

@@ -135,7 +135,7 @@ namespace REA
 					CDT::V2d<float> vert = vertices[neighbor];
 
 					aabb = b2AABB({ glm::min(aabb.lowerBound.x, vert.x), glm::min(aabb.lowerBound.y, vert.y) },
-					              { glm::max(aabb.lowerBound.x, vert.x), glm::max(aabb.lowerBound.y, vert.y) });
+					              { glm::max(aabb.upperBound.x, vert.x), glm::max(aabb.upperBound.y, vert.y) });
 
 					sortedPolyline.push_back(vert);
 					visited.insert(neighbor);
