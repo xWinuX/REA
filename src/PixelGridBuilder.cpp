@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <box2d/b2_types.h>
 
 namespace REA
 {
@@ -31,7 +32,12 @@ namespace REA
 		{
 			pixelGrid.PixelLookup.push_back({
 				                                pixelCreateInfo.Name,
-				                                { pixelCreateInfo.ID, static_cast<uint8_t>(pixelCreateInfo.Data.BaseCharge), {0, 0}, pixelCreateInfo.Data.BaseTemperature }
+				                                {
+					                                pixelCreateInfo.ID,
+					                                static_cast<uint8_t>(pixelCreateInfo.Data.BaseCharge),
+					                                BitSet<uint8>(Pixel::Flags::Static),
+					                                pixelCreateInfo.Data.BaseTemperature
+				                                }
 			                                });
 			pixelGrid.PixelColorLookup.push_back(pixelCreateInfo.Color);
 			pixelGrid.PixelDataLookup.push_back(pixelCreateInfo.Data);

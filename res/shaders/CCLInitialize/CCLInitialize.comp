@@ -3,19 +3,26 @@
 #include "../PixelGridComputeGlobals.glsl"
 #include "../CCLShared.glsl"
 
+layout(push_constant) uniform PushConstant {
+    uvec2 Offset;
+    uvec2 Size;
+};
+
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    if (gl_GlobalInvocationID.x >= NumPixels) {
+    if (gl_GlobalInvocationID.x >= Size.x * Size.y) {
         return;
     }
 
-    PixelData pixelData = simulationData.pixelLookup[readOnlyPixels[gl_GlobalInvocationID.x].PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+    uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+
+    PixelData pixelData = simulationData.pixelLookup[readOnlyPixels[index].PixelID16_Charge8_Flags8 & 0xFFFFu];
 
     if (bitsetHas(pixelData.Flags, Solid)) {
-        labels[gl_GlobalInvocationID.x] = int(gl_GlobalInvocationID.x);
+        labels[index] = int(gl_GlobalInvocationID.x);
     }
     else {
-        labels[gl_GlobalInvocationID.x] = 0;
+        labels[index] = 0;
     }
 }

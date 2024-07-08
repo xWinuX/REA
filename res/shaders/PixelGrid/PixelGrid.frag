@@ -30,9 +30,9 @@ void main() {
     int height = gridInfo.height;
     int index = (position.y * gridInfo.width) + position.x;
     Pixel pixel = pixels[index];
-    uint pixelID = getPixelID(pixel.PixelID16_Temperature8_Pressure8);
-    uint charge = getCharge(pixel.PixelID16_Temperature8_Pressure8);
-    uint dir = getDirection(pixel.PixelID16_Temperature8_Pressure8);
+    uint pixelID = getPixelID(pixel.PixelID16_Charge8_Flags8);
+    uint charge = getCharge(pixel.PixelID16_Charge8_Flags8);
+    uint dir = getDirection(pixel.PixelID16_Charge8_Flags8);
     float temperature = pixel.Temperature;
 
     pixelColor = gridInfo.colorLookup[pixelID];

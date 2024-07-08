@@ -6,7 +6,11 @@
 #include "../PixelGridComputeGlobals.glsl"
 #include "../CCLShared.glsl"
 
-layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(push_constant) uniform PushConstant {
+    uvec2 Offset;
+    uvec2 Size;
+};
+
 int findRoot(uint index) {
     int v = atomicAdd(labels[index], 0);
     if (v < 0) {
@@ -20,15 +24,18 @@ int findRoot(uint index) {
     return v;
 }
 
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint id = gl_GlobalInvocationID.x;
 
-    if (id > NumPixels) {
+    uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+
+    if (id > Size.x * Size.y) {
         return;
     }
 
-    int v = findRoot(id);
+    int v = findRoot(index);
     if (v >= 0) {
-        atomicExchange(labels[id], v);
+        atomicExchange(labels[index], v);
     }
 }

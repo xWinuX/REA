@@ -70,6 +70,9 @@ add_executable(
         include/REA/System/PhysicsDebugRenderer.hpp
         src/MarchingSquareMesherUtils.cpp
         include/REA/MarchingSquareMesherUtils.hpp
+        include/REA/Component/PixelGridRigidBody.hpp
+        include/REA/MemoryHeap.cpp
+        include/REA/MemoryHeap.hpp
 )
 
 target_include_directories(REA PRIVATE include)
@@ -100,6 +103,7 @@ set(SHADER_FILES
         "res/shaders/PixelGrid/PixelGrid.frag"
         "res/shaders/PhysicsDebug/PhysicsDebug.vert"
         "res/shaders/PhysicsDebug/PhysicsDebug.frag"
+        "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp"
         "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp"
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
@@ -108,6 +112,7 @@ set(SHADER_FILES
         "res/shaders/CCLColumn/CCLColumn.comp"
         "res/shaders/CCLMerge/CCLMerge.comp"
         "res/shaders/CCLRelabel/CCLRelabel.comp"
+        "res/shaders/CCLExtract/CCLExtract.comp"
 )
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)

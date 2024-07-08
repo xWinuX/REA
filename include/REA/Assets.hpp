@@ -18,6 +18,7 @@ namespace REA
 			PhysicsDebug,
 			MarchingSquare,
 			Comp_PixelGrid_Idle,
+			Comp_PixelGrid_RigidBody,
 			Comp_PixelGrid_Fall,
 			Comp_PixelGrid_Accumulate,
 			Comp_MarchingSquare,
@@ -26,6 +27,7 @@ namespace REA
 			Comp_CCLColumn,
 			Comp_CCLMerge,
 			Comp_CCLRelabel,
+			Comp_CCLExtract,
 		};
 
 		enum class Material

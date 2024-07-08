@@ -1,0 +1,37 @@
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+
+layout(push_constant) uniform PushConstant {
+    uint rigidBodyIndex;
+};
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    RigidBody rigidBody = simulationData.rigidBodies[rigidBodyIndex];
+    uint width = rigidBody.Size.x;
+    uint height = rigidBody.Size.y;
+
+    if (gl_GlobalInvocationID.x >= width * height) {
+        return;
+    }
+
+    // TODO: ROTATE
+    ivec2 rigidBodyBottomLeftCorner = ivec(round(rigidBody.Position - vec2(rigidBody.Size/2.0f)));
+
+    if (rigidBodyBottomLeftCorner.x < 0 || rigidBodyBottomLeftCorner.y < 0) {
+        return;
+    }
+
+    uint localX = (gl_GlobalInvocationID.x % width);
+    uint localY = (gl_GlobalInvocationID.x / width);
+
+    uint globalX = uint(rigidBodyBottomLeftCorner.x) + localX;
+    uint globalY = uint(rigidBodyBottomLeftCorner.y) + localY;
+
+    uint globalIndex = globalY * simulationData.width + globalX;
+
+    // TODO: Check for overlap with other pixels
+    pixels[index] = rigidBodyData[rigidBody.DataIndex + gl_GlobalInvocationID.x];
+}

@@ -14,6 +14,8 @@ namespace REA
 
 		enum Flags : uint32_t
 		{
+			Static              = 1 << 0,
+			RigidBodySpawn      = 1 << 1,
 			Solid               = 1 << 7,
 			Gravity             = 1 << 8,
 			Electricity         = 1 << 9,
@@ -26,16 +28,17 @@ namespace REA
 		 */
 		struct State
 		{
-			ID      PixelID = 0;
-			uint8_t Charge  = 0;
+			ID              PixelID = 0;
+			uint8_t         Charge  = 0;
+			BitSet<uint8_t> Flags   = BitSet<uint8>();
+
+			float Temperature = 0.0f;
 
 			struct
 			{
-				uint8_t H  : 4;
-				uint8_t Pressure: 4;
+				uint32_t RigidBodyID: 12;
+				uint32_t Index      : 20;
 			};
-
-			float Temperature = 0.0f;
 		};
 
 		/**

@@ -6,18 +6,24 @@
 #include "../PixelGridComputeGlobals.glsl"
 #include "../CCLShared.glsl"
 
+layout(push_constant) uniform PushConstant {
+    uvec2 Offset;
+    uvec2 Size;
+};
+
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint x = gl_GlobalInvocationID.x;
 
-    if (x > simulationData.width) {
+    if (x > Size.x) {
         return;
     }
 
-    for (uint y = 1; y < simulationData.height; ++y)
+    for (uint y = 1; y < Size.y; ++y)
     {
-        uint index = (y) * simulationData.width + (x);
-        uint bottomIndex = (y-1) * simulationData.width + (x);
+        uint index = getGlobalIndex(x, y, simulationData.width, Offset);
+        uint bottomIndex = getGlobalIndex(x, y-1, simulationData.width, Offset);
 
         if (labels[bottomIndex] >= 0 && labels[index] >= 0) {
             labels[index] = labels[bottomIndex];

@@ -1,0 +1,33 @@
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+#include "../CCLShared.glsl"
+
+layout(push_constant) uniform PushConstant {
+    uvec2 Offset;
+    uvec2 Size;
+    uvec2 SeedPoint;
+    uint RigidBodyID;
+};
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    if (gl_GlobalInvocationID.x >= Size.x * Size.y) {
+        return;
+    }
+
+    uint correctLabel = labels[SeedPoint.y * simulationData.width + SeedPoint.x];
+
+    PixelData pixelData = simulationData.pixelLookup[readOnlyPixels[index].PixelID16_Charge8_Flags8 & 0xFFFFu];
+
+    uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+
+    if (labels[index] == correctLabel)
+    {
+        rigidBodyData[simulationData.rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x] = readOnlyPixels[index];
+
+        readOnlyPixels[index].PixelID16_Charge8_Flags8 = 0;
+        readOnlyPixels[index].RigidBodyID12_RigidBodyIndex20 = 0;
+    }
+}

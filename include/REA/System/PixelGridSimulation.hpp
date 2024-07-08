@@ -4,6 +4,7 @@
 #include <SplitEngine/Rendering/Shader.hpp>
 #include <SplitEngine/Rendering/Vulkan/CommandBuffer.hpp>
 
+#include "REA/MemoryHeap.hpp"
 #include "REA/Component/Collider.hpp"
 #include "REA/Component/PixelGrid.hpp"
 
@@ -15,6 +16,7 @@ namespace REA::System
 			struct SimulationShaders
 			{
 				AssetHandle<Rendering::Shader> IdleSimulation;
+				AssetHandle<Rendering::Shader> RigidBodySimulation;
 				AssetHandle<Rendering::Shader> FallingSimulation;
 				AssetHandle<Rendering::Shader> AccumulateSimulation;
 				AssetHandle<Rendering::Shader> MarchingSquareAlgorithm;
@@ -22,6 +24,7 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> CCLColumn;
 				AssetHandle<Rendering::Shader> CCLMerge;
 				AssetHandle<Rendering::Shader> CCLRelabel;
+				AssetHandle<Rendering::Shader> CCLExtract;
 			};
 
 			PixelGridSimulation(const SimulationShaders& simulationShaders);
@@ -31,10 +34,23 @@ namespace REA::System
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
-			void Execute(Component::PixelGrid* pixelGrids, Component::Collider* colliders, std::vector<uint64_t>& entities, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage) override;
+			void Execute(Component::PixelGrid*              pixelGrids,
+			             Component::Collider*               colliders,
+			             std::vector<uint64_t>&             entities,
+			             SplitEngine::ECS::ContextProvider& contextProvider,
+			             uint8_t                            stage) override;
 
 		private:
-			struct UBO_SimulationData
+			struct RigidBody
+			{
+				uint32_t   ID        = -1u;
+				glm::vec2  Position  = { 0, 0 };
+				float      Rotation  = 0;
+				uint32_t   DataIndex = -1u;
+				glm::uvec2 Size      = { 0, 0 };
+			};
+
+			struct SSBO_SimulationData
 			{
 				float       deltaTime = 0.0f;
 				uint32_t    timer     = 0;
@@ -42,6 +58,7 @@ namespace REA::System
 				uint32_t    width     = 0;
 				uint32_t    height    = 0;
 				Pixel::Data pixelLookup[1024];
+				RigidBody   rigidBodies[100];
 			};
 
 			struct SSBO_MarchingCubes
@@ -49,6 +66,28 @@ namespace REA::System
 				uint32_t             numSegments = 0;
 				alignas(8) glm::vec2 segments[100000];
 			};
+
+			struct RigidbodyEntries
+			{
+				uint64_t EntityID;
+				uint64_t MemoryID;
+			};
+
+			struct NewRigidBody
+			{
+				glm::uvec2 Offset;
+				glm::uvec2 Size;
+				glm::uvec2 SeedPoint;
+				uint32_t RigidBodyID;
+			};
+
+			std::vector<NewRigidBody> _newRigidBodies {};
+
+			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1'000'000);
+
+			AvailableStack<uint32_t> _availableRigidBodyIDs = AvailableStack<uint32_t>(100);
+
+			uint32_t _rigidBodyIDCounter = 0;
 
 			uint32_t _fif = 1;
 
@@ -68,7 +107,7 @@ namespace REA::System
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
 
-			std::vector<b2Fixture*> _staticFixtures;
+			b2AABB _cclRange;
 
 			void CmdWaitForPreviousComputeShader();
 

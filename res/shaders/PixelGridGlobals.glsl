@@ -14,8 +14,17 @@ struct PixelData {
 };
 
 struct Pixel {
-    uint PixelID16_Temperature8_Pressure8;
+    uint PixelID16_Charge8_Flags8;
     float Temperature;
+    uint RigidBodyID12_RigidBodyIndex20;
+};
+
+struct RigidBody {
+    uint ID;
+    vec2 Position;
+    float Rotation;
+    uint DataIndex;
+    uvec2 Size;
 };
 
 bool bitsetHas(uint bitset, uint bits) {
@@ -25,7 +34,6 @@ bool bitsetHas(uint bitset, uint bits) {
 bool bitsetIs(uint bitset, uint bits) {
     return bitset == bits;
 }
-
 
 uint getPixelID(uint packedData) {
     return packedData & 0xFFFFu;
@@ -39,7 +47,16 @@ uint getDirection(uint packedData) {
     return (packedData >> 28u) & 0xFu;
 }
 
+uint getRigidBodyID(uint packedData) {
+    return packedData & 0xFFFu;
+}
+
+uint getRigidBodyIndex(uint packedData) {
+    return (packedData >> 12u) & 0xFFFFFu;
+}
+
 const uint NumPixels = 1000000;
+const uint NumRigidbodies = 100;
 const uint NumSolid = NumPixels/32;
 const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));
 

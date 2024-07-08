@@ -7,7 +7,9 @@
 #include "../CCLShared.glsl"
 
 layout(push_constant) uniform PushConstant {
-    uint step_index;
+    uvec2 Offset;
+    uvec2 Size;
+    uint StepIndex;
 };
 
 int findRoot(uint index) {
@@ -25,9 +27,9 @@ int findRoot(uint index) {
 
 void merge(uint x0) {
     uint x1 = x0 + 1;
-    for (uint y = 0; y < simulationData.height; ++y) {
-        uint i0 = (y) * simulationData.width + (x0);
-        uint i1 = (y) * simulationData.width + (x1);
+    for (uint y = 0; y < Size.y; ++y) {
+        uint i0 = getGlobalIndex(x0, y, simulationData.width, Offset);
+        uint i1 = getGlobalIndex(x1, y, simulationData.width, Offset);
         if (labels[i0] >= 0 && labels[i1] >= 0) {
             int v0 = findRoot(i0);
             int v1 = findRoot(i1);
@@ -41,14 +43,12 @@ void main()
 {
     uint id = gl_GlobalInvocationID.x;
 
-    if (id > (simulationData.width >> (step_index + 1))) {
+    if (id > (Size.x >> (StepIndex + 1))) {
         return;
     }
 
-    uint steps = simulationData.width / (simulationData.width >> (step_index + 1));
+    uint steps = Size.x / (Size.x >> (StepIndex + 1));
 
-
-
-    uint x0 = (id * steps) + (1 << step_index) - 1;
+    uint x0 = (id * steps) + (1 << StepIndex) - 1;
     merge(x0);
 }

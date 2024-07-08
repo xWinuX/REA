@@ -2,7 +2,7 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
-layout(std430, set = 1, binding = 3) writeonly buffer s_c_MarchingSquares {
+layout(std430, set = 1, binding = 4) writeonly buffer s_c_MarchingSquares {
     uint numSegments;
     vec2 segments[100000];
 };
@@ -254,10 +254,10 @@ void main()
         Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
         Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
 
-        PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-        PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-        PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-        PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+        PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
         // Compute the case index
         uint caseNumber = (uint(bitsetHas(topLeftPixelData.Flags, Solid)) << 3u) |

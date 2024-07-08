@@ -51,12 +51,12 @@ void main()
     Pixel bottomCenterPixel = readOnlyPixels[bottomCenterIndex];
     Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
 
-    uint pixelID = middleCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu;
+    uint pixelID = middleCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu;
 
     PixelData middleCenterPixelData = simulationData.pixelLookup[pixelID];
 
-    uint direction = getDirection(middleCenterPixel.PixelID16_Temperature8_Pressure8);
-    uint charge = getCharge(middleCenterPixel.PixelID16_Temperature8_Pressure8);
+    uint direction = getDirection(middleCenterPixel.PixelID16_Charge8_Flags8);
+    uint charge = getCharge(middleCenterPixel.PixelID16_Charge8_Flags8);
 
     /* if (charge > 0 && bitsetHas(middleCenterPixelData.Flags, ElectricityReceiver))
      {
@@ -65,20 +65,20 @@ void main()
 
     if (bitsetHas(middleCenterPixelData.Flags, Electricity))
     {
-        PixelData topCenterPixelData = simulationData.pixelLookup[topCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-        PixelData middleRightPixelData = simulationData.pixelLookup[middleRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-        PixelData middleLeftPixelData = simulationData.pixelLookup[middleLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-        PixelData bottomCenterPixelData = simulationData.pixelLookup[bottomCenterPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+        PixelData topCenterPixelData = simulationData.pixelLookup[topCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        PixelData middleRightPixelData = simulationData.pixelLookup[middleRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        PixelData middleLeftPixelData = simulationData.pixelLookup[middleLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        PixelData bottomCenterPixelData = simulationData.pixelLookup[bottomCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
-        uint rightCharge    = getCharge(middleRightPixel.PixelID16_Temperature8_Pressure8);
-        uint topCharge      = getCharge(topCenterPixel.PixelID16_Temperature8_Pressure8);
-        uint leftCharge     = getCharge(middleLeftPixel.PixelID16_Temperature8_Pressure8);
-        uint bottomCharge   = getCharge(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+        uint rightCharge    = getCharge(middleRightPixel.PixelID16_Charge8_Flags8);
+        uint topCharge      = getCharge(topCenterPixel.PixelID16_Charge8_Flags8);
+        uint leftCharge     = getCharge(middleLeftPixel.PixelID16_Charge8_Flags8);
+        uint bottomCharge   = getCharge(bottomCenterPixel.PixelID16_Charge8_Flags8);
 
-        uint rightDir = getDirection(middleRightPixel.PixelID16_Temperature8_Pressure8);
-        uint topDir = getDirection(topCenterPixel.PixelID16_Temperature8_Pressure8);
-        uint leftDir = getDirection(middleLeftPixel.PixelID16_Temperature8_Pressure8);
-        uint bottomDir = getDirection(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+        uint rightDir = getDirection(middleRightPixel.PixelID16_Charge8_Flags8);
+        uint topDir = getDirection(topCenterPixel.PixelID16_Charge8_Flags8);
+        uint leftDir = getDirection(middleLeftPixel.PixelID16_Charge8_Flags8);
+        uint bottomDir = getDirection(bottomCenterPixel.PixelID16_Charge8_Flags8);
 
         bool rightCond = bitsetHas(middleRightPixelData.Flags, Electricity);
         bool topCond = bitsetHas(topCenterPixelData.Flags, Electricity);
@@ -159,10 +159,10 @@ void main()
                 int hor = 0;
                 int ver = 0;
 
-                uint rightDir = getDirection(middleRightPixel.PixelID16_Temperature8_Pressure8);
-                uint topDir = getDirection(topCenterPixel.PixelID16_Temperature8_Pressure8);
-                uint leftDir = getDirection(middleLeftPixel.PixelID16_Temperature8_Pressure8);
-                uint bottomDir = getDirection(bottomCenterPixel.PixelID16_Temperature8_Pressure8);
+                uint rightDir = getDirection(middleRightPixel.PixelID16_Charge8_Flags8);
+                uint topDir = getDirection(topCenterPixel.PixelID16_Charge8_Flags8);
+                uint leftDir = getDirection(middleLeftPixel.PixelID16_Charge8_Flags8);
+                uint bottomDir = getDirection(bottomCenterPixel.PixelID16_Charge8_Flags8);
 
                 hor += int(bitsetHas(rightDir, Right));
                 hor += int(bitsetHas(topDir, Right));
@@ -196,8 +196,8 @@ void main()
     {
         int aroundCharge = 0;
 
-        uint maxCharge0 = max(getCharge(middleRightPixel.PixelID16_Temperature8_Pressure8), getCharge(topCenterPixel.PixelID16_Temperature8_Pressure8));
-        uint maxCharge1 = max(getCharge(middleLeftPixel.PixelID16_Temperature8_Pressure8), getCharge(bottomCenterPixel.PixelID16_Temperature8_Pressure8));
+        uint maxCharge0 = max(getCharge(middleRightPixel.PixelID16_Charge8_Flags8), getCharge(topCenterPixel.PixelID16_Charge8_Flags8));
+        uint maxCharge1 = max(getCharge(middleLeftPixel.PixelID16_Charge8_Flags8), getCharge(bottomCenterPixel.PixelID16_Charge8_Flags8));
 
         uint maxCharge = max(maxCharge0, maxCharge1);
 
@@ -234,11 +234,11 @@ void main()
         temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
     }
 
-    middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0x0F000000u;
-    //middleCenterPixel.PixelID16_Temperature8_Pressure8 &= 0xF0FF0000u;
-    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= pixelID;
-    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= charge << 16u;
-    middleCenterPixel.PixelID16_Temperature8_Pressure8 |= direction << 28u;
+    middleCenterPixel.PixelID16_Charge8_Flags8 &= 0x0F000000u;
+    //middleCenterPixel.PixelID16_Charge8_Flags8 &= 0xF0FF0000u;
+    middleCenterPixel.PixelID16_Charge8_Flags8 |= pixelID;
+    middleCenterPixel.PixelID16_Charge8_Flags8 |= charge << 16u;
+    middleCenterPixel.PixelID16_Charge8_Flags8 |= direction << 28u;
     middleCenterPixel.Temperature = temperature;
 
     // Write pixels

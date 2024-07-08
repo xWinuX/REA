@@ -34,10 +34,10 @@ Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
 Pixel topRightPixel = readOnlyPixels[topRightIndex];
 Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
 
-PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
-PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Temperature8_Pressure8 & 0xFFFFu];
+PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
 // Write pixels
 pixels[topLeftIndex] = topLeftPixel;

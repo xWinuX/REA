@@ -40,6 +40,11 @@
 #include "REA/System/ImGuiManager.hpp"
 #include "REA/System/PhysicsDebugRenderer.hpp"
 
+namespace REA::Component
+{
+	struct PixelGridRigidBody;
+}
+
 using namespace SplitEngine;
 using namespace REA;
 
@@ -265,30 +270,27 @@ int main()
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::BlueBullet, { blueBulletPackerID, packingData });
 
-	AssetHandle<Rendering::Shader> pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Idle,
-	                                                                                                   { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
+	auto pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Idle,
+	                                                                         { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
 
-	AssetHandle<Rendering::Shader> pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Fall,
-	                                                                                                   { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
+	auto pixelGridComputeRigidBody = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
+	                                                                              { { "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp" } });
 
-	AssetHandle<Rendering::Shader> pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Accumulate,
-	                                                                                                         {
-		                                                                                                         {
-			                                                                                                         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
-		                                                                                                         }
-	                                                                                                         });
+	auto pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Fall,
+	                                                                         { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
+
+	auto pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Accumulate,
+	                                                                               { { "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp" } });
 
 	AssetHandle<Rendering::Shader> marchingSquareShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_MarchingSquare,
 	                                                                                                   { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
-
 
 	// CCL
 	auto cclInitialize = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLInitialize, { { "res/shaders/CCLInitialize/CCLInitialize.comp" } });
 	auto cclColumn     = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLColumn, { { "res/shaders/CCLColumn/CCLColumn.comp" } });
 	auto cclMerge      = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLMerge, { { "res/shaders/CCLMerge/CCLMerge.comp" } });
 	auto cclRelabel    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLRelabel, { { "res/shaders/CCLRelabel/CCLRelabel.comp" } });
-
-
+	auto cclExtract    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLExtract, { { "res/shaders/CCLExtract/CCLExtract.comp" } });
 
 	AssetHandle<PhysicsMaterial> defaultPhysicsMaterial = assetDatabase.CreateAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut, { .Density = 1.0f });
 
@@ -305,6 +307,7 @@ int main()
 	ecs.RegisterComponent<Component::PixelGrid>();
 	ecs.RegisterComponent<Component::PixelGridRenderer>();
 	ecs.RegisterComponent<Component::Collider>();
+	ecs.RegisterComponent<Component::PixelGridRigidBody>();
 
 	ecs.RegisterContext<Context::ImGui>({});
 
@@ -313,7 +316,7 @@ int main()
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::PlayerController>(Stage::Physics, 0);
 
-	ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
+	//ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
 
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
@@ -321,6 +324,7 @@ int main()
 	// Simulation
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
+		.RigidBodySimulation = pixelGridComputeRigidBody,
 		.FallingSimulation = pixelGridComputeFall,
 		.AccumulateSimulation = pixelGridComputeAccumulate,
 		.MarchingSquareAlgorithm = marchingSquareShader,
@@ -328,6 +332,7 @@ int main()
 		.CCLColumn = cclColumn,
 		.CCLMerge = cclMerge,
 		.CCLRelabel = cclRelabel,
+		.CCLExtract = cclExtract,
 	};
 
 	ECS::Registry::SystemHandle<System::PixelGridSimulation> simulation = ecs.AddSystem<System::PixelGridSimulation>({
