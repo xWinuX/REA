@@ -35,15 +35,11 @@
 #include "REA/PixelType.hpp"
 #include "REA/Stage.hpp"
 #include "REA/Component/PixelGridRenderer.hpp"
+#include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Context/ImGui.hpp"
 #include "REA/System/GameOfLifeSimulation.hpp"
 #include "REA/System/ImGuiManager.hpp"
 #include "REA/System/PhysicsDebugRenderer.hpp"
-
-namespace REA::Component
-{
-	struct PixelGridRigidBody;
-}
 
 using namespace SplitEngine;
 using namespace REA;
@@ -276,6 +272,9 @@ int main()
 	auto pixelGridComputeRigidBody = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
 	                                                                              { { "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp" } });
 
+	auto pixelGridRigidBodyRemove = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
+																				  { { "res/shaders/PixelGridRigidBodyRemove/PixelGridRigidBodyRemove.comp" } });
+
 	auto pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Fall,
 	                                                                         { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
 
@@ -316,7 +315,7 @@ int main()
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::PlayerController>(Stage::Physics, 0);
 
-	//ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
+	ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
 
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
@@ -325,6 +324,7 @@ int main()
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
 		.RigidBodySimulation = pixelGridComputeRigidBody,
+		.RigidBodyRemove = pixelGridRigidBodyRemove,
 		.FallingSimulation = pixelGridComputeFall,
 		.AccumulateSimulation = pixelGridComputeAccumulate,
 		.MarchingSquareAlgorithm = marchingSquareShader,
@@ -359,7 +359,7 @@ int main()
 	b2PolygonShape boxShape{};
 	boxShape.SetAsBox(1000.0f, 1.0f);
 
-	uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, -10.0f, -10.0f } },
+	uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 10.0f, -10.0f } },
 	                                                                                                        { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
 	                                                                                                        { floppaSprite, 1.0f, 0 });
 
@@ -369,8 +369,8 @@ int main()
 		                                                                                                         { carstenSprite, 1.0f, 0 });
 	*/
 
-	boxShape.SetAsBox(0.5f, 0.5f);
-	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 0.0f, -10.0f } },
+	boxShape.SetAsBox(10.0f, 10.0f);
+	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 20.0f, -10.0f } },
 		{ defaultPhysicsMaterial, b2BodyType::b2_dynamicBody, { boxShape } },
 		{},
 		{ floppaSprite, 1.0f, 0 });

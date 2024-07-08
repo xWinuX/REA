@@ -30,14 +30,14 @@ namespace REA
 		{
 			ID              PixelID = 0;
 			uint8_t         Charge  = 0;
-			BitSet<uint8_t> Flags   = BitSet<uint8>();
+			BitSet<uint8_t> Flags   = BitSet<uint8_t>();
 
 			float Temperature = 0.0f;
 
 			struct
 			{
-				uint32_t RigidBodyID: 12;
-				uint32_t Index      : 20;
+				uint32_t RigidBodyID: 12 = 4095u;
+				uint32_t Index      : 20 = 0;
 			};
 		};
 

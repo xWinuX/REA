@@ -173,6 +173,7 @@ namespace REA::System
 	                                  uint8_t                stage)
 	{
 		EngineContext*       engineContext = contextProvider.GetContext<EngineContext>();
+		ECS::Registry&       ecsRegistry   = engineContext->Application->GetECSRegistry();
 		Rendering::Renderer* renderer      = contextProvider.GetContext<RenderingContext>()->Renderer;
 
 		Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
@@ -196,117 +197,140 @@ namespace REA::System
 
 			if (stage == Stage::GridComputeHalted)
 			{
-				if (_doStep)
+				Rendering::Vulkan::Buffer& buffer        = _shaders.MarchingSquareAlgorithm->GetProperties().GetBuffer(4);
+				SSBO_MarchingCubes*        marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4, _fif);
+
+				/*
+				LineSegment* lineSegment = reinterpret_cast<LineSegment*>(&marchingCubes->segments[0]);
+
+				BENCHMARK_BEGIN
+				std::sort(lineSegment,
+						  lineSegment + marchingCubes->numSegments,
+						  [](const LineSegment& lineSegment1, const LineSegment& lineSegment2)
+						  {
+							  return (lineSegment1.startPoint.x + lineSegment1.startPoint.y + lineSegment1.endPoint.x + lineSegment1.endPoint.y) > (
+										 lineSegment2.startPoint.x + lineSegment2.startPoint.y + lineSegment2.endPoint.x + lineSegment2.endPoint.y);
+						  });
+				BENCHMARK_END("sort lines")*/
+
+				std::vector<CDT::Edge> edges = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
+				for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+
+				std::span<CDT::V2d<float>> segmentsSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->segments[0]), marchingCubes->numSegments * 2);
+
+				MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(segmentsSpan, edges);
+
+				std::vector<MarchingSquareMesherUtils::Polyline> polylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(segmentsSpan, edges);
+
+				LOG("num polylines {0}", polylines.size());
+
+				_cclRange = { { 0, 0 }, { 0, 0 } };
+				for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 				{
-					Rendering::Vulkan::Buffer& buffer        = _shaders.MarchingSquareAlgorithm->GetProperties().GetBuffer(4);
-					SSBO_MarchingCubes*        marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4, _fif);
+					// Line
+					glm::vec2 start = { polyline.Vertices[0].x, polyline.Vertices[0].y };
+					glm::vec2 end   = { polyline.Vertices[1].x, polyline.Vertices[1].y };
 
-					/*
-					LineSegment* lineSegment = reinterpret_cast<LineSegment*>(&marchingCubes->segments[0]);
+					glm::vec2  direction = end - start;
+					glm::ivec2 left      = { -direction.y, direction.x };
 
-					BENCHMARK_BEGIN
-					std::sort(lineSegment,
-							  lineSegment + marchingCubes->numSegments,
-							  [](const LineSegment& lineSegment1, const LineSegment& lineSegment2)
-							  {
-								  return (lineSegment1.startPoint.x + lineSegment1.startPoint.y + lineSegment1.endPoint.x + lineSegment1.endPoint.y) > (
-											 lineSegment2.startPoint.x + lineSegment2.startPoint.y + lineSegment2.endPoint.x + lineSegment2.endPoint.y);
-							  });
-					BENCHMARK_END("sort lines")*/
+					glm::uvec2 seedPoint = glm::ivec2(glm::round(polyline.Vertices[0].x), glm::round(polyline.Vertices[0].y)) + left;
 
-					std::vector<CDT::Edge> edges = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
-					for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+					size_t index = (seedPoint.y * pixelGrid.Width + seedPoint.x);
 
-					std::span<CDT::V2d<float>> segmentsSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->segments[0]), marchingCubes->numSegments * 2);
-
-					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(segmentsSpan, edges);
-
-					std::vector<MarchingSquareMesherUtils::Polyline> polylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(segmentsSpan, edges);
-
-					_cclRange = { { 0, 0 }, { 0, 0 } };
-					for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
+					if (!pixelGrid.PixelState[index].Flags.Has(Pixel::Flags::Static) && pixelGrid.PixelState[index].RigidBodyID == 4095)
 					{
-						// Line
-						glm::vec2 start = { polyline.Vertices[0].x, polyline.Vertices[0].y };
-						glm::vec2 end   = { polyline.Vertices[1].x, polyline.Vertices[1].y };
+						// Calculate size needed
+						b2AABB     b2Aabb   = polyline.AABB;
+						b2Vec2     extends  = b2Aabb.GetExtents();
+						glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
+						size_t     dataSize = aabbSize.x * aabbSize.y;
 
-						glm::vec2  direction = end - start;
-						glm::ivec2 left      = { -direction.y, direction.x };
+						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
+						                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
 
-						glm::uvec2 seedPoint = glm::ivec2(glm::round(polyline.Vertices[0].x), glm::round(polyline.Vertices[0].y)) + left;
+						Component::Transform          transform;
+						Component::PixelGridRigidBody pixelGridRigidBody;
+						Component::Collider           collider;
 
-						size_t index = (seedPoint.y * pixelGrid.Width + seedPoint.x);
 
-						if (!pixelGrid.PixelState[index].Flags.Has(Pixel::Flags::Static))
+						// Setup Transform
+						b2Vec2 center      = b2Aabb.GetCenter();
+						transform.Position = { center.x, center.y, 0.0f };
+
+						// Setup PixelGridRigidBody
+						uint32_t shaderID = -1u;
+						if (_availableRigidBodyIDs.IsEmpty())
 						{
-							// Calculate size needed
-							b2AABB     b2Aabb   = polyline.AABB;
-							b2Vec2     extends  = b2Aabb.GetExtents();
-							glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
-							size_t     dataSize = aabbSize.x * aabbSize.y;
-
-							_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
-							                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
-
-							Component::Transform          transform;
-							Component::PixelGridRigidBody pixelGridRigidBody;
-							Component::Collider           collider;
-
-							// Setup Transform
-							b2Vec2 center      = b2Aabb.GetCenter();
-							transform.Position = { center.x, center.y, 0.0f };
-
-							// Setup PixelGridRigidBody
-							if (_availableRigidBodyIDs.IsEmpty()) { pixelGridRigidBody.ShaderID = _rigidBodyIDCounter++; }
-							else { pixelGridRigidBody.ShaderID = _availableRigidBodyIDs.Pop(); }
-							pixelGridRigidBody.AllocationID = _rigidBodyDataHeap.Allocate(dataSize);
-							pixelGridRigidBody.DataIndex    = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
-							pixelGridRigidBody.Size         = aabbSize;
-
-							// Write RigidbodyInfo to shader
-							simulationData->rigidBodies[pixelGridRigidBody.ShaderID].ID        = pixelGridRigidBody.ShaderID;
-							simulationData->rigidBodies[pixelGridRigidBody.ShaderID].DataIndex = pixelGridRigidBody.DataIndex;
-							simulationData->rigidBodies[pixelGridRigidBody.ShaderID].Size      = pixelGridRigidBody.Size;
-
-							// Setup Collider
-							collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
-							collider.InitialType     = b2_dynamicBody;
-
-							// Simplify line
-							polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
-
-							// Triangulate line
-							CDT::Triangulation<float> cdt = MarchingSquareMesherUtils::GenerateTriangulation(polyline);
-
-							// Create collider
-							if (!cdt.vertices.empty())
-							{
-								b2FixtureDef                 fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
-								std::vector<CDT::V2d<float>> v          = std::vector<CDT::V2d<float>>(3);
-
-								for (CDT::Triangle triangle: cdt.triangles)
-								{
-									v[0] = cdt.vertices[triangle.vertices[2]];
-									v[1] = cdt.vertices[triangle.vertices[1]];
-									v[2] = cdt.vertices[triangle.vertices[0]];
-
-									b2PolygonShape polygonShape;
-									polygonShape.Set(reinterpret_cast<const b2Vec2*>(v.data()), v.size());
-									fixtureDef.shape = &polygonShape;
-									collider.Body->CreateFixture(&fixtureDef);
-								}
-							}
-
-
-							b2Vec2     b2BottomLeftCorner = polyline.AABB.GetCenter() - extends;
-							glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
-
-							_newRigidBodies.push_back({ bottomLeftCorner, aabbSize, seedPoint, pixelGridRigidBody.ShaderID });
-
-							// Create entity
-							engineContext->Application->GetECSRegistry().CreateEntity<
-								Component::Transform, Component::PixelGridRigidBody, Component::Collider>(std::move(transform), std::move(pixelGridRigidBody), std::move(collider));
+							shaderID = _rigidBodyIDCounter++;
+							LOG("counter: {0}", _rigidBodyIDCounter);
+							_rigidBodyEntities.resize(_rigidBodyIDCounter);
 						}
+						else { shaderID = _availableRigidBodyIDs.Pop(); }
+
+						pixelGridRigidBody.ShaderID     = shaderID;
+						pixelGridRigidBody.AllocationID = _rigidBodyDataHeap.Allocate(dataSize);
+						pixelGridRigidBody.DataIndex    = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
+
+						LOG("allocation size {0}", _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Size);
+						LOG("allocation offset {0}", _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset);
+						pixelGridRigidBody.Size = aabbSize;
+
+						// Write RigidbodyInfo to shader
+						simulationData->rigidBodies[shaderID].ID        = shaderID;
+						simulationData->rigidBodies[shaderID].DataIndex = pixelGridRigidBody.DataIndex;
+						simulationData->rigidBodies[shaderID].Size      = pixelGridRigidBody.Size;
+
+						// Setup Collider
+						collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
+						collider.InitialType     = b2_dynamicBody;
+
+						// Simplify line
+						polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
+
+						// Triangulate line
+						CDT::Triangulation<float> cdt = MarchingSquareMesherUtils::GenerateTriangulation(polyline);
+
+
+						b2Vec2     b2Center           = polyline.AABB.GetCenter();
+						b2Vec2     b2BottomLeftCorner = b2Center - extends;
+						glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
+
+
+						// Create collider
+						if (!cdt.vertices.empty())
+						{
+							std::vector<CDT::V2d<float>> v = std::vector<CDT::V2d<float>>(3);
+
+							for (CDT::Triangle triangle: cdt.triangles)
+							{
+								v[0] = cdt.vertices[triangle.vertices[2]];
+								v[1] = cdt.vertices[triangle.vertices[1]];
+								v[2] = cdt.vertices[triangle.vertices[0]];
+
+								v[0] = { v[0].x - b2Center.x, v[0].y - b2Center.y };
+								v[1] = { v[1].x - b2Center.x, v[1].y - b2Center.y };
+								v[2] = { v[2].x - b2Center.x, v[2].y - b2Center.y };
+
+								LOG("collsion triangle");
+
+								b2PolygonShape polygonShape;
+								polygonShape.Set(reinterpret_cast<const b2Vec2*>(v.data()), v.size());
+
+								collider.InitialShapes.push_back(polygonShape);
+							}
+						}
+
+						_newRigidBodies.push_back({ bottomLeftCorner, aabbSize, seedPoint, shaderID });
+
+						// Create entity
+						uint64_t rigidBodyEntity = ecsRegistry.CreateEntity<Component::Transform, Component::PixelGridRigidBody, Component::Collider>(std::move(transform),
+							std::move(pixelGridRigidBody),
+							std::move(collider));
+
+						_rigidBodyEntities[shaderID] = { rigidBodyEntity, false };
+
+						LOG("Create entity");
 					}
 				}
 			}
@@ -416,10 +440,62 @@ namespace REA::System
 							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 3, &newRigidBody.RigidBodyID);
 							_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(newRigidBody.Size.x * newRigidBody.Size.y, 64u), 1, 1);
 						}
+
+						_newRigidBodies.clear();
+						_cclRange = { { 0, 0 }, { 0, 0 } };
+
+						CmdWaitForPreviousComputeShader();
 					}
 
+					// Rigidbody
+					_shaders.RigidBodyRemove->Update();
 
-					// Fall
+					_shaders.RigidBodyRemove->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
+
+					CmdWaitForPreviousComputeShader();
+
+					// Contour
+					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4, fif);
+					marchingCubes->numSegments        = 0;
+
+					_shaders.MarchingSquareAlgorithm->Update();
+
+					_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->width + simulationData->height) * 3) - 2, 64u), 1, 1);
+
+					CmdWaitForPreviousComputeShader();
+
+					_shaders.RigidBodySimulation->Update();
+
+					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					for (int shaderID = 0; shaderID < _rigidBodyEntities.size(); ++shaderID)
+					{
+						RigidbodyEntry& rigidBodyEntry = _rigidBodyEntities[shaderID];
+
+						if (rigidBodyEntry.EntityID == -1u || !rigidBodyEntry.Active)
+						{
+							rigidBodyEntry.Active = true;
+							continue;
+						}
+
+						Component::Transform&          transform          = ecsRegistry.GetComponent<Component::Transform>(rigidBodyEntry.EntityID);
+						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidBodyEntry.EntityID);
+
+						simulationData->rigidBodies[shaderID].Position = transform.Position;
+						simulationData->rigidBodies[shaderID].Rotation = transform.Rotation;
+
+						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &pixelGridRigidBody.ShaderID);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
+					}
+
+					CmdWaitForPreviousComputeShader();
+
+					// Fall and Flow
 					uint32_t   flowIteration         = 0;
 					uint32_t   timer                 = simulationData->timer;
 					glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
@@ -446,22 +522,12 @@ namespace REA::System
 
 					CmdWaitForPreviousComputeShader();
 
+					// Temperature and Charge
 					_shaders.AccumulateSimulation->Update();
 
 					_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
-
-					CmdWaitForPreviousComputeShader();
-
-					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4, fif);
-					marchingCubes->numSegments        = 0;
-
-					_shaders.MarchingSquareAlgorithm->Update();
-
-					_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->width + simulationData->height) * 3) - 2, 64u), 1, 1);
 
 					_commandBuffer.GetVkCommandBuffer().end();
 
@@ -475,6 +541,11 @@ namespace REA::System
 
 					_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
+					_shaders.IdleSimulation->Update();
+
+					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 					_commandBuffer.GetVkCommandBuffer().end();
 				}
@@ -487,41 +558,6 @@ namespace REA::System
 
 				_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 			}
-
-
-			/*if (stage == Stage::Rendering)
-			{
-				vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
-
-				DebugMaterial->GetShader()->BindGlobal(commandBuffer);
-
-				DebugMaterial->GetShader()->Update();
-
-				DebugMaterial->GetShader()->Bind(commandBuffer);
-
-				DebugMaterial->Update();
-
-				DebugMaterial->Bind(commandBuffer);
-
-
-
-				size_t j = 0;
-				uint16_t* index = reinterpret_cast<uint16_t*>(_vertexBuffer.GetMappedData<glm::vec2>() + _vertexBuffer.GetDataElementNum(0));
-				for (CDT::Triangle triangle: cdt.triangles)
-				{
-					index[j]     = triangle.vertices[0];
-					index[j + 1] = triangle.vertices[1];
-					index[j + 2] = triangle.vertices[2];
-					j += 3;
-				}
-
-				size_t offset = 0;
-				size_t size   = polylines.empty() ? 0 : polylines[0].Vertices.size();
-				commandBuffer.bindVertexBuffers(0, _vertexBuffer.GetVkBuffer(), offset);
-				//commandBuffer.bindIndexBuffer(_vertexBuffer.GetVkBuffer(), _vertexBuffer.GetSizeInBytes(0), vk::IndexType::eUint16);
-				//commandBuffer.drawIndexed(j, 1, 0, 0, 0);
-				commandBuffer.draw(size, 1, 0, 0);
-			}*/
 		}
 	}
 }

@@ -35,8 +35,8 @@ namespace REA
 				                                {
 					                                pixelCreateInfo.ID,
 					                                static_cast<uint8_t>(pixelCreateInfo.Data.BaseCharge),
-					                                BitSet<uint8>(Pixel::Flags::Static),
-					                                pixelCreateInfo.Data.BaseTemperature
+					                                BitSet<uint8>(),
+					                                pixelCreateInfo.Data.BaseTemperature,
 				                                }
 			                                });
 			pixelGrid.PixelColorLookup.push_back(pixelCreateInfo.Color);

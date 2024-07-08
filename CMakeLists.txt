@@ -104,6 +104,7 @@ set(SHADER_FILES
         "res/shaders/PhysicsDebug/PhysicsDebug.vert"
         "res/shaders/PhysicsDebug/PhysicsDebug.frag"
         "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp"
+        "res/shaders/PixelGridRigidBodyRemove/PixelGridRigidBodyRemove.comp"
         "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp"
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"

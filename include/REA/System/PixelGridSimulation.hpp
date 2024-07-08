@@ -17,6 +17,7 @@ namespace REA::System
 			{
 				AssetHandle<Rendering::Shader> IdleSimulation;
 				AssetHandle<Rendering::Shader> RigidBodySimulation;
+				AssetHandle<Rendering::Shader> RigidBodyRemove;
 				AssetHandle<Rendering::Shader> FallingSimulation;
 				AssetHandle<Rendering::Shader> AccumulateSimulation;
 				AssetHandle<Rendering::Shader> MarchingSquareAlgorithm;
@@ -48,17 +49,35 @@ namespace REA::System
 				float      Rotation  = 0;
 				uint32_t   DataIndex = -1u;
 				glm::uvec2 Size      = { 0, 0 };
+				uint32_t   _pad      = {};
+			};
+
+			struct Data
+			{
+				BitSet<uint32_t> Flags                        = BitSet<uint32_t>();
+				uint32_t         Density                      = 0;
+				uint32_t         SpreadingFactor              = 0;
+				float            TemperatureResistance        = 0;
+				float            BaseTemperature              = 0;
+				float            LowerTemperatureLimit        = -273.15f;
+				uint32_t         LowerTemperatureLimitPixelID = 0;
+				float            HighTemperatureLimit         = 1'000'000;
+				uint32_t         HighTemperatureLimitPixelID  = 0;
+				float            TemperatureConversion        = 0.0f;
+				uint32_t         BaseCharge                   = 0;
+				float            ChargeAbsorbtionChance       = 0.0f;
 			};
 
 			struct SSBO_SimulationData
 			{
-				float       deltaTime = 0.0f;
-				uint32_t    timer     = 0;
-				float       rng       = 0.0f;
-				uint32_t    width     = 0;
-				uint32_t    height    = 0;
-				Pixel::Data pixelLookup[1024];
-				RigidBody   rigidBodies[100];
+				float     deltaTime = 0.0f;
+				uint32_t  timer     = 0;
+				float     rng       = 0.0f;
+				uint32_t  width     = 0;
+				uint32_t  height    = 0;
+				Data      pixelLookup[1024];
+				uint32_t  _pad[2] = {};
+				RigidBody rigidBodies[100];
 			};
 
 			struct SSBO_MarchingCubes
@@ -67,31 +86,34 @@ namespace REA::System
 				alignas(8) glm::vec2 segments[100000];
 			};
 
-			struct RigidbodyEntries
-			{
-				uint64_t EntityID;
-				uint64_t MemoryID;
-			};
 
 			struct NewRigidBody
 			{
 				glm::uvec2 Offset;
 				glm::uvec2 Size;
 				glm::uvec2 SeedPoint;
-				uint32_t RigidBodyID;
+				uint32_t   RigidBodyID;
 			};
 
-			std::vector<NewRigidBody> _newRigidBodies {};
+			struct RigidbodyEntry
+			{
+				uint64_t EntityID = -1u;
+				bool     Active   = false;
+			};
+
+
+			std::vector<RigidbodyEntry> _rigidBodyEntities{};
+			std::vector<NewRigidBody>   _newRigidBodies{};
 
 			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1'000'000);
 
-			AvailableStack<uint32_t> _availableRigidBodyIDs = AvailableStack<uint32_t>(100);
+			AvailableStack<uint32_t> _availableRigidBodyIDs = AvailableStack<uint32_t>();
 
 			uint32_t _rigidBodyIDCounter = 0;
 
 			uint32_t _fif = 1;
 
-			float _lineSimplificationTolerance = 0.5f;
+			float _lineSimplificationTolerance = 50.0f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;

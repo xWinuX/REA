@@ -1,0 +1,22 @@
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    uint width = simulationData.width;
+    uint height = simulationData.height;
+
+    if (gl_GlobalInvocationID.x >= width * height) {
+        return;
+    }
+
+    Pixel pixel = readOnlyPixels[gl_GlobalInvocationID.x];
+    if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) != 4095)
+    {
+        rigidBodyData[getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20)] = pixel;
+        readOnlyPixels[gl_GlobalInvocationID.x].PixelID16_Charge8_Flags8 = 0;
+        readOnlyPixels[gl_GlobalInvocationID.x].RigidBodyID12_RigidBodyIndex20 = 0;
+    }
+}

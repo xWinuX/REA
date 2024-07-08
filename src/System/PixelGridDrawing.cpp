@@ -167,63 +167,6 @@ namespace REA::System
 			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
 
 
-			std::string direction;
-
-			switch (state.Pressure)
-			{
-				case 0:
-					direction = "None";
-				break;
-				case 1:
-					direction = "Right";
-				break;
-				case 2:
-					direction = "Up";
-				break;
-				case 3:
-					direction = "Right Up";
-				break;
-				case 4:
-					direction = "Left";
-				break;
-				case 5:
-					direction = "Right Left";
-				break;
-				case 6:
-					direction = "Up Left";
-				break;
-				case 7:
-					direction = "Right Up Left";
-				break;
-				case 8:
-					direction = "Down";
-				break;
-				case 9:
-					direction = "Right Down";
-				break;
-				case 10:
-					direction = "Up Down";
-				break;
-				case 11:
-					direction = "Right Up Down";
-				break;
-				case 12:
-					direction = "Left Down";
-				break;
-				case 13:
-					direction = "Right Left Down";
-				break;
-				case 14:
-					direction = "Up Left Down";
-				break;
-				case 15:
-					direction = "All";
-				break;
-			}
-
-			ImGui::Text(std::format("Direction: {0}", direction).c_str());
-
-
 			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{
 				Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;

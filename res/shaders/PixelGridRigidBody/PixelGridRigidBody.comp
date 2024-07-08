@@ -17,21 +17,26 @@ void main()
         return;
     }
 
-    // TODO: ROTATE
-    ivec2 rigidBodyBottomLeftCorner = ivec(round(rigidBody.Position - vec2(rigidBody.Size/2.0f)));
+    vec2 center = vec2(rigidBody.Size/2.0f);
+    ivec2 rigidBodyBottomLeftCorner = ivec2(round(rigidBody.Position - center));
 
     if (rigidBodyBottomLeftCorner.x < 0 || rigidBodyBottomLeftCorner.y < 0) {
         return;
     }
 
+    float angle = radians(rigidBody.Rotation);
+    mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+
     uint localX = (gl_GlobalInvocationID.x % width);
     uint localY = (gl_GlobalInvocationID.x / width);
 
-    uint globalX = uint(rigidBodyBottomLeftCorner.x) + localX;
-    uint globalY = uint(rigidBodyBottomLeftCorner.y) + localY;
+    vec2 position = rotationMatrix * (vec2(localX, localY) - center);
+
+    uint globalX = uint(rigidBodyBottomLeftCorner.x + round(center + position.x));
+    uint globalY = uint(rigidBodyBottomLeftCorner.y + round(center + position.y));
 
     uint globalIndex = globalY * simulationData.width + globalX;
 
     // TODO: Check for overlap with other pixels
-    pixels[index] = rigidBodyData[rigidBody.DataIndex + gl_GlobalInvocationID.x];
+    readOnlyPixels[globalIndex] = rigidBodyData[rigidBody.DataIndex + gl_GlobalInvocationID.x];
 }

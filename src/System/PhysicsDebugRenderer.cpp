@@ -40,7 +40,7 @@ namespace REA::System
 
 	void PhysicsDebugRenderer::DrawPolygon(const b2Vec2* vertices, int32 vertexCount, const b2Color& color)
 	{
-	/*	LOG("Draw poly");
+		/*LOG("Draw poly");
 		for (int i = 0; i < vertexCount; ++i)
 		{
 			b2Vec2 vertex               = vertices[i];
@@ -75,7 +75,10 @@ namespace REA::System
 
 	void PhysicsDebugRenderer::DrawSolidCircle(const b2Vec2& center, float radius, const b2Vec2& axis, const b2Color& color) { LOG("Draw circlesolid"); }
 
-	void PhysicsDebugRenderer::DrawSegment(const b2Vec2& p1, const b2Vec2& p2, const b2Color& color) { LOG("Draw segment"); }
+	void PhysicsDebugRenderer::DrawSegment(const b2Vec2& p1, const b2Vec2& p2, const b2Color& color)
+	{
+		LOG("Draw segment");
+	}
 
 	void PhysicsDebugRenderer::DrawTransform(const b2Transform& xf) { LOG("Draw transform"); }
 

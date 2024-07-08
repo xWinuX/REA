@@ -19,6 +19,7 @@ namespace REA
 			MarchingSquare,
 			Comp_PixelGrid_Idle,
 			Comp_PixelGrid_RigidBody,
+			Comp_PixelGrid_RigidBodyRemove,
 			Comp_PixelGrid_Fall,
 			Comp_PixelGrid_Accumulate,
 			Comp_MarchingSquare,

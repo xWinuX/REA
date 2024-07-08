@@ -10,16 +10,16 @@ layout(std430, set = 1, binding = 0) readonly buffer c_s_si_SimulationData {
     RigidBody rigidBodies[NumRigidbodies];
 } simulationData;
 
-layout(std430, set = 1, binding = 1) readonly buffer na_s_PixelSSBOIn {
+layout(std430, set = 1, binding = 1)  buffer na_s_PixelSSBOIn {
     Pixel readOnlyPixels[NumPixels];
 };
 
 
-layout(std430, set = 1, binding = 2) writeonly buffer s_Pixels {
+layout(std430, set = 1, binding = 2)  buffer s_Pixels {
     Pixel pixels[NumPixels];
 };
 
 
-layout(std430, set = 1, binding = 3) writeonly buffer s_si_dl_RigidBodyData {
+layout(std430, set = 1, binding = 3)  buffer s_si_dl_RigidBodyData {
     Pixel rigidBodyData[NumPixels];
 };

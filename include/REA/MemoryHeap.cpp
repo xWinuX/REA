@@ -15,8 +15,9 @@ namespace REA
 			if (it->second >= size)
 			{
 				size_t offset = it->first;
+				size_t blockSize = it->second; // Store the value before erasing the iterator
 				_freeBlocks.erase(it);
-				if (it->second > size) { _freeBlocks.insert({ offset + size, it->second - size }); }
+				if (blockSize > size) { _freeBlocks.insert({ offset + size, blockSize - size }); }
 				_allocations[_nextId] = { offset, size };
 				return _nextId++;
 			}

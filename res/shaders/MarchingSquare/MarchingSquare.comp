@@ -229,7 +229,6 @@ void main()
     vec2 previousPosition = vec2(1.0f);
     uint previousCaseIndex = 16;
 
-
     for (int stepIndex = 0; stepIndex < numIterations; stepIndex++)
     {
         uint x = uint(position.x + stepDirection.x * stepIndex);
@@ -311,7 +310,6 @@ void main()
                 {
                     if (edges[i] != -1 && edges[i+1] != -1)
                     {
-                        // swap start and previous position for different results somehow???
                         vec2 start;
                         vec2 end;
                         uint connectionCase = connectionLookup[previousCaseIndex];
