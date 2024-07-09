@@ -2,7 +2,11 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
-layout(std430, set = 1, binding = 4) writeonly buffer s_c_MarchingSquares {
+layout(push_constant) uniform PushConstant {
+    uint ReadIndex;
+};
+
+layout(std430, set = 1, binding = 4) writeonly buffer s_c_si_MarchingSquares {
     uint numSegments;
     vec2 segments[100000];
 };
@@ -248,10 +252,10 @@ void main()
         uint bottomLeftIndex = bottomYCalc + x;
         uint bottomRightIndex = bottomYCalc + rightX;
 
-        Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
-        Pixel topRightPixel = readOnlyPixels[topRightIndex];
-        Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
-        Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
+        Pixel topLeftPixel = pixels[topLeftIndex + ReadIndex];
+        Pixel topRightPixel = pixels[topRightIndex + ReadIndex];
+        Pixel bottomLeftPixel = pixels[bottomLeftIndex + ReadIndex];
+        Pixel bottomRightPixel = pixels[bottomRightIndex + ReadIndex];
 
         PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
         PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
@@ -315,13 +319,13 @@ void main()
                         uint connectionCase = connectionLookup[previousCaseIndex];
                         if (connectionCase == 1)
                         {
-                            start = previousPosition + edgeOffsets[edges[i]];
-                            end = startPosition + edgeOffsets[edges[i+1]];
+                            start = previousPosition + edgeOffsets[edges[i]] + vec2(0.5, -0.5);
+                            end = startPosition + edgeOffsets[edges[i+1]] + vec2(0.5, -0.5);
                         }
                         else if (connectionCase == 0)
                         {
-                            start = startPosition + edgeOffsets[edges[i]];
-                            end = previousPosition + edgeOffsets[edges[i+1]];
+                            start = startPosition + edgeOffsets[edges[i]] + vec2(0.5, -0.5);
+                            end = previousPosition + edgeOffsets[edges[i+1]] + vec2(0.5, -0.5);
                         }
                         else
                         {

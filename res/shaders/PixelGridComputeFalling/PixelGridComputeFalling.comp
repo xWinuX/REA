@@ -7,6 +7,8 @@
 //const Pixel solidPixel = { 0xFF01F000 };
 
 layout(push_constant) uniform PushConstant {
+    uint readIndex;
+    uint writeIndex;
     uint flowIteration;
     uvec2 margolusOffset;
 };
@@ -45,10 +47,10 @@ void main()
     uint bottomRightIndex = (bottomRightY * width) + bottomRightX;
 
     // Read pixels
-    Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
-    Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
-    Pixel topRightPixel = readOnlyPixels[topRightIndex];
-    Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
+    Pixel topLeftPixel = pixels[topLeftIndex + readIndex];
+    Pixel bottomLeftPixel = pixels[bottomLeftIndex + readIndex];
+    Pixel topRightPixel = pixels[topRightIndex + readIndex];
+    Pixel bottomRightPixel = pixels[bottomRightIndex + readIndex];
 
     PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
     PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
@@ -56,10 +58,10 @@ void main()
     PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
     // Write pixels
-    pixels[topLeftIndex] = topLeftPixel;
-    pixels[bottomLeftIndex] = bottomLeftPixel;
-    pixels[topRightIndex] = topRightPixel;
-    pixels[bottomRightIndex] = bottomRightPixel;
+    pixels[topLeftIndex + writeIndex] = topLeftPixel;
+    pixels[bottomLeftIndex + writeIndex] = bottomLeftPixel;
+    pixels[topRightIndex + writeIndex] = topRightPixel;
+    pixels[bottomRightIndex + writeIndex] = bottomRightPixel;
 
     float topLeftTemperature = topLeftPixel.Temperature;
     float topRightTemperature = topRightPixel.Temperature;
@@ -97,8 +99,8 @@ void main()
         {
             if (topLeftDensity > bottomLeftDensity)
             {
-                pixels[topLeftIndex] = bottomLeftPixel;
-                pixels[bottomLeftIndex] = topLeftPixel;
+                pixels[topLeftIndex + writeIndex] = bottomLeftPixel;
+                pixels[bottomLeftIndex + writeIndex] = topLeftPixel;
 
                 Pixel tmpPixel = topLeftPixel;
                 PixelData tmpPixelData = topLeftPixelData;
@@ -123,8 +125,8 @@ void main()
         {
             if (topRightDensity > bottomRightDensity)
             {
-                pixels[topRightIndex] = bottomRightPixel;
-                pixels[bottomRightIndex] = topRightPixel;
+                pixels[topRightIndex + writeIndex] = bottomRightPixel;
+                pixels[bottomRightIndex + writeIndex] = topRightPixel;
 
                 Pixel tmpPixel = topRightPixel;
                 PixelData tmpPixelData = topRightPixelData;
@@ -148,8 +150,8 @@ void main()
         {
             if (topLeftGravity && bottomRightGravity && (topLeftCanFlow || !bottomRightPixelSolid) && topLeftDensity > bottomRightDensity)
             {
-                pixels[topLeftIndex] = bottomRightPixel;
-                pixels[bottomRightIndex] = topLeftPixel;
+                pixels[topLeftIndex + writeIndex] = bottomRightPixel;
+                pixels[bottomRightIndex + writeIndex] = topLeftPixel;
 
                 Pixel tmpPixel = topLeftPixel;
                 PixelData tmpPixelData = topLeftPixelData;
@@ -165,8 +167,8 @@ void main()
             }
             else if (topRightGravity && bottomLeftGravity && (topRightCanFlow || !bottomLeftPixelSolid) &&  topRightDensity > bottomLeftDensity)
             {
-                pixels[topRightIndex] = bottomLeftPixel;
-                pixels[bottomLeftIndex] = topRightPixel;
+                pixels[topRightIndex + writeIndex] = bottomLeftPixel;
+                pixels[bottomLeftIndex + writeIndex] = topRightPixel;
 
                 Pixel tmpPixel = topRightPixel;
                 PixelData tmpPixelData = topRightPixelData;
@@ -205,8 +207,8 @@ void main()
     )
     )
     {
-        pixels[topLeftIndex] = topRightPixel;
-        pixels[topRightIndex] = topLeftPixel;
+        pixels[topLeftIndex + writeIndex] = topRightPixel;
+        pixels[topRightIndex + writeIndex] = topLeftPixel;
 
         bool tmpSolid = topLeftPixelSolid;
         float tmpDensity = topLeftDensity;
@@ -228,8 +230,8 @@ void main()
     )
     )
     {
-        pixels[bottomLeftIndex] = bottomRightPixel;
-        pixels[bottomRightIndex] = bottomLeftPixel;
+        pixels[bottomLeftIndex + writeIndex] = bottomRightPixel;
+        pixels[bottomRightIndex + writeIndex] = bottomLeftPixel;
     }
     //}
 }

@@ -2,6 +2,10 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
+layout(push_constant) uniform PushConstant {
+    uint readIndex;
+};
+
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
@@ -12,11 +16,13 @@ void main()
         return;
     }
 
-    Pixel pixel = readOnlyPixels[gl_GlobalInvocationID.x];
+    uint index = gl_GlobalInvocationID.x + readIndex;
+
+    Pixel pixel = pixels[index];
     if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) != 4095)
     {
         rigidBodyData[getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20)] = pixel;
-        readOnlyPixels[gl_GlobalInvocationID.x].PixelID16_Charge8_Flags8 = 0;
-        readOnlyPixels[gl_GlobalInvocationID.x].RigidBodyID12_RigidBodyIndex20 = 0;
+        pixels[index].PixelID16_Charge8_Flags8 = 0;
+        pixels[index].RigidBodyID12_RigidBodyIndex20 = 0xFFF;
     }
 }

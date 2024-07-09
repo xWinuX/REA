@@ -4,6 +4,7 @@
 #include "../CCLShared.glsl"
 
 layout(push_constant) uniform PushConstant {
+    uint ReadIndex;
     uvec2 Offset;
     uvec2 Size;
 };
@@ -17,12 +18,12 @@ void main()
 
     uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
 
-    PixelData pixelData = simulationData.pixelLookup[readOnlyPixels[index].PixelID16_Charge8_Flags8 & 0xFFFFu];
+    PixelData pixelData = simulationData.pixelLookup[pixels[index + ReadIndex].PixelID16_Charge8_Flags8 & 0xFFFFu];
 
     if (bitsetHas(pixelData.Flags, Solid)) {
         labels[index] = int(gl_GlobalInvocationID.x);
     }
     else {
-        labels[index] = 0;
+        labels[index] = -1;
     }
 }

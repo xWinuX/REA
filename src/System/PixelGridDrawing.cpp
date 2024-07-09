@@ -165,6 +165,7 @@ namespace REA::System
 			ImGui::Text(std::format("Name: {0}", pixelGrid.PixelLookup[state.PixelID].Name).c_str());
 			ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
 			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
+			ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());
 
 
 			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)

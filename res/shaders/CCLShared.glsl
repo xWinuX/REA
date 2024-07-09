@@ -4,8 +4,8 @@ layout(set = 1, binding = 4) buffer s_dl_Labels {
 
 uint getGlobalIndex(uint index, uint globalWidth, uvec2 localSize, uvec2 globalOffset)
 {
-    uint x = globalOffset.x + (gl_GlobalInvocationID.x % localSize.x);
-    uint y = globalOffset.y + (gl_GlobalInvocationID.x / localSize.x);
+    uint x = globalOffset.x + (index % localSize.x);
+    uint y = globalOffset.y + (index / localSize.x);
 
     return y * globalWidth + x;
 }

@@ -198,7 +198,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
+		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
 	                                      });
 
 	application.GetWindow().SetSize(1000, 1000);
@@ -230,7 +230,7 @@ int main()
 	                                                                                                                 });
 
 	pipelineCreateInfo.AssemblyStateCreateInfo.primitiveRestartEnable = vk::False;
-	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineStrip;
+	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineList;
 	AssetHandle<Rendering::Shader> marchingSquareDebugShader          = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::MarchingSquare,
 	                                                                                                                 {
 		                                                                                                                 {
@@ -359,7 +359,7 @@ int main()
 	b2PolygonShape boxShape{};
 	boxShape.SetAsBox(1000.0f, 1.0f);
 
-	uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 10.0f, -10.0f } },
+	uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 100.0f, -10.0f } },
 	                                                                                                        { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
 	                                                                                                        { floppaSprite, 1.0f, 0 });
 
@@ -370,7 +370,7 @@ int main()
 	*/
 
 	boxShape.SetAsBox(10.0f, 10.0f);
-	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 20.0f, -10.0f } },
+	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 200.0f, -10.0f } },
 		{ defaultPhysicsMaterial, b2BodyType::b2_dynamicBody, { boxShape } },
 		{},
 		{ floppaSprite, 1.0f, 0 });

@@ -61,8 +61,6 @@ namespace REA::System
 
 			pixelGrid.PixelState = pixels;
 
-			//for (int i = 0; i < pixelGrid.ReadOnlyPixels.size(); ++i) { pixels[i].PixelID = pixelGrid.ReadOnlyPixels[i]; }
-
 			_material->GetShader()->BindGlobal(commandBuffer);
 
 			_material->GetShader()->Update();

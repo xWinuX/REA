@@ -12,13 +12,9 @@ layout(push_constant) uniform PushConstant {
 };
 
 
-layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
     uint x = gl_GlobalInvocationID.x;
-
-    if (x > Size.x) {
-        return;
-    }
 
     for (uint y = 1; y < Size.y; ++y)
     {

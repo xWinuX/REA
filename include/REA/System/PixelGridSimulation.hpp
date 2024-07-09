@@ -111,7 +111,7 @@ namespace REA::System
 
 			uint32_t _rigidBodyIDCounter = 0;
 
-			uint32_t _fif = 1;
+			uint32_t _fif = 0;
 
 			float _lineSimplificationTolerance = 50.0f;
 
@@ -125,11 +125,18 @@ namespace REA::System
 			bool _paused = true;
 			bool _doStep = false;
 
+			uint32_t _readIndex  = 0;
+			uint32_t _writeIndex = 1'000'000;
+
 			bool _firstUpdate = true;
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
 
 			b2AABB _cclRange;
+
+			size_t _numLineSegements;
+
+			void SwapPixelBuffer();
 
 			void CmdWaitForPreviousComputeShader();
 

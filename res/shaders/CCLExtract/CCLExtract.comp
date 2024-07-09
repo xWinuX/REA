@@ -4,6 +4,7 @@
 #include "../CCLShared.glsl"
 
 layout(push_constant) uniform PushConstant {
+    uint ReadIndex;
     uvec2 Offset;
     uvec2 Size;
     uvec2 SeedPoint;
@@ -21,19 +22,10 @@ void main()
 
     uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
 
-    PixelData pixelData = simulationData.pixelLookup[readOnlyPixels[index].PixelID16_Charge8_Flags8 & 0xFFFFu];
-
     if (labels[index] == correctLabel)
     {
-        Pixel pixel = readOnlyPixels[index];
-
         uint localIndex = simulationData.rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x;
 
-        pixel.RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
-
-        rigidBodyData[localIndex] = pixel;
-
-        readOnlyPixels[index].PixelID16_Charge8_Flags8 = 0;
-        readOnlyPixels[index].RigidBodyID12_RigidBodyIndex20 = 0;
+        pixels[index + ReadIndex].RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
     }
 }

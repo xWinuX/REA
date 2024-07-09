@@ -73,23 +73,11 @@ namespace REA::System
 
 		_commandBuffer.GetVkCommandBufferRaw().SetFramePtr(&_fif);
 
-		Rendering::Vulkan::Buffer& writeBuffer = properties.GetBuffer(2);
-
-		for (int i = 0; i < device->MAX_FRAMES_IN_FLIGHT; ++i)
-		{
-			uint32_t fifIndex    = (i + 1) % device->MAX_FRAMES_IN_FLIGHT;
-			auto&    bufferInfos = properties.GetBufferInfo(2, fifIndex);
-			properties.SetBuffer(1, writeBuffer, bufferInfos.offset, bufferInfos.range, i);
-		}
-
-		//	properties.OverrideBufferPtrs(1, writeBuffer);
-		_shaders.IdleSimulation->Update();
-		_shaders.AccumulateSimulation->Update();
-		_shaders.AccumulateSimulation->Update();
-
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
 	}
+
+	void PixelGridSimulation::SwapPixelBuffer() { std::swap(_readIndex, _writeIndex); }
 
 	void PixelGridSimulation::CmdWaitForPreviousComputeShader()
 	{
@@ -192,29 +180,22 @@ namespace REA::System
 				device.GetVkDevice().resetFences(_computeFence);
 				//				BENCHMARK_END("compute fence")
 
-				pixelGrid.PixelState = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(1, _fif)->Pixels;
+				pixelGrid.PixelState = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2)->Pixels[_readIndex];
 			}
 
 			if (stage == Stage::GridComputeHalted)
 			{
-				Rendering::Vulkan::Buffer& buffer        = _shaders.MarchingSquareAlgorithm->GetProperties().GetBuffer(4);
-				SSBO_MarchingCubes*        marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4, _fif);
-
-				/*
-				LineSegment* lineSegment = reinterpret_cast<LineSegment*>(&marchingCubes->segments[0]);
-
-				BENCHMARK_BEGIN
-				std::sort(lineSegment,
-						  lineSegment + marchingCubes->numSegments,
-						  [](const LineSegment& lineSegment1, const LineSegment& lineSegment2)
-						  {
-							  return (lineSegment1.startPoint.x + lineSegment1.startPoint.y + lineSegment1.endPoint.x + lineSegment1.endPoint.y) > (
-										 lineSegment2.startPoint.x + lineSegment2.startPoint.y + lineSegment2.endPoint.x + lineSegment2.endPoint.y);
-						  });
-				BENCHMARK_END("sort lines")*/
+				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4);
 
 				std::vector<CDT::Edge> edges = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
 				for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+
+				size_t     vi = 0;
+				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
+
+				for (vi = 0; vi < marchingCubes->numSegments * 2; ++vi) { v[vi] = { marchingCubes->segments[vi].x, marchingCubes->segments[vi].y }; }
+
+				_numLineSegements = vi;
 
 				std::span<CDT::V2d<float>> segmentsSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->segments[0]), marchingCubes->numSegments * 2);
 
@@ -222,11 +203,11 @@ namespace REA::System
 
 				std::vector<MarchingSquareMesherUtils::Polyline> polylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(segmentsSpan, edges);
 
-				LOG("num polylines {0}", polylines.size());
-
 				_cclRange = { { 0, 0 }, { 0, 0 } };
 				for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 				{
+					if (polyline.Vertices.size() < 2) { continue; }
+
 					// Line
 					glm::vec2 start = { polyline.Vertices[0].x, polyline.Vertices[0].y };
 					glm::vec2 end   = { polyline.Vertices[1].x, polyline.Vertices[1].y };
@@ -340,11 +321,8 @@ namespace REA::System
 				size_t numPixels     = pixelGrid.Width * pixelGrid.Height;
 				size_t numWorkgroups = CeilDivide(numPixels, 64ull);
 
-				uint32_t fif = _fif;
-
 				simulationData->width  = pixelGrid.Width;
 				simulationData->height = pixelGrid.Height;
-
 
 				if (_firstUpdate)
 				{
@@ -364,23 +342,64 @@ namespace REA::System
 
 					_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
 
+					// Fall and Flow
+					uint32_t   flowIteration         = 0;
+					uint32_t   timer                 = simulationData->timer;
+					glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
+					size_t     numWorkgroupsMorgulus = CeilDivide(CeilDivide(numPixels, 4ull), 64ull);
+
+					_shaders.FallingSimulation->Update();
+
+					for (int i = 0; i < 8; ++i)
+					{
+						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+
+						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &_writeIndex);
+						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &flowIteration);
+						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 3, &margolusOffset);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
+
+						SwapPixelBuffer();
+						margolusOffset = GetMargolusOffset(timer + i);
+						flowIteration++;
+
+						CmdWaitForPreviousComputeShader();
+					}
+
+					// Temperature and Charge
+					_shaders.AccumulateSimulation->Update();
+
+					_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+
+					_shaders.AccumulateSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+					_shaders.AccumulateSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &_writeIndex);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
+
+					SwapPixelBuffer();
+
+					CmdWaitForPreviousComputeShader();
+
 					// Do CCL if there are rigidbodies to discover
 					if (_cclRange.GetPerimeter() > 0.0f)
 					{
 						b2Vec2 extends            = _cclRange.GetExtents();
 						b2Vec2 b2BottomLeftCorner = _cclRange.GetCenter() - extends;
 
-						glm::uvec2 offset = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
-						glm::uvec2 size   = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
+						glm::uvec2 offset = { 0, 0 };
+						glm::uvec2 size   = {  1000, 1000 };
 
 						uint32_t numWorkGroupsForSinglePixelOps = CeilDivide(size.x * size.y, 64u);
 
 						_shaders.CCLInitialize->Update();
 
-						_shaders.CCLInitialize->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+						_shaders.CCLInitialize->Bind(_commandBuffer.GetVkCommandBuffer());
 
-						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
-						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
+						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &offset);
+						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &size);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkGroupsForSinglePixelOps, 1, 1);
 
@@ -388,12 +407,15 @@ namespace REA::System
 
 						_shaders.CCLColumn->Update();
 
-						_shaders.CCLColumn->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+						_shaders.CCLColumn->Bind(_commandBuffer.GetVkCommandBuffer());
 
 						_shaders.CCLColumn->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
 						_shaders.CCLColumn->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
 
-						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(size.x, 64u), 1, 1);
+						_commandBuffer.GetVkCommandBuffer().dispatch(size.x, 1, 1);
+
+						CmdWaitForPreviousComputeShader();
+
 
 						uint32_t stepIndex = 0;
 						uint32_t n         = size.x >> 1;
@@ -403,13 +425,13 @@ namespace REA::System
 
 							_shaders.CCLMerge->Update();
 
-							_shaders.CCLMerge->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+							_shaders.CCLMerge->Bind(_commandBuffer.GetVkCommandBuffer());
 
 							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
 							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
 							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &stepIndex);
 
-							_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(n, 64u), 1, 1);
+							_commandBuffer.GetVkCommandBuffer().dispatch(n, 1, 1);
 
 							n = n >> 1;
 							stepIndex++;
@@ -419,25 +441,26 @@ namespace REA::System
 
 						_shaders.CCLRelabel->Update();
 
-						_shaders.CCLRelabel->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+						_shaders.CCLRelabel->Bind(_commandBuffer.GetVkCommandBuffer());
 
 						_shaders.CCLRelabel->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
 						_shaders.CCLRelabel->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
 
-						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkGroupsForSinglePixelOps, 1, 1);
+						_commandBuffer.GetVkCommandBuffer().dispatch(size.x * size.y, 1, 1);
 
 						CmdWaitForPreviousComputeShader();
 
 						_shaders.CCLExtract->Update();
 
-						_shaders.CCLExtract->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+						_shaders.CCLExtract->Bind(_commandBuffer.GetVkCommandBuffer());
 
 						for (NewRigidBody newRigidBody: _newRigidBodies)
 						{
-							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &newRigidBody.Offset);
-							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &newRigidBody.Size);
-							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &newRigidBody.SeedPoint);
-							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 3, &newRigidBody.RigidBodyID);
+							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &newRigidBody.Offset);
+							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &newRigidBody.Size);
+							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 3, &newRigidBody.SeedPoint);
+							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 4, &newRigidBody.RigidBodyID);
 							_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(newRigidBody.Size.x * newRigidBody.Size.y, 64u), 1, 1);
 						}
 
@@ -447,30 +470,37 @@ namespace REA::System
 						CmdWaitForPreviousComputeShader();
 					}
 
-					// Rigidbody
+					// Rigidbody Remove
 					_shaders.RigidBodyRemove->Update();
 
-					_shaders.RigidBodyRemove->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+					_shaders.RigidBodyRemove->Bind(_commandBuffer.GetVkCommandBuffer());
+
+					_shaders.RigidBodyRemove->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 					CmdWaitForPreviousComputeShader();
 
 					// Contour
-					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4, fif);
+					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4);
 					marchingCubes->numSegments        = 0;
 
 					_shaders.MarchingSquareAlgorithm->Update();
 
-					_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+					_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer());
+
+					_shaders.MarchingSquareAlgorithm->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->width + simulationData->height) * 3) - 2, 64u), 1, 1);
 
 					CmdWaitForPreviousComputeShader();
 
+					// Rigidbody
 					_shaders.RigidBodySimulation->Update();
 
-					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+
+					_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					for (int shaderID = 0; shaderID < _rigidBodyEntities.size(); ++shaderID)
 					{
@@ -488,46 +518,10 @@ namespace REA::System
 						simulationData->rigidBodies[shaderID].Position = transform.Position;
 						simulationData->rigidBodies[shaderID].Rotation = transform.Rotation;
 
-						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &pixelGridRigidBody.ShaderID);
+						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderID);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
 					}
-
-					CmdWaitForPreviousComputeShader();
-
-					// Fall and Flow
-					uint32_t   flowIteration         = 0;
-					uint32_t   timer                 = simulationData->timer;
-					glm::uvec2 margolusOffset        = GetMargolusOffset(timer);
-					size_t     numWorkgroupsMorgulus = CeilDivide(CeilDivide(numPixels, 4ull), 64ull);
-
-					_shaders.FallingSimulation->Update();
-
-					for (int i = 0; i < 8; ++i)
-					{
-						CmdWaitForPreviousComputeShader();
-
-						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
-						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
-
-						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
-
-						fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
-
-						margolusOffset = GetMargolusOffset(timer + i);
-						flowIteration++;
-					}
-
-					CmdWaitForPreviousComputeShader();
-
-					// Temperature and Charge
-					_shaders.AccumulateSimulation->Update();
-
-					_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 					_commandBuffer.GetVkCommandBuffer().end();
 
@@ -543,10 +537,24 @@ namespace REA::System
 
 					_shaders.IdleSimulation->Update();
 
-					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+
+					_shaders.IdleSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
+					/*CmdWaitForPreviousComputeShader();
+
+					// Contour
+					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4);
+					marchingCubes->numSegments        = 0;
+
+					_shaders.MarchingSquareAlgorithm->Update();
+
+					_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->width + simulationData->height) * 3) - 2, 64u), 1, 1);
+*/
 					_commandBuffer.GetVkCommandBuffer().end();
 				}
 
@@ -556,7 +564,39 @@ namespace REA::System
 
 				computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
 
-				_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+				_fif = (_fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+			}
+
+			if (stage == Stage::Rendering)
+			{
+				vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
+
+				DebugMaterial->GetShader()->BindGlobal(commandBuffer);
+
+				DebugMaterial->GetShader()->Update();
+
+				DebugMaterial->GetShader()->Bind(commandBuffer);
+
+				DebugMaterial->Update();
+
+				DebugMaterial->Bind(commandBuffer);
+
+
+				/*size_t    j     = 0;
+				uint16_t* index = reinterpret_cast<uint16_t*>(_vertexBuffer.GetMappedData<glm::vec2>() + _vertexBuffer.GetDataElementNum(0));
+				for (CDT::Triangle triangle: cdt.triangles)
+				{
+					index[j]     = triangle.vertices[0];
+					index[j + 1] = triangle.vertices[1];
+					index[j + 2] = triangle.vertices[2];
+					j += 3;
+				}*/
+
+				size_t offset = 0;
+				commandBuffer.bindVertexBuffers(0, _vertexBuffer.GetVkBuffer(), offset);
+				//commandBuffer.bindIndexBuffer(_vertexBuffer.GetVkBuffer(), _vertexBuffer.GetSizeInBytes(0), vk::IndexType::eUint16);
+				//commandBuffer.drawIndexed(j, 1, 0, 0, 0);
+				commandBuffer.draw(_numLineSegements, 1, 0, 0);
 			}
 		}
 	}

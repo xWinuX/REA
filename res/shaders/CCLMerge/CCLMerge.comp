@@ -38,14 +38,10 @@ void merge(uint x0) {
     }
 }
 
-layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
     uint id = gl_GlobalInvocationID.x;
-
-    if (id > (Size.x >> (StepIndex + 1))) {
-        return;
-    }
 
     uint steps = Size.x / (Size.x >> (StepIndex + 1));
 

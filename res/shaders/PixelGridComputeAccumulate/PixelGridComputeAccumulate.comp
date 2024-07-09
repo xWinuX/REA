@@ -2,6 +2,12 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
+
+layout(push_constant) uniform PushConstant {
+    uint readIndex;
+    uint writeIndex;
+};
+
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
@@ -39,17 +45,17 @@ void main()
     uint bottomRightIndex = bottomYCalc + rightX;
 
     // Read pixels
-    Pixel topLeftPixel = readOnlyPixels[topLeftIndex];
-    Pixel topCenterPixel = readOnlyPixels[topCenterIndex];
-    Pixel topRightPixel = readOnlyPixels[topRightIndex];
+    Pixel topLeftPixel = pixels[topLeftIndex + readIndex];
+    Pixel topCenterPixel = pixels[topCenterIndex + readIndex];
+    Pixel topRightPixel = pixels[topRightIndex + readIndex];
 
-    Pixel middleLeftPixel = readOnlyPixels[middleLeftIndex];
-    Pixel middleCenterPixel = readOnlyPixels[middleCenterIndex];
-    Pixel middleRightPixel = readOnlyPixels[middleRightIndex];
+    Pixel middleLeftPixel = pixels[middleLeftIndex + readIndex];
+    Pixel middleCenterPixel = pixels[middleCenterIndex + readIndex];
+    Pixel middleRightPixel = pixels[middleRightIndex + readIndex];
 
-    Pixel bottomLeftPixel = readOnlyPixels[bottomLeftIndex];
-    Pixel bottomCenterPixel = readOnlyPixels[bottomCenterIndex];
-    Pixel bottomRightPixel = readOnlyPixels[bottomRightIndex];
+    Pixel bottomLeftPixel = pixels[bottomLeftIndex + readIndex];
+    Pixel bottomCenterPixel = pixels[bottomCenterIndex + readIndex];
+    Pixel bottomRightPixel = pixels[bottomRightIndex + readIndex];
 
     uint pixelID = middleCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu;
 
@@ -114,5 +120,6 @@ void main()
     middleCenterPixel.Temperature = temperature;
 
     // Write pixels
-    pixels[middleCenterIndex] = middleCenterPixel;
+    pixels[middleCenterIndex + writeIndex] = middleCenterPixel;
+    readOnlyPixels[middleCenterIndex] = middleCenterPixel;
 }
