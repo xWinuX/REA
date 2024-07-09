@@ -16,6 +16,11 @@ layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     vec4 colorLookup[256];
 } gridInfo;
 
+layout(set = 1, binding = 1) buffer s_si_dl_Labels {
+    int labels[NumPixels];
+};
+
+
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
 
 layout(std430, set = 2, binding = 0) buffer s_PixelSSBOIn {
@@ -29,7 +34,8 @@ void main() {
 
     int height = gridInfo.height;
     int index = (position.y * gridInfo.width) + position.x;
-    Pixel pixel = readOnlyPixels[index];
+    int label = labels[index];
+    /*Pixel pixel = readOnlyPixels[index];
     uint pixelID = getPixelID(pixel.PixelID16_Charge8_Flags8);
     uint charge = getCharge(pixel.PixelID16_Charge8_Flags8);
     uint dir = getDirection(pixel.PixelID16_Charge8_Flags8);
@@ -51,5 +57,7 @@ void main() {
 
     bool isCursorPixel = int(gridInfo.pointerPosition.x) == position.x && int(gridInfo.pointerPosition.y) == position.y;
 
-    outColor = (isCursorPixel ? vec4(1.0f) : pixelColor);
+    outColor = (isCursorPixel ? vec4(1.0f) : pixelColor);*/
+
+    outColor = vec4(label/1000000.0f, 0.0f, 0.0f, 1.0f);
 }

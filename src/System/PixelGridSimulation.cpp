@@ -330,7 +330,7 @@ namespace REA::System
 					_firstUpdate = false;
 				}
 
-				if (!_paused || _doStep)
+				if (!_paused)
 				{
 					simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 					simulationData->timer     = simulationData->timer + 1;
@@ -543,8 +543,77 @@ namespace REA::System
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
-					/*CmdWaitForPreviousComputeShader();
+					if (_doStep)
+					{
+						CmdWaitForPreviousComputeShader();
 
+						b2Vec2 extends            = _cclRange.GetExtents();
+						b2Vec2 b2BottomLeftCorner = _cclRange.GetCenter() - extends;
+
+						glm::uvec2 offset = { 0, 0 };
+						glm::uvec2 size   = {  1000, 1000 };
+
+						uint32_t numWorkGroupsForSinglePixelOps = CeilDivide(size.x * size.y, 64u);
+
+						_shaders.CCLInitialize->Update();
+
+						_shaders.CCLInitialize->Bind(_commandBuffer.GetVkCommandBuffer());
+
+						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &offset);
+						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &size);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkGroupsForSinglePixelOps, 1, 1);
+
+						CmdWaitForPreviousComputeShader();
+
+						_shaders.CCLColumn->Update();
+
+						_shaders.CCLColumn->Bind(_commandBuffer.GetVkCommandBuffer());
+
+						_shaders.CCLColumn->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
+						_shaders.CCLColumn->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(size.x, 1, 1);
+
+						CmdWaitForPreviousComputeShader();
+
+
+						uint32_t stepIndex = 0;
+						uint32_t n         = size.x >> 1;
+						while (n != 0)
+						{
+							CmdWaitForPreviousComputeShader();
+
+							_shaders.CCLMerge->Update();
+
+							_shaders.CCLMerge->Bind(_commandBuffer.GetVkCommandBuffer());
+
+							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
+							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
+							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &stepIndex);
+
+							_commandBuffer.GetVkCommandBuffer().dispatch(n, 1, 1);
+
+							n = n >> 1;
+							stepIndex++;
+						}
+
+						CmdWaitForPreviousComputeShader();
+
+						_shaders.CCLRelabel->Update();
+
+						_shaders.CCLRelabel->Bind(_commandBuffer.GetVkCommandBuffer());
+
+						_shaders.CCLRelabel->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
+						_shaders.CCLRelabel->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(size.x * size.y, 1, 1);
+
+						_doStep = false;
+					}
+
+					/*
 					// Contour
 					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(4);
 					marchingCubes->numSegments        = 0;
