@@ -34,8 +34,7 @@ void main() {
 
     int height = gridInfo.height;
     int index = (position.y * gridInfo.width) + position.x;
-    int label = labels[index];
-    /*Pixel pixel = readOnlyPixels[index];
+    Pixel pixel = readOnlyPixels[index];
     uint pixelID = getPixelID(pixel.PixelID16_Charge8_Flags8);
     uint charge = getCharge(pixel.PixelID16_Charge8_Flags8);
     uint dir = getDirection(pixel.PixelID16_Charge8_Flags8);
@@ -47,7 +46,9 @@ void main() {
     float temperatureScaled = temperature/255.0f;
     if (gridInfo.renderMode == RenderMode_Normal) {
         //pixelColor *= 1 + vec4(temperature/100.0f, temperatureScaled, temperatureScaled, 1.0f);
-        pixelColor = vec4(charge/255.0f, pixelColor.y, pixelColor.z, 1.0f);
+        int label = labels[index];
+
+        pixelColor = vec4(label/1000000.0f, pixelColor.y, pixelColor.z, 1.0f);
         //            pixelColor = vec4(dirColor.xyz, 1.0f);
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
@@ -57,7 +58,7 @@ void main() {
 
     bool isCursorPixel = int(gridInfo.pointerPosition.x) == position.x && int(gridInfo.pointerPosition.y) == position.y;
 
-    outColor = (isCursorPixel ? vec4(1.0f) : pixelColor);*/
+    outColor = (isCursorPixel ? vec4(1.0f) : pixelColor);
 
-    outColor = vec4(label/1000000.0f, 0.0f, 0.0f, 1.0f);
+    //outColor = vec4(label/1000000.0f, 0.0f, 0.0f, 1.0f);
 }

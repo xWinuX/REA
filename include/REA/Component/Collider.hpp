@@ -18,8 +18,8 @@ namespace REA::Component
 
 		AssetHandle<PhysicsMaterial> PhysicsMaterial;
 		b2BodyType                   InitialType = b2BodyType::b2_staticBody;
-		std::vector<b2PolygonShape>  InitialShapes {};
-		std::vector<b2Fixture*>      Fixtures {};
+		std::vector<b2PolygonShape>  InitialShapes = std::vector<b2PolygonShape>(0);
+		std::vector<b2Fixture*>      Fixtures = std::vector<b2Fixture*>(0);
 
 		b2World* World = nullptr;
 		b2Body*  Body  = nullptr;

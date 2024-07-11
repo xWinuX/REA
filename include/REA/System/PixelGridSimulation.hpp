@@ -105,11 +105,11 @@ namespace REA::System
 			std::vector<RigidbodyEntry> _rigidBodyEntities{};
 			std::vector<NewRigidBody>   _newRigidBodies{};
 
-			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1'000'000);
+			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1048576);
 
 			AvailableStack<uint32_t> _availableRigidBodyIDs = AvailableStack<uint32_t>();
 
-			uint32_t _rigidBodyIDCounter = 0;
+			uint32_t _rigidBodyIDCounter = 1;
 
 			uint32_t _fif = 0;
 
@@ -126,15 +126,15 @@ namespace REA::System
 			bool _doStep = false;
 
 			uint32_t _readIndex  = 0;
-			uint32_t _writeIndex = 1'000'000;
+			uint32_t _writeIndex = 1048576;
 
 			bool _firstUpdate = true;
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
 
-			b2AABB _cclRange;
+			b2AABB _cclRange = { { 10'000'000, 10'000'000 } ,{ 0, 0 } };
 
-			size_t _numLineSegements;
+			size_t _numLineSegements = 0;
 
 			void SwapPixelBuffer();
 

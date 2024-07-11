@@ -190,20 +190,20 @@ namespace REA::System
 				std::vector<CDT::Edge> edges = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
 				for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
-				size_t     vi = 0;
-				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
-
-				for (vi = 0; vi < marchingCubes->numSegments * 2; ++vi) { v[vi] = { marchingCubes->segments[vi].x, marchingCubes->segments[vi].y }; }
-
-				_numLineSegements = vi;
-
 				std::span<CDT::V2d<float>> segmentsSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->segments[0]), marchingCubes->numSegments * 2);
 
 				MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(segmentsSpan, edges);
 
 				std::vector<MarchingSquareMesherUtils::Polyline> polylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(segmentsSpan, edges);
 
-				_cclRange = { { 0, 0 }, { 0, 0 } };
+
+				if (polylines.size() > 0)
+				{
+					LOG("num polylines {0}", polylines.size());
+
+					_numLineSegements = 0;
+				}
+
 				for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 				{
 					if (polyline.Vertices.size() < 2) { continue; }
@@ -215,14 +215,17 @@ namespace REA::System
 					glm::vec2  direction = end - start;
 					glm::ivec2 left      = { -direction.y, direction.x };
 
-					glm::uvec2 seedPoint = glm::ivec2(glm::round(polyline.Vertices[0].x), glm::round(polyline.Vertices[0].y)) + left;
+					b2AABB b2Aabb = polyline.AABB;
+
+					glm::uvec2 seedPoint = glm::ivec2(glm::round(b2Aabb.GetCenter().x), glm::round(b2Aabb.GetCenter().y));
 
 					size_t index = (seedPoint.y * pixelGrid.Width + seedPoint.x);
 
-					if (!pixelGrid.PixelState[index].Flags.Has(Pixel::Flags::Static) && pixelGrid.PixelState[index].RigidBodyID == 4095)
+					if (!pixelGrid.PixelState[index].Flags.Has(Pixel::Flags::Static) && pixelGrid.PixelState[index].RigidBodyID == 0)
 					{
+						LOG("generate rigidbody");
+
 						// Calculate size needed
-						b2AABB     b2Aabb   = polyline.AABB;
 						b2Vec2     extends  = b2Aabb.GetExtents();
 						glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
 						size_t     dataSize = aabbSize.x * aabbSize.y;
@@ -230,10 +233,9 @@ namespace REA::System
 						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
 						                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
 
-						Component::Transform          transform;
-						Component::PixelGridRigidBody pixelGridRigidBody;
-						Component::Collider           collider;
-
+						Component::Transform          transform {};
+						Component::PixelGridRigidBody pixelGridRigidBody {};
+						Component::Collider           collider {};
 
 						// Setup Transform
 						b2Vec2 center      = b2Aabb.GetCenter();
@@ -249,9 +251,9 @@ namespace REA::System
 						}
 						else { shaderID = _availableRigidBodyIDs.Pop(); }
 
-						pixelGridRigidBody.ShaderID     = shaderID;
-						pixelGridRigidBody.AllocationID = _rigidBodyDataHeap.Allocate(dataSize);
-						pixelGridRigidBody.DataIndex    = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
+						pixelGridRigidBody.ShaderRigidBodyID = shaderID;
+						pixelGridRigidBody.AllocationID      = _rigidBodyDataHeap.Allocate(dataSize);
+						pixelGridRigidBody.DataIndex         = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
 
 						LOG("allocation size {0}", _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Size);
 						LOG("allocation offset {0}", _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset);
@@ -268,6 +270,18 @@ namespace REA::System
 
 						// Simplify line
 						polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
+
+
+						size_t     vi = 0;
+						glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
+
+						for (vi = 0; vi < polyline.Vertices.size() - 1; ++vi)
+						{
+							v[_numLineSegements * 2 + vi * 2]     = { polyline.Vertices[vi].x, polyline.Vertices[vi].y };
+							v[_numLineSegements * 2 + vi * 2 + 1] = { polyline.Vertices[vi + 1].x, polyline.Vertices[vi + 1].y };
+						}
+
+						_numLineSegements += (polyline.Vertices.size() - 1);
 
 						// Triangulate line
 						CDT::Triangulation<float> cdt = MarchingSquareMesherUtils::GenerateTriangulation(polyline);
@@ -295,13 +309,18 @@ namespace REA::System
 
 								LOG("collsion triangle");
 
+								LOG("vertex 1 x: {0} y: {1}", v[0].x, v[0].y);
+								LOG("vertex 2 x: {0} y: {1}", v[1].x, v[1].y);
+								LOG("vertex 3 x: {0} y: {1}", v[2].x, v[2].y);
+
 								b2PolygonShape polygonShape;
-								polygonShape.Set(reinterpret_cast<const b2Vec2*>(v.data()), v.size());
+								polygonShape.Set(reinterpret_cast<const b2Vec2*>(v.data()), 3);
 
 								collider.InitialShapes.push_back(polygonShape);
 							}
 						}
 
+						LOG("new rigidbody");
 						_newRigidBodies.push_back({ bottomLeftCorner, aabbSize, seedPoint, shaderID });
 
 						// Create entity
@@ -314,6 +333,13 @@ namespace REA::System
 						LOG("Create entity");
 					}
 				}
+
+				if (!polylines.empty())
+				{
+					LOG("CCL Perimeter {0}", _cclRange.GetPerimeter());
+					LOG("CCL Range lowerX: {0} lowery {1} upperx {2} uppery {3}", _cclRange.lowerBound.x, _cclRange.lowerBound.y, _cclRange.upperBound.x, _cclRange.upperBound.y);
+				}
+				marchingCubes->numSegments = 0;
 			}
 
 			if (stage == Stage::GridComputeBegin)
@@ -330,7 +356,7 @@ namespace REA::System
 					_firstUpdate = false;
 				}
 
-				if (!_paused)
+				if (!_paused || _doStep)
 				{
 					simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 					simulationData->timer     = simulationData->timer + 1;
@@ -383,13 +409,16 @@ namespace REA::System
 					CmdWaitForPreviousComputeShader();
 
 					// Do CCL if there are rigidbodies to discover
+					LOG("pre ccl");
+					LOG("pre ccl perimeter {0}", _cclRange.GetPerimeter());
 					if (_cclRange.GetPerimeter() > 0.0f)
 					{
+						LOG("Do ccL");
 						b2Vec2 extends            = _cclRange.GetExtents();
 						b2Vec2 b2BottomLeftCorner = _cclRange.GetCenter() - extends;
 
 						glm::uvec2 offset = { 0, 0 };
-						glm::uvec2 size   = {  1000, 1000 };
+						glm::uvec2 size   = { 1024, 1024 };
 
 						uint32_t numWorkGroupsForSinglePixelOps = CeilDivide(size.x * size.y, 64u);
 
@@ -456,6 +485,7 @@ namespace REA::System
 
 						for (NewRigidBody newRigidBody: _newRigidBodies)
 						{
+							LOG("extract");
 							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &newRigidBody.Offset);
 							_shaders.CCLExtract->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &newRigidBody.Size);
@@ -465,7 +495,7 @@ namespace REA::System
 						}
 
 						_newRigidBodies.clear();
-						_cclRange = { { 0, 0 }, { 0, 0 } };
+						_cclRange = { { 10'000'000, 10'000'000 }, { 0, 0 } };
 
 						CmdWaitForPreviousComputeShader();
 					}
@@ -502,9 +532,9 @@ namespace REA::System
 
 					_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
-					for (int shaderID = 0; shaderID < _rigidBodyEntities.size(); ++shaderID)
+					for (int rigidBodyShaderID = 1; rigidBodyShaderID < _rigidBodyEntities.size(); ++rigidBodyShaderID)
 					{
-						RigidbodyEntry& rigidBodyEntry = _rigidBodyEntities[shaderID];
+						RigidbodyEntry& rigidBodyEntry = _rigidBodyEntities[rigidBodyShaderID];
 
 						if (rigidBodyEntry.EntityID == -1u || !rigidBodyEntry.Active)
 						{
@@ -515,10 +545,10 @@ namespace REA::System
 						Component::Transform&          transform          = ecsRegistry.GetComponent<Component::Transform>(rigidBodyEntry.EntityID);
 						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidBodyEntry.EntityID);
 
-						simulationData->rigidBodies[shaderID].Position = transform.Position;
-						simulationData->rigidBodies[shaderID].Rotation = transform.Rotation;
+						simulationData->rigidBodies[rigidBodyShaderID].Position = transform.Position;
+						simulationData->rigidBodies[rigidBodyShaderID].Rotation = transform.Rotation;
 
-						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderID);
+						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
 					}
@@ -543,7 +573,7 @@ namespace REA::System
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
-					if (_doStep)
+					if (false)
 					{
 						CmdWaitForPreviousComputeShader();
 
@@ -551,7 +581,7 @@ namespace REA::System
 						b2Vec2 b2BottomLeftCorner = _cclRange.GetCenter() - extends;
 
 						glm::uvec2 offset = { 0, 0 };
-						glm::uvec2 size   = {  1000, 1000 };
+						glm::uvec2 size   = { 1024, 1024 };
 
 						uint32_t numWorkGroupsForSinglePixelOps = CeilDivide(size.x * size.y, 64u);
 
@@ -564,7 +594,6 @@ namespace REA::System
 						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 2, &size);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkGroupsForSinglePixelOps, 1, 1);
-
 						CmdWaitForPreviousComputeShader();
 
 						_shaders.CCLColumn->Update();
@@ -665,7 +694,7 @@ namespace REA::System
 				commandBuffer.bindVertexBuffers(0, _vertexBuffer.GetVkBuffer(), offset);
 				//commandBuffer.bindIndexBuffer(_vertexBuffer.GetVkBuffer(), _vertexBuffer.GetSizeInBytes(0), vk::IndexType::eUint16);
 				//commandBuffer.drawIndexed(j, 1, 0, 0, 0);
-				commandBuffer.draw(_numLineSegements, 1, 0, 0);
+				commandBuffer.draw(_numLineSegements * 2, 1, 0, 0);
 			}
 		}
 	}

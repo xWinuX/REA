@@ -19,10 +19,10 @@ void main()
     uint index = gl_GlobalInvocationID.x + readIndex;
 
     Pixel pixel = pixels[index];
-    if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) != 4095)
+    if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) != 0)
     {
         rigidBodyData[getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20)] = pixel;
         pixels[index].PixelID16_Charge8_Flags8 = 0;
-        pixels[index].RigidBodyID12_RigidBodyIndex20 = 0xFFF;
+        pixels[index].RigidBodyID12_RigidBodyIndex20 = 0;
     }
 }

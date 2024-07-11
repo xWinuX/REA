@@ -201,7 +201,7 @@ int main()
 		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
 	                                      });
 
-	application.GetWindow().SetSize(1000, 1000);
+	application.GetWindow().SetSize(1024, 1024);
 
 	Input::RegisterAxis2D(InputAction::Move, { KeyCode::A, KeyCode::D }, { KeyCode::S, KeyCode::W });
 	Input::RegisterButtonAction(InputAction::Fire, KeyCode::MOUSE_LEFT);
@@ -381,7 +381,7 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1000, 1000 }).WithPixelData(std::move(pixelLookup)).Build();
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1024, 1024 }).WithPixelData(std::move(pixelLookup)).Build();
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 

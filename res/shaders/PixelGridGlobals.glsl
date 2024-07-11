@@ -55,7 +55,7 @@ uint getRigidBodyIndex(uint packedData) {
     return (packedData >> 12u) & 0xFFFFFu;
 }
 
-const uint NumPixels = 1000000;
+const uint NumPixels = 1048576;
 const uint NumRigidbodies = 100;
 const uint NumSolid = NumPixels/32;
 const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));

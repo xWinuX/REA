@@ -61,6 +61,13 @@ namespace REA::System
 				for (b2PolygonShape& initialShape: collider.InitialShapes)
 				{
 					fixtureDef.shape   = &initialShape;
+
+					for (int j = 0; j < initialShape.m_count; ++j)
+					{
+						LOG("vertex 1 x: {0} y: {1}", initialShape.m_vertices[j].x, initialShape.m_vertices[j].y);
+
+					}
+
 					b2Fixture* fixture = collider.Body->CreateFixture(&fixtureDef);
 					collider.Fixtures.push_back(fixture);
 				}

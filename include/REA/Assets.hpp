@@ -23,7 +23,6 @@ namespace REA
 			Comp_PixelGrid_Fall,
 			Comp_PixelGrid_Accumulate,
 			Comp_MarchingSquare,
-			Comp_SolidMask,
 			Comp_CCLInitialize,
 			Comp_CCLColumn,
 			Comp_CCLMerge,
