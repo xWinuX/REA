@@ -161,14 +161,17 @@ namespace REA::System
 
 
 			ImGui::Text(std::format("Current Pixel Info:").c_str());
+			ImGui::Text(std::format("Index: {0}", currentePixelindex).c_str());
+			ImGui::Text(std::format("Pos: x {0} y {1}", gridX, gridY).c_str());
 			ImGui::Text(std::format("ID: {0}", state.PixelID).c_str());
 			ImGui::Text(std::format("Name: {0}", pixelGrid.PixelLookup[state.PixelID].Name).c_str());
 			ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
 			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
 			ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());
+			ImGui::Text(std::format("Label: {0}", static_cast<int32_t>(pixelGrid.Labels[currentePixelindex])).c_str());
 
 
-			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
+			if (Input::GetPressed(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{
 				Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
 				if (_radius == 1)

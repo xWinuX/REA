@@ -37,8 +37,8 @@ void main()
 
         vec2 position = rotationMatrix * (vec2(localX, localY) - center);
 
-        uint globalX = uint(rigidBodyBottomLeftCorner.x + round(center + position.x));
-        uint globalY = uint(rigidBodyBottomLeftCorner.y + round(center + position.y));
+        uint globalX = uint(rigidBodyBottomLeftCorner.x + floor(center + position.x));
+        uint globalY = uint(rigidBodyBottomLeftCorner.y + floor(center + position.y));
 
         uint globalIndex = globalY * simulationData.width + globalX;
 

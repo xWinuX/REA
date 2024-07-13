@@ -12,6 +12,7 @@ namespace REA::Component
 	struct PixelGrid
 	{
 		Pixel::State* PixelState = nullptr;
+		int32_t*      Labels     = nullptr;
 
 		int32_t Width  = 500;
 		int32_t Height = 500;

@@ -45,15 +45,23 @@ void main() {
     vec4 dirColor = vec4((dir >> 0u)  & 1u, (dir >> 1u) & 1u, (dir >> 2u) & 1u, (dir >> 3u) & 1u);
     float temperatureScaled = temperature/255.0f;
     if (gridInfo.renderMode == RenderMode_Normal) {
-        //pixelColor *= 1 + vec4(temperature/100.0f, temperatureScaled, temperatureScaled, 1.0f);
+        pixelColor *= 1 + vec4(temperature/100.0f, temperatureScaled, temperatureScaled, 1.0f);
+
+        /*
+        //            pixelColor = vec4(dirColor.xyz, 1.0f);
         int label = labels[index];
 
-        pixelColor = vec4(label/1000000.0f, pixelColor.y, pixelColor.z, 1.0f);
-        //            pixelColor = vec4(dirColor.xyz, 1.0f);
+        pixelColor = vec4(0.0f, label/1048576.0f, pixelColor.z, 1.0f);*/
+
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
         //    pixelColor = vec4(temperature/255.0f, 0.0f, 0.0f, 1.0f);
-        pixelColor = vec4(dirColor.xyz + (0.5f * dirColor.w), 1.0f);
+        //pixelColor = vec4(dirColor.xyz + (0.5f * dirColor.w), 1.0f);
+
+        uint id = getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20);
+
+
+        pixelColor = vec4(id/4.0f, 0.0f, 0.0f, 1.0f);
     }
 
     bool isCursorPixel = int(gridInfo.pointerPosition.x) == position.x && int(gridInfo.pointerPosition.y) == position.y;

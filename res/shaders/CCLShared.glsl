@@ -1,4 +1,4 @@
-layout(set = 1, binding = 4) buffer s_si_dl_Labels {
+layout(set = 1, binding = 4) buffer s_si_Labels {
     int labels[NumPixels];
 };
 

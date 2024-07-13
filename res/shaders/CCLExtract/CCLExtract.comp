@@ -18,7 +18,11 @@ void main()
         return;
     }
 
-    uint correctLabel = labels[SeedPoint.y * simulationData.width + SeedPoint.x];
+    int correctLabel = labels[SeedPoint.y * simulationData.width + SeedPoint.x];
+
+    if (correctLabel == -1) {
+        return;
+    }
 
     uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
 

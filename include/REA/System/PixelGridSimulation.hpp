@@ -33,6 +33,8 @@ namespace REA::System
 
 			AssetHandle<Rendering::Material> DebugMaterial;
 
+			bool _removeOnNextFrame = false;
+
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 			void Execute(Component::PixelGrid*              pixelGrids,
@@ -113,7 +115,7 @@ namespace REA::System
 
 			uint32_t _fif = 0;
 
-			float _lineSimplificationTolerance = 50.0f;
+			float _lineSimplificationTolerance = 0.0f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;
@@ -132,7 +134,7 @@ namespace REA::System
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
 
-			b2AABB _cclRange = { { 10'000'000, 10'000'000 } ,{ 0, 0 } };
+			b2AABB _cclRange = { { 10'000'000, 10'000'000 }, { 0, 0 } };
 
 			size_t _numLineSegements = 0;
 

@@ -147,6 +147,15 @@ namespace REA
 				if (!found) { break; }
 			}
 
+
+			auto b2center = aabb.GetCenter();
+			for (CDT::V2d<float>& polylineVert : sortedPolyline)
+			{
+				polylineVert = {polylineVert.x - b2center.x, polylineVert.y - b2center.y};
+				polylineVert  = {polylineVert.x * 0.98f, polylineVert.y * 0.98f};
+				polylineVert = {polylineVert.x + b2center.x, polylineVert.y + b2center.y};
+			}
+
 			polylines.push_back({ aabb, std::move(sortedPolyline) });
 		}
 
@@ -176,9 +185,17 @@ namespace REA
 
 	CDT::Triangulation<float> MarchingSquareMesherUtils::GenerateTriangulation(const Polyline& polyline)
 	{
+		std::vector<CDT::Edge> edges {};
+
+		for (int i = 0; i < polyline.Vertices.size(); ++i)
+		{
+			edges.emplace_back(i, (i+1) % polyline.Vertices.size());
+		}
+
 		CDT::Triangulation<float> cdt = CDT::Triangulation<float>();
 		cdt.insertVertices(polyline.Vertices);
-		cdt.eraseSuperTriangle();
+		cdt.insertEdges(edges);
+		cdt.eraseOuterTrianglesAndHoles();
 		return cdt;
 	}
 }

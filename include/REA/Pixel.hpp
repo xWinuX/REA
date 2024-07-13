@@ -67,6 +67,6 @@ namespace REA
 
 	struct SSBO_Pixels
 	{
-		Pixel::State Pixels[2000000];
+		Pixel::State Pixels[2097152];
 	};
 }
