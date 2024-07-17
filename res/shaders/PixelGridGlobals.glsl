@@ -21,9 +21,10 @@ struct Pixel {
 
 struct RigidBody {
     uint ID;
-    vec2 Position;
-    float Rotation;
     uint DataIndex;
+    bool NeedsRecalculation;
+    float Rotation;
+    vec2 Position;
     uvec2 Size;
 };
 
@@ -57,7 +58,6 @@ uint getRigidBodyIndex(uint packedData) {
 
 const uint NumPixels = 1048576;
 const uint NumRigidbodies = 100;
-const uint NumSolid = NumPixels/32;
 const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));
 
 const int MaxCharge = 255;

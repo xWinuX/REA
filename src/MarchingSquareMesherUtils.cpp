@@ -125,7 +125,7 @@ namespace REA
 			visited.insert(currentIndex);
 
 			sortedPolyline.push_back(current);
-			while (sortedPolyline.size() < polylineIndices.size() - 1)
+			while (sortedPolyline.size() < polylineIndices.size())
 			{
 				bool found = false;
 				for (uint32_t neighbor: _adjacencyList[currentIndex])
@@ -147,12 +147,11 @@ namespace REA
 				if (!found) { break; }
 			}
 
-
 			auto b2center = aabb.GetCenter();
 			for (CDT::V2d<float>& polylineVert : sortedPolyline)
 			{
 				polylineVert = {polylineVert.x - b2center.x, polylineVert.y - b2center.y};
-				polylineVert  = {polylineVert.x * 0.98f, polylineVert.y * 0.98f};
+				polylineVert  = {polylineVert.x * 0.99f, polylineVert.y * 0.99f};
 				polylineVert = {polylineVert.x + b2center.x, polylineVert.y + b2center.y};
 			}
 
@@ -194,8 +193,8 @@ namespace REA
 
 		CDT::Triangulation<float> cdt = CDT::Triangulation<float>();
 		cdt.insertVertices(polyline.Vertices);
-		cdt.insertEdges(edges);
-		cdt.eraseOuterTrianglesAndHoles();
+		//cdt.insertEdges(edges);
+		cdt.eraseSuperTriangle();
 		return cdt;
 	}
 }

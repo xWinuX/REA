@@ -71,7 +71,7 @@ add_executable(
         src/MarchingSquareMesherUtils.cpp
         include/REA/MarchingSquareMesherUtils.hpp
         include/REA/Component/PixelGridRigidBody.hpp
-        include/REA/MemoryHeap.cpp
+        src/MemoryHeap.cpp
         include/REA/MemoryHeap.hpp
 )
 

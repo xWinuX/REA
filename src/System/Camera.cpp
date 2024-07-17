@@ -63,7 +63,7 @@ namespace REA::System
 
 
 			ImGui::SliderFloat("pixelsPerUnit", &_pixelsPerUnit, 0.1f, 100.0f);
-			ImGui::SliderFloat("pixelSize", &_pixelSize, 0.1f, 10.0f);
+			ImGui::SliderFloat("pixelSize", &_pixelSize, 0.1f, 50.0f);
 
 			const uint32_t width  = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().width;
 			const uint32_t height = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;

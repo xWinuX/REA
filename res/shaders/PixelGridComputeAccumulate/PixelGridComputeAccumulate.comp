@@ -106,20 +106,35 @@ void main()
         pixelID = middleCenterPixelData.HighTemperatureLimitPixelID;
         PixelData newPixelData = simulationData.pixelLookup[pixelID];
         temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
+
+        uint rigidBodyID = getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20);
+        if (rigidBodyID != 0)
+        {
+            rigidBodies[rigidBodyID].NeedsRecalculation = true;
+        }
+
     } else if (temperature < middleCenterPixelData.LowerTemperatureLimit) {
         pixelID =  middleCenterPixelData.LowerTemperatureLimitPixelID;
         PixelData newPixelData = simulationData.pixelLookup[pixelID];
         temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
+
+        uint rigidBodyID = getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20);
+        if (rigidBodyID != 0)
+        {
+            rigidBodies[rigidBodyID].NeedsRecalculation = true;
+        }
     }
 
+    // Clear Info
     middleCenterPixel.PixelID16_Charge8_Flags8 &= 0x0F000000u;
-    //middleCenterPixel.PixelID16_Charge8_Flags8 &= 0xF0FF0000u;
+
+    // Assign new info
     middleCenterPixel.PixelID16_Charge8_Flags8 |= pixelID;
     middleCenterPixel.PixelID16_Charge8_Flags8 |= charge << 16u;
     middleCenterPixel.PixelID16_Charge8_Flags8 |= direction << 28u;
     middleCenterPixel.Temperature = temperature;
 
-    // Write pixels
+    // Write pixels to output and rendering buffer
     pixels[middleCenterIndex + writeIndex] = middleCenterPixel;
     readOnlyPixels[middleCenterIndex] = middleCenterPixel;
 }

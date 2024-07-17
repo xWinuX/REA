@@ -10,11 +10,13 @@ layout(push_constant) uniform PushConstant {
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    RigidBody rigidBody = simulationData.rigidBodies[rigidBodyIndex];
-    uint width = rigidBody.Size.x;
-    uint height = rigidBody.Size.y;
+    RigidBody rigidBody = rigidBodies[rigidBodyIndex];
+    uint width = simulationData.width;
+    uint height = simulationData.height;
+    uint rigidBodyWidth = rigidBody.Size.x;
+    uint rigidBodyHeight = rigidBody.Size.y;
 
-    if (gl_GlobalInvocationID.x >= width * height) {
+    if (gl_GlobalInvocationID.x >= rigidBodyWidth * rigidBodyHeight) {
         return;
     }
 
@@ -23,7 +25,7 @@ void main()
     if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) == rigidBodyIndex)
     {
         vec2 center = vec2(rigidBody.Size/2.0f);
-        ivec2 rigidBodyBottomLeftCorner = ivec2(round(rigidBody.Position - center));
+        vec2 rigidBodyBottomLeftCorner = vec2(rigidBody.Position - center);
 
         if (rigidBodyBottomLeftCorner.x < 0 || rigidBodyBottomLeftCorner.y < 0) {
             return;
@@ -32,17 +34,81 @@ void main()
         float angle = radians(rigidBody.Rotation);
         mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
-        uint localX = (gl_GlobalInvocationID.x % width);
-        uint localY = (gl_GlobalInvocationID.x / width);
+        uint localX = (gl_GlobalInvocationID.x % rigidBodyWidth);
+        uint localY = (gl_GlobalInvocationID.x / rigidBodyWidth);
+
+        bool rightEdge = localX == rigidBodyWidth-1;
+        bool leftEdge = localX == 0;
+        bool topEdge = localY == rigidBodyHeight-1;
+        bool bottomEdge = localY == 0;
 
         vec2 position = rotationMatrix * (vec2(localX, localY) - center);
 
-        uint globalX = uint(rigidBodyBottomLeftCorner.x + floor(center + position.x));
-        uint globalY = uint(rigidBodyBottomLeftCorner.y + floor(center + position.y));
+        uint x = uint(floor(rigidBodyBottomLeftCorner.x + center.x + position.x));
+        uint y = uint(floor(rigidBodyBottomLeftCorner.y + center.y + position.y));
 
-        uint globalIndex = globalY * simulationData.width + globalX;
+        uint topY = (y + 1) % height;
+        uint bottomY = (y == 0) ? height - 1 : y - 1;
+
+        uint rightX = (x + 1) % width;
+        uint leftX = (x == 0) ? width - 1 : x - 1;
+
+        // Calculate wrapped indices
+        uint topYCalc = topY * width;
+        uint middleYCalc = y * width;
+        uint bottomYCalc = bottomY * width;
+
+        uint topCenterIndex = topYCalc + x;
+
+        uint middleLeftIndex = middleYCalc + leftX;
+        uint middleCenterIndex = middleYCalc + x;
+        uint middleRightIndex = middleYCalc + rightX;
+
+        uint bottomCenterIndex = bottomYCalc + x;
+
+        // Read pixels
+        Pixel topCenterPixel = pixels[topCenterIndex + readIndex];
+
+        Pixel middleLeftPixel = pixels[middleLeftIndex + readIndex];
+        Pixel middleCenterPixel = pixels[middleCenterIndex + readIndex];
+        Pixel middleRightPixel = pixels[middleRightIndex + readIndex];
+
+        Pixel bottomCenterPixel = pixels[bottomCenterIndex + readIndex];
+
+
+        uint dataIndex = getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20);
+        if (rigidBody.ID == 0)
+        {
+            pixel.RigidBodyID12_RigidBodyIndex20 = 0;
+            rigidBodyData[rigidBody.DataIndex + gl_GlobalInvocationID.x].RigidBodyID12_RigidBodyIndex20 = 0;
+        }
 
         // TODO: Check for overlap with other pixels
-        pixels[globalIndex + readIndex] = pixel;
+        //Pixel targetPixel = pixels[globalIndex + readIndex];
+
+        if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
+        {
+            pixels[middleCenterIndex + readIndex] = pixel;
+        }
+
+        //if (!rightEdge && getRigidBodyID(middleRightPixel.RigidBodyID12_RigidBodyIndex20) == 0)
+        //{
+        //    pixels[middleRightIndex + readIndex] = pixel;
+        //}
+//
+        //if (!topEdge && getRigidBodyID(topCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
+        //{
+        //    pixels[topCenterIndex + readIndex] = pixel;
+        //}
+//
+        //if (!leftEdge && getRigidBodyID(middleLeftPixel.RigidBodyID12_RigidBodyIndex20) == 0)
+        //{
+        //    pixels[middleLeftIndex + readIndex] = pixel;
+        //}
+//
+        //if (!bottomEdge && getRigidBodyID(bottomCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
+        //{
+        //    pixels[bottomCenterIndex + readIndex] = pixel;
+        //}
     }
 }

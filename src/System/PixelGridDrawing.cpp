@@ -171,7 +171,7 @@ namespace REA::System
 			ImGui::Text(std::format("Label: {0}", static_cast<int32_t>(pixelGrid.Labels[currentePixelindex])).c_str());
 
 
-			if (Input::GetPressed(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
+			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{
 				Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
 				if (_radius == 1)

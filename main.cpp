@@ -230,7 +230,7 @@ int main()
 	                                                                                                                 });
 
 	pipelineCreateInfo.AssemblyStateCreateInfo.primitiveRestartEnable = vk::False;
-	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineList;
+	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineList ;
 	AssetHandle<Rendering::Shader> marchingSquareDebugShader          = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::MarchingSquare,
 	                                                                                                                 {
 		                                                                                                                 {

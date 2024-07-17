@@ -37,21 +37,21 @@ namespace REA::System
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
-			void Execute(Component::PixelGrid*              pixelGrids,
-			             Component::Collider*               colliders,
-			             std::vector<uint64_t>&             entities,
-			             SplitEngine::ECS::ContextProvider& contextProvider,
-			             uint8_t                            stage) override;
+			void Execute(Component::PixelGrid*  pixelGrids,
+			             Component::Collider*   colliders,
+			             std::vector<uint64_t>& entities,
+			             ECS::ContextProvider&  contextProvider,
+			             uint8_t                stage) override;
 
 		private:
 			struct RigidBody
 			{
-				uint32_t   ID        = -1u;
-				glm::vec2  Position  = { 0, 0 };
-				float      Rotation  = 0;
-				uint32_t   DataIndex = -1u;
-				glm::uvec2 Size      = { 0, 0 };
-				uint32_t   _pad      = {};
+				uint32_t   ID                 = -1u;
+				uint32_t   DataIndex          = -1u;
+				bool       NeedsRecalculation = false;
+				float      Rotation           = 0;
+				glm::vec2  Position           = { 0, 0 };
+				glm::uvec2 Size               = { 0, 0 };
 			};
 
 			struct Data
@@ -72,20 +72,23 @@ namespace REA::System
 
 			struct SSBO_SimulationData
 			{
-				float     deltaTime = 0.0f;
-				uint32_t  timer     = 0;
-				float     rng       = 0.0f;
-				uint32_t  width     = 0;
-				uint32_t  height    = 0;
-				Data      pixelLookup[1024];
-				uint32_t  _pad[2] = {};
-				RigidBody rigidBodies[100];
+				float    deltaTime = 0.0f;
+				uint32_t timer     = 0;
+				float    rng       = 0.0f;
+				uint32_t width     = 0;
+				uint32_t height    = 0;
+				Data     pixelLookup[1024];
 			};
 
 			struct SSBO_MarchingCubes
 			{
 				uint32_t             numSegments = 0;
 				alignas(8) glm::vec2 segments[100000];
+			};
+
+			struct SSBO_RigidBodyData
+			{
+				RigidBody rigidBodies[100];
 			};
 
 
@@ -100,12 +103,14 @@ namespace REA::System
 			struct RigidbodyEntry
 			{
 				uint64_t EntityID = -1u;
+				bool     Enabled  = false;
 				bool     Active   = false;
 			};
 
 
 			std::vector<RigidbodyEntry> _rigidBodyEntities{};
 			std::vector<NewRigidBody>   _newRigidBodies{};
+			std::vector<uint32_t>       _deleteRigidbody{};
 
 			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1048576);
 
@@ -115,7 +120,7 @@ namespace REA::System
 
 			uint32_t _fif = 0;
 
-			float _lineSimplificationTolerance = 0.0f;
+			float _lineSimplificationTolerance = 5.0f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;

@@ -18,17 +18,12 @@ void main()
         return;
     }
 
-    int correctLabel = labels[SeedPoint.y * simulationData.width + SeedPoint.x];
-
-    if (correctLabel == -1) {
-        return;
-    }
 
     uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
 
-    if (labels[index] == correctLabel)
+    if (labels[index] != -1)
     {
-        uint localIndex = simulationData.rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x;
+        uint localIndex = rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x;
 
         pixels[index + ReadIndex].RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
     }
