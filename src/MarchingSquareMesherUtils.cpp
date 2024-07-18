@@ -1,8 +1,8 @@
 #include "REA/MarchingSquareMesherUtils.hpp"
 
-#include <CDT.h>
 #include <glm/common.hpp>
 #include <glm/exponential.hpp>
+#include <SplitEngine/ErrorHandler.hpp>
 #include <SplitEngine/Debug/Log.hpp>
 
 namespace REA
@@ -11,7 +11,7 @@ namespace REA
 
 	MarchingSquareMesherUtils::Polyline MarchingSquareMesherUtils::SimplifyPolylines(const Polyline& polyline, float threshold)
 	{
-		if (polyline.Vertices.size() < 2) { throw std::invalid_argument("Not enough points to simplify"); }
+		if (polyline.Vertices.size() < 2) { SplitEngine::ErrorHandler::ThrowRuntimeError("Not enough points to simplify"); }
 
 		Polyline resultPolyline = { polyline.AABB, {} };
 
@@ -148,11 +148,11 @@ namespace REA
 			}
 
 			auto b2center = aabb.GetCenter();
-			for (CDT::V2d<float>& polylineVert : sortedPolyline)
+			for (CDT::V2d<float>& polylineVert: sortedPolyline)
 			{
-				polylineVert = {polylineVert.x - b2center.x, polylineVert.y - b2center.y};
-				polylineVert  = {polylineVert.x * 0.99f, polylineVert.y * 0.99f};
-				polylineVert = {polylineVert.x + b2center.x, polylineVert.y + b2center.y};
+				polylineVert = { polylineVert.x - b2center.x, polylineVert.y - b2center.y };
+				polylineVert = { polylineVert.x * 0.99f, polylineVert.y * 0.99f };
+				polylineVert = { polylineVert.x + b2center.x, polylineVert.y + b2center.y };
 			}
 
 			polylines.push_back({ aabb, std::move(sortedPolyline) });
@@ -164,14 +164,25 @@ namespace REA
 		return polylines;
 	}
 
-	void MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(std::span<CDT::V2d<float>>& vertices, std::vector<CDT::Edge>& edges)
+	CDT::DuplicatesInfo MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(std::span<CDT::V2d<float>>& vertices, std::vector<CDT::Edge>& edges)
 	{
-		if (vertices.empty() || edges.empty()) { return; }
+		if (vertices.empty() || edges.empty()) { return {}; }
 
-		const CDT::DuplicatesInfo duplicatesInfo = CDT::FindDuplicates<float>(vertices.begin(),
-		                                                                      vertices.end(),
-		                                                                      [](const CDT::V2d<float>& vert) { return vert.x; },
-		                                                                      [](const CDT::V2d<float>& vert) { return vert.y; });
+		const CDT::DuplicatesInfo duplicatesInfo = RemoveDuplicates(vertices);
+
+		CDT::RemapEdges(edges, duplicatesInfo.mapping);
+
+		return duplicatesInfo;
+	}
+
+	CDT::DuplicatesInfo MarchingSquareMesherUtils::RemoveDuplicates(std::span<CDT::V2d<float>>& vertices)
+	{
+		if (vertices.empty()) { return {}; }
+
+		CDT::DuplicatesInfo duplicatesInfo = CDT::FindDuplicates<float>(vertices.begin(),
+		                                                                vertices.end(),
+		                                                                [](const CDT::V2d<float>& vert) { return vert.x; },
+		                                                                [](const CDT::V2d<float>& vert) { return vert.y; });
 
 		const auto newEnd = remove_at(vertices.begin(), vertices.end(), duplicatesInfo.duplicates.begin(), duplicatesInfo.duplicates.end());
 
@@ -179,22 +190,19 @@ namespace REA
 
 		vertices = std::span<CDT::V2d<float>>(vertices.begin(), numVertices);
 
-		CDT::RemapEdges(edges, duplicatesInfo.mapping);
+		return duplicatesInfo;
 	}
 
 	CDT::Triangulation<float> MarchingSquareMesherUtils::GenerateTriangulation(const Polyline& polyline)
 	{
-		std::vector<CDT::Edge> edges {};
+		std::vector<CDT::Edge> edges{};
 
-		for (int i = 0; i < polyline.Vertices.size(); ++i)
-		{
-			edges.emplace_back(i, (i+1) % polyline.Vertices.size());
-		}
+		for (int i = 0; i < polyline.Vertices.size(); ++i) { edges.emplace_back(i, (i + 1) % polyline.Vertices.size()); }
 
-		CDT::Triangulation<float> cdt = CDT::Triangulation<float>();
+		CDT::Triangulation<float> cdt = CDT::Triangulation<float>(CDT::VertexInsertionOrder::Auto, CDT::IntersectingConstraintEdges::TryResolve, 0.1f);
 		cdt.insertVertices(polyline.Vertices);
-		//cdt.insertEdges(edges);
-		cdt.eraseSuperTriangle();
+		cdt.insertEdges(edges);
+		cdt.eraseOuterTriangles();
 		return cdt;
 	}
 }

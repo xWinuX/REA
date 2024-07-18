@@ -37,12 +37,10 @@ void main() {
     Pixel pixel = readOnlyPixels[index];
     uint pixelID = getPixelID(pixel.PixelID16_Charge8_Flags8);
     uint charge = getCharge(pixel.PixelID16_Charge8_Flags8);
-    uint dir = getDirection(pixel.PixelID16_Charge8_Flags8);
     float temperature = pixel.Temperature;
 
     pixelColor = gridInfo.colorLookup[pixelID];
 
-    vec4 dirColor = vec4((dir >> 0u)  & 1u, (dir >> 1u) & 1u, (dir >> 2u) & 1u, (dir >> 3u) & 1u);
     float temperatureScaled = temperature/255.0f;
     if (gridInfo.renderMode == RenderMode_Normal) {
         pixelColor *= 1 + vec4(temperature/100.0f, temperatureScaled, temperatureScaled, 1.0f);

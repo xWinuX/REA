@@ -38,22 +38,7 @@ namespace REA::System
 		AppendFlags(e_shapeBit);
 	}
 
-	void PhysicsDebugRenderer::DrawPolygon(const b2Vec2* vertices, int32 vertexCount, const b2Color& color)
-	{
-		/*LOG("Draw poly");
-		for (int i = 0; i < vertexCount; ++i)
-		{
-			b2Vec2 vertex               = vertices[i];
-			_vertices[i + _numVertices] = { vertex.x, vertex.y };
-			if (i == 1 || i == 2)
-			{
-				_numVertices++;
-				_vertices[i + _numVertices] = { vertex.x, vertex.y };
-			}
-		}
-
-		_numVertices += vertexCount;*/
-	}
+	void PhysicsDebugRenderer::DrawPolygon(const b2Vec2* vertices, int32 vertexCount, const b2Color& color) {}
 
 	void PhysicsDebugRenderer::DrawSolidPolygon(const b2Vec2* vertices, int32 vertexCount, const b2Color& color)
 	{
@@ -62,7 +47,7 @@ namespace REA::System
 			b2Vec2 vertex = vertices[i];
 
 			_vertices[i + _numVertices] = { vertex.x, vertex.y };
-			_indices[i + _numIndices] = i + _numVertices;
+			_indices[i + _numIndices]   = i + _numVertices;
 		}
 
 		_numIndices += vertexCount;
@@ -71,18 +56,15 @@ namespace REA::System
 		_indices[_numIndices++] = std::numeric_limits<uint16_t>::max();
 	}
 
-	void PhysicsDebugRenderer::DrawCircle(const b2Vec2& center, float radius, const b2Color& color) { LOG("Draw circle"); }
+	void PhysicsDebugRenderer::DrawCircle(const b2Vec2& center, float radius, const b2Color& color) {}
 
-	void PhysicsDebugRenderer::DrawSolidCircle(const b2Vec2& center, float radius, const b2Vec2& axis, const b2Color& color) { LOG("Draw circlesolid"); }
+	void PhysicsDebugRenderer::DrawSolidCircle(const b2Vec2& center, float radius, const b2Vec2& axis, const b2Color& color) {}
 
-	void PhysicsDebugRenderer::DrawSegment(const b2Vec2& p1, const b2Vec2& p2, const b2Color& color)
-	{
-		LOG("Draw segment");
-	}
+	void PhysicsDebugRenderer::DrawSegment(const b2Vec2& p1, const b2Vec2& p2, const b2Color& color) { }
 
-	void PhysicsDebugRenderer::DrawTransform(const b2Transform& xf) { LOG("Draw transform"); }
+	void PhysicsDebugRenderer::DrawTransform(const b2Transform& xf) {}
 
-	void PhysicsDebugRenderer::DrawPoint(const b2Vec2& p, float size, const b2Color& color) { LOG("Draw point"); }
+	void PhysicsDebugRenderer::DrawPoint(const b2Vec2& p, float size, const b2Color& color) {}
 
 	void PhysicsDebugRenderer::Destroy(ECS::ContextProvider& contextProvider) { _modelBuffer.Destroy(); }
 
@@ -90,7 +72,7 @@ namespace REA::System
 	{
 		if (stage == Stage::Physics)
 		{
-			_numIndices = 0;
+			_numIndices  = 0;
 			_numVertices = 0;
 		}
 

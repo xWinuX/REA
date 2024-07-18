@@ -18,9 +18,9 @@ void main()
 
     uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
 
-    PixelData pixelData = simulationData.pixelLookup[pixels[index + ReadIndex].PixelID16_Charge8_Flags8 & 0xFFFFu];
+    uint flags = getFlags(pixels[index + ReadIndex].PixelID16_Charge8_Flags8);
 
-    if (bitsetHas(pixelData.Flags, Solid)) {
+    if (bitsetHas(flags, Solid) && bitsetHas(flags, Connected)) {
         labels[index] = int(gl_GlobalInvocationID.x);
     }
     else {

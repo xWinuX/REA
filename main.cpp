@@ -84,7 +84,7 @@ int main()
 			.Color = Color(0x775937FF),
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Electricity | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Electricity | Pixel::ElectricityReceiver),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,

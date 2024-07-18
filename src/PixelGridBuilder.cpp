@@ -1,8 +1,6 @@
-#include "../include/REA/PixelGridBuilder.hpp"
+#include "REA/PixelGridBuilder.hpp"
 
 #include <algorithm>
-#include <map>
-#include <box2d/b2_types.h>
 
 namespace REA
 {
@@ -35,7 +33,7 @@ namespace REA
 				                                {
 					                                pixelCreateInfo.ID,
 					                                static_cast<uint8_t>(pixelCreateInfo.Data.BaseCharge),
-					                                BitSet<uint8>(),
+					                                BitSet<uint8_t>(pixelCreateInfo.Data.Flags.GetMask()),
 					                                pixelCreateInfo.Data.BaseTemperature,
 				                                }
 			                                });

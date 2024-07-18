@@ -14,9 +14,9 @@
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
 #include <utility>
 #include <box2d/b2_polygon_shape.h>
+#include <box2d/b2_edge_shape.h>
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Rendering/Material.hpp>
-
 
 #include "IconsFontAwesome.h"
 #include "REA/PixelType.hpp"
@@ -31,15 +31,17 @@
 
 namespace REA::System
 {
-	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders):
+	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders, ECS::ContextProvider& contextProvider):
 		_shaders(simulationShaders)
 	{
+		EngineContext* engineContext = contextProvider.GetContext<EngineContext>();
+		ECS::Registry& ecsRegistry   = engineContext->Application->GetECSRegistry();
+
 		auto&                      properties = _shaders.FallingSimulation->GetProperties();
 		Rendering::Vulkan::Device* device     = _shaders.FallingSimulation->GetPipeline().GetDevice();
 
 		vk::DeviceSize bufferSizes[]        = { sizeof(glm::vec2) * 100'000, sizeof(uint16_t) * 100'000 };
 		vk::DeviceSize bufferElementSizes[] = { sizeof(glm::vec2), sizeof(uint16_t) };
-
 
 		_indexes = std::ranges::iota_view(static_cast<size_t>(0), 200'000ull);
 
@@ -66,6 +68,12 @@ namespace REA::System
 
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
+
+		Component::Collider collider;
+		collider.InitialType     = b2_staticBody;
+		collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
+
+		_staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
 	}
 
 	void PixelGridSimulation::SwapPixelBuffer() { std::swap(_readIndex, _writeIndex); }
@@ -227,28 +235,72 @@ namespace REA::System
 				{
 					//SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
 
-					std::vector<CDT::Edge> edges = std::vector<CDT::Edge>(marchingCubes->numSegments, CDT::Edge(0, 0));
-					for (int i = 0; i < marchingCubes->numSegments; ++i) { edges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+					std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(marchingCubes->numSolidSegments, CDT::Edge(0, 0));
+					for (int i = 0; i < marchingCubes->numSolidSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
-					std::span<CDT::V2d<float>> segmentsSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->segments[0]), marchingCubes->numSegments * 2);
+					std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->solidSegments[0]),
+					                                                        marchingCubes->numSolidSegments * 2);
 
-					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(segmentsSpan, edges);
+					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
 
-					std::vector<MarchingSquareMesherUtils::Polyline> allPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(segmentsSpan, edges);
+					std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
+
+					for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
+					{
+						solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
+					}
+
+
+					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
+					if (collider.Body != nullptr)
+					{
+						for (b2Fixture* fixture: collider.Fixtures) { collider.Body->DestroyFixture(fixture); }
+
+						collider.Fixtures.clear();
+
+						b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
+						for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
+						{
+							for (int i = 0; i < solidPolyline.Vertices.size(); ++i)
+							{
+								CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
+								CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
+
+								b2EdgeShape edgeShape{};
+								edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
+
+								fixtureDef.shape = &edgeShape;
+
+								collider.Fixtures.push_back(collider.Body->CreateFixture(&fixtureDef));
+							}
+						}
+					}
+
+					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->numConnectedSegments, CDT::Edge(0, 0));
+					for (int i = 0; i < marchingCubes->numConnectedSegments; ++i) { connectedEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+
+					std::span<CDT::V2d<float>> connectedSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->connectedSegments[0]),
+					                                                            marchingCubes->numConnectedSegments * 2);
+
+
+					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(connectedSegmentSpan, connectedEdges);
+
+
+					std::vector<MarchingSquareMesherUtils::Polyline> connectedPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(connectedSegmentSpan, connectedEdges);
 
 					std::vector<size_t>                              polylinesToMove{};
 					std::vector<MarchingSquareMesherUtils::Polyline> polylines{};
 
-					for (int currentPolyLineIndex = 0; currentPolyLineIndex < allPolylines.size(); ++currentPolyLineIndex)
+					for (int currentPolyLineIndex = 0; currentPolyLineIndex < connectedPolylines.size(); ++currentPolyLineIndex)
 					{
-						MarchingSquareMesherUtils::Polyline& currentPolyline = allPolylines[currentPolyLineIndex];
+						MarchingSquareMesherUtils::Polyline& currentPolyline = connectedPolylines[currentPolyLineIndex];
 
 						bool isHole = false;
-						for (int polyLineIndex = 0; polyLineIndex < allPolylines.size(); ++polyLineIndex)
+						for (int polyLineIndex = 0; polyLineIndex < connectedPolylines.size(); ++polyLineIndex)
 						{
 							if (currentPolyLineIndex == polyLineIndex) { continue; }
 
-							MarchingSquareMesherUtils::Polyline& polyline = allPolylines[polyLineIndex];
+							MarchingSquareMesherUtils::Polyline& polyline = connectedPolylines[polyLineIndex];
 
 							if (polyline.AABB.Contains(currentPolyline.AABB))
 							{
@@ -260,10 +312,7 @@ namespace REA::System
 						if (!isHole) { polylinesToMove.push_back(currentPolyLineIndex); }
 					}
 
-					for (size_t toMove: polylinesToMove)
-					{
-						polylines.push_back(std::move(allPolylines[toMove]));
-					}
+					for (size_t toMove: polylinesToMove) { polylines.push_back(std::move(connectedPolylines[toMove])); }
 
 					if (polylines.size() > 0) { _numLineSegements = 0; }
 
@@ -287,7 +336,6 @@ namespace REA::System
 
 						_numLineSegements += (polyline.Vertices.size());
 
-
 						// Simplify line
 						polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
 
@@ -298,7 +346,7 @@ namespace REA::System
 
 						b2AABB b2Aabb = polyline.AABB;
 
-						if (!pixelGrid.PixelState[index].Flags.Has(Pixel::Flags::Static) && pixelGrid.PixelState[index].RigidBodyID == 0)
+						if (pixelGrid.PixelState[index].RigidBodyID == 0)
 						{
 							// Calculate size needed
 							b2Vec2     extends  = b2Aabb.GetExtents();
@@ -306,7 +354,7 @@ namespace REA::System
 							size_t     dataSize = aabbSize.x * aabbSize.y;
 
 							_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
-											   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
+							                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
 
 							Component::Transform          transform{};
 							Component::PixelGridRigidBody pixelGridRigidBody{};
@@ -363,8 +411,8 @@ namespace REA::System
 									vertices[2] = { vertices[2].x - b2Center.x, vertices[2].y - b2Center.y };
 
 
-									float area = 0.5f * std::abs(vertices[0].x * (vertices[1].y - vertices[2].y) + vertices[1].x * (vertices[2].y - vertices[0].y) + vertices[2].x * (
-																	 vertices[0].y - vertices[1].y));
+									float area = 0.5f * std::abs(vertices[0].x * (vertices[1].y - vertices[2].y) + vertices[1].x * (vertices[2].y - vertices[0].y) + vertices[2].x *
+									                             (vertices[0].y - vertices[1].y));
 
 									if (area < 0.01f) { continue; }
 
@@ -386,7 +434,8 @@ namespace REA::System
 						}
 					}
 
-					marchingCubes->numSegments = 0;
+					marchingCubes->numConnectedSegments = 0;
+					marchingCubes->numSolidSegments     = 0;
 
 
 					if (Input::GetDown(KeyCode::SPACE))

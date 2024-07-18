@@ -2,6 +2,7 @@
 
 #include <execution>
 #include <imgui.h>
+#include <bitset>
 
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
@@ -159,12 +160,12 @@ namespace REA::System
 
 			Pixel::State state = pixelState[currentePixelindex];
 
-
 			ImGui::Text(std::format("Current Pixel Info:").c_str());
 			ImGui::Text(std::format("Index: {0}", currentePixelindex).c_str());
 			ImGui::Text(std::format("Pos: x {0} y {1}", gridX, gridY).c_str());
 			ImGui::Text(std::format("ID: {0}", state.PixelID).c_str());
 			ImGui::Text(std::format("Name: {0}", pixelGrid.PixelLookup[state.PixelID].Name).c_str());
+			ImGui::Text(std::format("Mask: {0}", std::bitset<8>(state.Flags.GetMask()).to_string()).c_str());
 			ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
 			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
 			ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());

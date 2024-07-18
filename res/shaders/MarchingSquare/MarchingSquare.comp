@@ -2,13 +2,14 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
-layout(push_constant) uniform PushConstant {
+layout (push_constant) uniform PushConstant {
     uint ReadIndex;
 };
 
-layout(std430, set = 1, binding = 5) writeonly buffer s_c_si_MarchingSquares {
-    uint numSegments;
-    vec2 segments[100000];
+layout (std430, set = 1, binding = 5) writeonly buffer s_c_si_MarchingSquares {
+    uint numConnectedSegments;
+    uint numSolidSegments;
+    vec2 segments[NumMarchingSquareSegments * 2];
 };
 
 const uint caseLookup[16] = {
@@ -64,10 +65,10 @@ const int edgeLookup[9][4] = {
 };
 
 const vec2 edgeOffsets[4] = vec2[4](
-vec2(0.5f, 0.0f), // 0 -> midpoint of edge between 0 and 1
-vec2(1.0f, 0.5f), // 1 -> midpoint of edge between 1 and 2
-vec2(0.5f, 1.0f), // 2 -> midpoint of edge between 2 and 3
-vec2(0.0f, 0.5f)// 3 -> midpoint of edge between 3 and 0
+    vec2(0.5f, 0.0f), // 0 -> midpoint of edge between 0 and 1
+    vec2(1.0f, 0.5f), // 1 -> midpoint of edge between 1 and 2
+    vec2(0.5f, 1.0f), // 2 -> midpoint of edge between 2 and 3
+    vec2(0.0f, 0.5f)// 3 -> midpoint of edge between 3 and 0
 );
 
 
@@ -84,7 +85,7 @@ void main()
     uint width = simulationData.width;
     uint height = simulationData.height;
 
-    if (gl_GlobalInvocationID.x >= ((width + height)*3)-2) {
+    if (gl_GlobalInvocationID.x >= ((width + height) * 3) - 2) {
         return;
     }
 
@@ -136,10 +137,12 @@ void main()
         }
     }
 
-    vec2 startPosition = vec2(0.0f);
-    vec2 previousPosition = vec2(1.0f);
-    uint previousCaseIndex = 16;
-    uint previousCaseNumber = 16;
+
+
+    vec2 startPosition[2] = { vec2(0.0f), vec2(0.0f) };
+    vec2 previousPosition[2] = { vec2(1.0f), vec2(1.0f) };
+    uint previousCaseIndex[2] = { 16, 16 };
+    uint previousCaseNumber[2] = { 16, 16 };
 
     for (int stepIndex = 0; stepIndex < numIterations; stepIndex++)
     {
@@ -165,92 +168,123 @@ void main()
         Pixel bottomLeftPixel = pixels[bottomLeftIndex + ReadIndex];
         Pixel bottomRightPixel = pixels[bottomRightIndex + ReadIndex];
 
-        PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
-        PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
-        PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
-        PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+        uint topLeftPixelFlags = getFlags(topLeftPixel.PixelID16_Charge8_Flags8);
+        uint topRightPixelFlags = getFlags(topRightPixel.PixelID16_Charge8_Flags8);
+        uint bottomLeftPixelFlags = getFlags(bottomLeftPixel.PixelID16_Charge8_Flags8);
+        uint bottomRightPixelFlags = getFlags(bottomRightPixel.PixelID16_Charge8_Flags8);
 
-        // Compute the case index
-        uint caseNumber = (uint(bitsetHas(topLeftPixelData.Flags, Solid)) << 3u) |
-        (uint(bitsetHas(topRightPixelData.Flags, Solid)) << 2u) |
-        (uint(bitsetHas(bottomRightPixelData.Flags, Solid)) << 1u) |
-        uint(bitsetHas(bottomLeftPixelData.Flags, Solid));
+        bool topLeftPixelSolid = bitsetHas(topLeftPixelFlags, Solid);
+        bool topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
+        bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelFlags, Solid);
+        bool bottomRightPixelSolid = bitsetHas(bottomRightPixelFlags, Solid);
 
-        uint caseIndex = caseLookup[caseNumber];
+        bool topLeftPixelConnected = bitsetHas(topLeftPixelFlags, Connected);
+        bool topRightPixelConnected = bitsetHas(topRightPixelFlags, Connected);
+        bool bottomLeftPixelConnected = bitsetHas(bottomLeftPixelFlags, Connected);
+        bool bottomRightPixelConnected = bitsetHas(bottomRightPixelFlags, Connected);
 
-        // TODO: fix diagonals for more performance
-        // Add handling for diagonal cases
-        bool forceCaseSwitch = false;
-        if (direction == DiagonalLeftToRight || direction == DiagonalRightToLeft) {
-            if (
-            (caseIndex >= 7) ||
-            (previousCaseIndex == 3 && (caseIndex == 3)) ||
-            (previousCaseIndex == 6 && (caseIndex == 6)) ||
-            (previousCaseIndex == 4 && (caseIndex == 4)) ||
-            (previousCaseIndex == 5 && (caseIndex == 5))) {
-                forceCaseSwitch = true;
-            }
-        }
-
-        if (caseIndex != previousCaseIndex || forceCaseSwitch)
+        for (int segmentsTypeIndex = 0; segmentsTypeIndex < 2; segmentsTypeIndex++)
         {
-            bool isInvalidCase =    caseIndex != 0 && ((direction == Vertical && caseIndex != 1) ||
-            (direction == Horizontal && caseIndex != 2) ||
-            (direction == DiagonalLeftToRight && caseIndex != 3 && caseIndex != 4 && caseIndex != 7) ||
-            (direction == DiagonalRightToLeft && caseIndex != 5 && caseIndex != 6 && caseIndex != 8));
+            uint caseNumber = 16;
 
-            if (previousCaseIndex == 16)
+            if (segmentsTypeIndex == 0)
             {
-                if (!isInvalidCase)
-                {
-                    previousCaseIndex = caseIndex;
-                    previousCaseNumber = caseNumber;
-                    startPosition = samplePosition;
-                }
+                caseNumber = (uint(topLeftPixelSolid && topLeftPixelConnected) << 3u) |
+                (uint(topRightPixelSolid && topRightPixelConnected) << 2u) |
+                (uint(bottomRightPixelSolid && bottomRightPixelConnected) << 1u) |
+                uint(bottomLeftPixelSolid && bottomLeftPixelConnected);
             }
             else
             {
-                const int[4] edges = edgeLookup[previousCaseIndex];
+                caseNumber = (uint(topLeftPixelSolid && !topLeftPixelConnected) << 3u) |
+                (uint(topRightPixelSolid && !topRightPixelConnected) << 2u) |
+                (uint(bottomRightPixelSolid && !bottomRightPixelConnected) << 1u) |
+                uint(bottomLeftPixelSolid && !bottomLeftPixelConnected);
+            }
 
-                for (int i = 0; i < 4; i += 2)
-                {
-                    if (edges[i] != -1 && edges[i+1] != -1)
-                    {
-                        vec2 start;
-                        vec2 end;
-                        bool connectionCase = connectionLookup[previousCaseNumber][i/2];
+            uint caseIndex = caseLookup[caseNumber];
 
-                        if (connectionCase)
-                        {
-                            start = previousPosition + edgeOffsets[edges[i]] + vec2(0.5, -0.5);
-                            end = startPosition + edgeOffsets[edges[i+1]] + vec2(0.5, -0.5);
-                        }
-                        else
-                        {
-                            start = startPosition + edgeOffsets[edges[i]] + vec2(0.5, -0.5);
-                            end = previousPosition + edgeOffsets[edges[i+1]] + vec2(0.5, -0.5);
-                        }
-
-                        uint idx = atomicAdd(numSegments, 1);
-                        segments[idx * 2] = start;
-                        segments[(idx * 2) + 1] = end;
-                    }
+            // TODO: fix diagonals for more performance
+            // Add handling for diagonal cases
+            bool forceCaseSwitch = false;
+            if (direction == DiagonalLeftToRight || direction == DiagonalRightToLeft) {
+                if (
+                (caseIndex >= 7) ||
+                (previousCaseIndex[segmentsTypeIndex] == 3 && (caseIndex == 3)) ||
+                (previousCaseIndex[segmentsTypeIndex] == 6 && (caseIndex == 6)) ||
+                (previousCaseIndex[segmentsTypeIndex] == 4 && (caseIndex == 4)) ||
+                (previousCaseIndex[segmentsTypeIndex] == 5 && (caseIndex == 5))) {
+                    forceCaseSwitch = true;
                 }
+            }
 
-                if (isInvalidCase)
+            if (caseIndex != previousCaseIndex[segmentsTypeIndex] || forceCaseSwitch)
+            {
+                bool isInvalidCase = caseIndex != 0 && ((direction == Vertical && caseIndex != 1) ||
+                (direction == Horizontal && caseIndex != 2) ||
+                (direction == DiagonalLeftToRight && caseIndex != 3 && caseIndex != 4 && caseIndex != 7) ||
+                (direction == DiagonalRightToLeft && caseIndex != 5 && caseIndex != 6 && caseIndex != 8));
+
+                if (previousCaseIndex[segmentsTypeIndex] == 16)
                 {
-                    previousCaseIndex = 16;
-                    previousCaseNumber = 16;
+                    if (!isInvalidCase)
+                    {
+                        previousCaseIndex[segmentsTypeIndex] = caseIndex;
+                        previousCaseNumber[segmentsTypeIndex] = caseNumber;
+                        startPosition[segmentsTypeIndex] = samplePosition;
+                    }
                 }
                 else
                 {
-                    previousCaseIndex = caseIndex;
-                    previousCaseNumber = caseNumber;
-                    startPosition = samplePosition;
+                    const int[4] edges = edgeLookup[previousCaseIndex[segmentsTypeIndex]];
+
+                    for (int i = 0; i < 4; i += 2)
+                    {
+                        if (edges[i] != -1 && edges[i + 1] != -1)
+                        {
+                            vec2 start;
+                            vec2 end;
+                            bool connectionCase = connectionLookup[previousCaseNumber[segmentsTypeIndex]][i / 2];
+
+                            if (connectionCase)
+                            {
+                                start = previousPosition[segmentsTypeIndex] + edgeOffsets[edges[i]] + vec2(0.5, -0.5);
+                                end = startPosition[segmentsTypeIndex] + edgeOffsets[edges[i + 1]] + vec2(0.5, -0.5);
+                            }
+                            else
+                            {
+                                start = startPosition[segmentsTypeIndex] + edgeOffsets[edges[i]] + vec2(0.5, -0.5);
+                                end = previousPosition[segmentsTypeIndex] + edgeOffsets[edges[i + 1]] + vec2(0.5, -0.5);
+                            }
+
+                            uint idx = 0;
+                            if (segmentsTypeIndex == 0) {
+                                idx = atomicAdd(numConnectedSegments, 1);
+                            }
+                            else {
+                                idx = atomicAdd(numSolidSegments, 1);
+                            }
+                            uint offset = segmentsTypeIndex * NumMarchingSquareSegments;
+                            segments[offset + (idx * 2)] = start;
+                            segments[offset + ((idx * 2) + 1)] = end;
+                        }
+                    }
+
+                    if (isInvalidCase)
+                    {
+                        previousCaseIndex[segmentsTypeIndex] = 16;
+                        previousCaseNumber[segmentsTypeIndex] = 16;
+                    }
+                    else
+                    {
+                        previousCaseIndex[segmentsTypeIndex] = caseIndex;
+                        previousCaseNumber[segmentsTypeIndex] = caseNumber;
+                        startPosition[segmentsTypeIndex] = samplePosition;
+                    }
                 }
             }
-        }
 
-        previousPosition = samplePosition;
+            previousPosition[segmentsTypeIndex] = samplePosition;
+        }
     }
 }

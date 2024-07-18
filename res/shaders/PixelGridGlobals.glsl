@@ -1,5 +1,6 @@
 struct PixelData {
     uint Flags;
+    uint FlagsCarryover;
     uint Density;
     uint Spread;
     float TemperatureResistance;
@@ -44,8 +45,8 @@ uint getCharge(uint packedData) {
     return (packedData >> 16u) & 0xFFu;
 }
 
-uint getDirection(uint packedData) {
-    return (packedData >> 28u) & 0xFu;
+uint getFlags(uint packedData) {
+    return (packedData >> 24u) & 0xFFu;
 }
 
 uint getRigidBodyID(uint packedData) {
@@ -58,11 +59,13 @@ uint getRigidBodyIndex(uint packedData) {
 
 const uint NumPixels = 1048576;
 const uint NumRigidbodies = 100;
+const uint NumMarchingSquareSegments = 100000;
 const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));
 
 const int MaxCharge = 255;
 
-const uint Solid = 1u << 7u;
+const uint Solid = 1u << 0u;
+const uint Connected = 1u << 1u;
 const uint Gravity = 1u << 8u;
 const uint Electricity = 1u << 9u;
 const uint ElectricityEmitter = 1u << 10u;

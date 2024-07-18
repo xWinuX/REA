@@ -28,7 +28,7 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> CCLExtract;
 			};
 
-			PixelGridSimulation(const SimulationShaders& simulationShaders);
+			PixelGridSimulation(const SimulationShaders& simulationShaders, ECS::ContextProvider& contextProvider);
 
 
 			AssetHandle<Rendering::Material> DebugMaterial;
@@ -54,36 +54,22 @@ namespace REA::System
 				glm::uvec2 Size               = { 0, 0 };
 			};
 
-			struct Data
-			{
-				BitSet<uint32_t> Flags                        = BitSet<uint32_t>();
-				uint32_t         Density                      = 0;
-				uint32_t         SpreadingFactor              = 0;
-				float            TemperatureResistance        = 0;
-				float            BaseTemperature              = 0;
-				float            LowerTemperatureLimit        = -273.15f;
-				uint32_t         LowerTemperatureLimitPixelID = 0;
-				float            HighTemperatureLimit         = 1'000'000;
-				uint32_t         HighTemperatureLimitPixelID  = 0;
-				float            TemperatureConversion        = 0.0f;
-				uint32_t         BaseCharge                   = 0;
-				float            ChargeAbsorbtionChance       = 0.0f;
-			};
-
 			struct SSBO_SimulationData
 			{
-				float    deltaTime = 0.0f;
-				uint32_t timer     = 0;
-				float    rng       = 0.0f;
-				uint32_t width     = 0;
-				uint32_t height    = 0;
-				Data     pixelLookup[1024];
+				float       deltaTime = 0.0f;
+				uint32_t    timer     = 0;
+				float       rng       = 0.0f;
+				uint32_t    width     = 0;
+				uint32_t    height    = 0;
+				Pixel::Data pixelLookup[1024];
 			};
 
 			struct SSBO_MarchingCubes
 			{
-				uint32_t             numSegments = 0;
-				alignas(8) glm::vec2 segments[100000];
+				uint32_t  numConnectedSegments = 0;
+				uint32_t  numSolidSegments     = 0;
+				glm::vec2 connectedSegments[100000];
+				glm::vec2 solidSegments[100000];
 			};
 
 			struct SSBO_RigidBodyData
@@ -115,6 +101,8 @@ namespace REA::System
 			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1048576);
 
 			AvailableStack<uint32_t> _availableRigidBodyIDs = AvailableStack<uint32_t>();
+
+			uint64_t _staticEnvironmentEntityID;
 
 			uint32_t _rigidBodyIDCounter = 1;
 

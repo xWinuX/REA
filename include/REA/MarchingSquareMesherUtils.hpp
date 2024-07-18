@@ -1,5 +1,6 @@
 #pragma once
 
+#include <CDT.h>
 #include <CDTUtils.h>
 #include <stack>
 #include <Triangulation.h>
@@ -36,11 +37,17 @@ namespace REA
 			static Polyline SimplifyPolylines(const Polyline& polyline, float threshold);
 
 			/**
+			 * Removes duplicates inplace
+			 * @param vertices span of vertices
+			 */
+			static CDT::DuplicatesInfo RemoveDuplicates(std::span<CDT::V2d<float>>& vertices);
+
+			/**
 			 * Removes duplicates and remaps edges inplace (Use this before sending data to SeperateAndSortPolylines)
 			 * @param vertices span of vertices
 			 * @param edges vector of edges (typically just numbers starting at 0 and counting upwards in single steps)
 			 */
-			static void RemoveDuplicatesAndRemapEdges(std::span<CDT::V2d<float>>& vertices, std::vector<CDT::Edge>& edges);
+			static CDT::DuplicatesInfo RemoveDuplicatesAndRemapEdges(std::span<CDT::V2d<float>>& vertices, std::vector<CDT::Edge>& edges);
 
 			static CDT::Triangulation<float> GenerateTriangulation(const Polyline& polyline);
 

@@ -14,13 +14,12 @@ namespace REA
 
 		enum Flags : uint32_t
 		{
-			Static              = 1 << 0,
-			RigidBodySpawn      = 1 << 1,
-			Solid               = 1 << 7,
-			Gravity             = 1 << 8,
-			Electricity         = 1 << 9,
-			ElectricityEmitter  = 1 << 10,
-			ElectricityReceiver = 1 << 11,
+			Solid               = 1 << 0,  // Non Solids can pass through eachother for example water can pass trough air but can't pass through sand
+			Connected           = 1 << 1,  // Pixels with this set connect to each other and form rigidbodies
+			Gravity             = 1 << 8,  // Pixels with gravity will fall
+			Electricity         = 1 << 9,  // Can conduct Electricity
+			ElectricityEmitter  = 1 << 10, // Does not loose charge
+			ElectricityReceiver = 1 << 11, // Consumes charge
 		};
 
 		/**
@@ -48,6 +47,7 @@ namespace REA
 		struct Data
 		{
 			BitSet<uint32_t> Flags                        = BitSet<uint32_t>();
+			BitSet<uint32_t> FlagsCarryover               = BitSet<uint32_t>();
 			uint32_t         Density                      = 0;
 			uint32_t         SpreadingFactor              = 0;
 			float            TemperatureResistance        = 0;
