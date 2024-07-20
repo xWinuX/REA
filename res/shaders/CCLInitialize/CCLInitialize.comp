@@ -16,14 +16,15 @@ void main()
         return;
     }
 
-    uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+    uint pixelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+    uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.simulationWidth, Size, Offset);
 
-    uint flags = getFlags(pixels[index + ReadIndex].PixelID16_Charge8_Flags8);
+    uint flags = getFlags(pixels[pixelIndex].PixelID16_Charge8_Flags8);
 
     if (bitsetHas(flags, Solid) && bitsetHas(flags, Connected)) {
-        labels[index] = int(gl_GlobalInvocationID.x);
+        labels[labelIndex] = int(gl_GlobalInvocationID.x);
     }
     else {
-        labels[index] = -1;
+        labels[labelIndex] = -1;
     }
 }

@@ -9,14 +9,17 @@ layout(push_constant) uniform PushConstant {
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint width = simulationData.width;
-    uint height = simulationData.height;
+    uint simulationWidth = simulationData.simulationWidth;
+    uint simulationHeight = simulationData.simulationHeight;
 
-    if (gl_GlobalInvocationID.x >= width * height) {
+    if (gl_GlobalInvocationID.x >= simulationWidth * simulationHeight) {
         return;
     }
 
-    uint index = gl_GlobalInvocationID.x + readIndex;
+    uint x = gl_GlobalInvocationID.x % simulationWidth;
+    uint y = gl_GlobalInvocationID.x / simulationWidth;
+
+    uint index = getGlobalIndex(x, y, simulationData.width, uvec2(simulationData.targetPosition));
 
     Pixel pixel = pixels[index];
     if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) != 0)

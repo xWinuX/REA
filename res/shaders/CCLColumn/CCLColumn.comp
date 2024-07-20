@@ -18,8 +18,8 @@ void main() {
 
     for (uint y = 1; y < Size.y; ++y)
     {
-        uint bottomIndex = getGlobalIndex(x, y-1, simulationData.width, Offset);
-        uint index = getGlobalIndex(x, y, simulationData.width, Offset);
+        uint bottomIndex = getGlobalIndex(x, y-1, simulationData.simulationWidth, Offset);
+        uint index = getGlobalIndex(x, y, simulationData.simulationWidth, Offset);
 
         if (labels[bottomIndex] >= 0 && labels[index] >= 0) {
             labels[index] = labels[bottomIndex];

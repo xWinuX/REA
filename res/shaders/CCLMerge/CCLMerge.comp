@@ -28,8 +28,8 @@ int findRoot(uint index) {
 void merge(uint x0) {
     uint x1 = x0 + 1;
     for (uint y = 0; y < Size.y; ++y) {
-        uint i0 = getGlobalIndex(x0, y, simulationData.width, Offset);
-        uint i1 = getGlobalIndex(x1, y, simulationData.width, Offset);
+        uint i0 = getGlobalIndex(x0, y, simulationData.simulationWidth, Offset);
+        uint i1 = getGlobalIndex(x1, y, simulationData.simulationWidth, Offset);
         if (labels[i0] >= 0 && labels[i1] >= 0) {
             int v0 = findRoot(i0);
             int v1 = findRoot(i1);

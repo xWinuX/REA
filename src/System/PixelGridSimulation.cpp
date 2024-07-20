@@ -504,7 +504,7 @@ namespace REA::System
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 					SwapPixelBuffer();
-/*
+
 					// Do CCL if there are rigidbodies to discover
 					if (!_newRigidBodies.empty())
 					{
@@ -616,7 +616,7 @@ namespace REA::System
 
 						_shaders.MarchingSquareAlgorithm->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
-						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->width + simulationData->height) * 3) - 2, 64u), 1, 1);
+						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->simulationWidth + simulationData->simulationHeight) * 3) - 2, 64u), 1, 1);
 
 						CmdWaitForPreviousComputeShader();
 					}
@@ -655,7 +655,7 @@ namespace REA::System
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
-					}*/
+					}
 
 					_commandBuffer.GetVkCommandBuffer().end();
 

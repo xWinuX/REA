@@ -18,13 +18,13 @@ void main()
         return;
     }
 
+    uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.simulationWidth, Size, Offset);
 
-    uint index = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
-
-    if (labels[index] != -1)
+    if (labels[labelIndex] != -1)
     {
+        uint pixelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
         uint localIndex = rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x;
 
-        pixels[index + ReadIndex].RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
+        pixels[pixelIndex].RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
     }
 }

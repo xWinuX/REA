@@ -11,8 +11,9 @@ layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
     RigidBody rigidBody = rigidBodies[rigidBodyIndex];
-    uint width = simulationData.width;
-    uint height = simulationData.height;
+    uint simulationWidth = simulationData.simulationWidth;
+    uint simulationHeight = simulationData.simulationHeight;
+
     uint rigidBodyWidth = rigidBody.Size.x;
     uint rigidBodyHeight = rigidBody.Size.y;
 
@@ -37,44 +38,14 @@ void main()
         uint localX = (gl_GlobalInvocationID.x % rigidBodyWidth);
         uint localY = (gl_GlobalInvocationID.x / rigidBodyWidth);
 
-        bool rightEdge = localX == rigidBodyWidth-1;
-        bool leftEdge = localX == 0;
-        bool topEdge = localY == rigidBodyHeight-1;
-        bool bottomEdge = localY == 0;
-
         vec2 position = rotationMatrix * (vec2(localX, localY) - center);
 
         uint x = uint(floor(rigidBodyBottomLeftCorner.x + center.x + position.x));
         uint y = uint(floor(rigidBodyBottomLeftCorner.y + center.y + position.y));
 
-        uint topY = (y + 1) % height;
-        uint bottomY = (y == 0) ? height - 1 : y - 1;
+        uint middleCenterIndex = y * simulationData.width + x;
 
-        uint rightX = (x + 1) % width;
-        uint leftX = (x == 0) ? width - 1 : x - 1;
-
-        // Calculate wrapped indices
-        uint topYCalc = topY * width;
-        uint middleYCalc = y * width;
-        uint bottomYCalc = bottomY * width;
-
-        uint topCenterIndex = topYCalc + x;
-
-        uint middleLeftIndex = middleYCalc + leftX;
-        uint middleCenterIndex = middleYCalc + x;
-        uint middleRightIndex = middleYCalc + rightX;
-
-        uint bottomCenterIndex = bottomYCalc + x;
-
-        // Read pixels
-        Pixel topCenterPixel = pixels[topCenterIndex + readIndex];
-
-        Pixel middleLeftPixel = pixels[middleLeftIndex + readIndex];
-        Pixel middleCenterPixel = pixels[middleCenterIndex + readIndex];
-        Pixel middleRightPixel = pixels[middleRightIndex + readIndex];
-
-        Pixel bottomCenterPixel = pixels[bottomCenterIndex + readIndex];
-
+        Pixel middleCenterPixel = pixels[middleCenterIndex];
 
         uint dataIndex = getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20);
         if (rigidBody.ID == 0)
@@ -88,27 +59,8 @@ void main()
 
         if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
         {
-            pixels[middleCenterIndex + readIndex] = pixel;
+            pixels[middleCenterIndex] = pixel;
         }
 
-        //if (!rightEdge && getRigidBodyID(middleRightPixel.RigidBodyID12_RigidBodyIndex20) == 0)
-        //{
-        //    pixels[middleRightIndex + readIndex] = pixel;
-        //}
-//
-        //if (!topEdge && getRigidBodyID(topCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
-        //{
-        //    pixels[topCenterIndex + readIndex] = pixel;
-        //}
-//
-        //if (!leftEdge && getRigidBodyID(middleLeftPixel.RigidBodyID12_RigidBodyIndex20) == 0)
-        //{
-        //    pixels[middleLeftIndex + readIndex] = pixel;
-        //}
-//
-        //if (!bottomEdge && getRigidBodyID(bottomCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
-        //{
-        //    pixels[bottomCenterIndex + readIndex] = pixel;
-        //}
     }
 }
