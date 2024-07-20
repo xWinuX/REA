@@ -34,7 +34,7 @@ void main() {
 
     vec2 gridSize = vec2(gridInfo.width, gridInfo.height);
 
-    gl_Position = cameraProperties.proj * cameraProperties.view * vec4((POSITION[a_Index]*gridSize), -100.0f, 1.0f);
+    gl_Position = cameraProperties.proj * cameraProperties.view * vec4((POSITION[a_Index]*gridSize) +gridInfo.offset, -100.0f, 1.0f);
 
     v_PixelPosition = UV[a_Index] * gridSize;
 }

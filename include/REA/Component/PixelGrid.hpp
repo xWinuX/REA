@@ -3,7 +3,6 @@
 #include <glm/vec2.hpp>
 #include <SplitEngine/DataStructures.hpp>
 
-
 #include "REA/Pixel.hpp"
 
 
@@ -14,14 +13,16 @@ namespace REA::Component
 		Pixel::State* PixelState = nullptr;
 		int32_t*      Labels     = nullptr;
 
-		int32_t Width  = 500;
-		int32_t Height = 500;
+		int32_t Width  = 512;
+		int32_t Height = 512;
+
+		int32_t SimulationWidth  = 256;
+		int32_t SimulationHeight = 256;
+
+		glm::vec2 ViewTargetPosition = { 0.0f, 0.0f };
 
 		std::vector<Pixel>       PixelLookup{};
 		std::vector<Pixel::Data> PixelDataLookup;
 		std::vector<Color>       PixelColorLookup{};
-
-		std::vector<uint32_t> ReadOnlyPixels  = std::vector<uint32_t>(Width * Height, 0);
-		std::vector<uint32_t> WriteOnlyPixels = std::vector<uint32_t>(Width * Height, 0);
 	};
 }

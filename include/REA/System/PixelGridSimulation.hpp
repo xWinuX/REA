@@ -56,11 +56,15 @@ namespace REA::System
 
 			struct SSBO_SimulationData
 			{
-				float       deltaTime = 0.0f;
-				uint32_t    timer     = 0;
-				float       rng       = 0.0f;
-				uint32_t    width     = 0;
-				uint32_t    height    = 0;
+				float       deltaTime        = 0.0f;
+				uint32_t    timer            = 0;
+				float       rng              = 0.0f;
+				uint32_t    width            = 0;
+				uint32_t    height           = 0;
+				uint32_t    simulationWidth  = 0;
+				uint32_t    simulationHeight = 0;
+				uint32_t    _pad = 0;
+				glm::vec2   targetPosition   = { 0.0f, 0.0f };
 				Pixel::Data pixelLookup[1024];
 			};
 
@@ -121,7 +125,7 @@ namespace REA::System
 			bool _doStep = false;
 
 			uint32_t _readIndex  = 0;
-			uint32_t _writeIndex = 1048576;
+			uint32_t _writeIndex = 8388608;
 
 			bool _firstUpdate = true;
 

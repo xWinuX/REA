@@ -3,7 +3,7 @@
 #include "../PixelGridComputeGlobals.glsl"
 
 
-layout(push_constant) uniform PushConstant {
+layout (push_constant) uniform PushConstant {
     uint readIndex;
     uint writeIndex;
 };
@@ -11,51 +11,67 @@ layout(push_constant) uniform PushConstant {
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint width = simulationData.width;
-    uint height = simulationData.height;
+    uint simulationWidth = simulationData.simulationWidth;
+    uint simulationHeight = simulationData.simulationHeight;
 
-    if (gl_GlobalInvocationID.x >= width * height) {
+    if (gl_GlobalInvocationID.x >= simulationWidth * simulationHeight) {
         return;
     }
 
-    uint x = gl_GlobalInvocationID.x % width;
-    uint y = gl_GlobalInvocationID.x / width;
+    uint x = gl_GlobalInvocationID.x % simulationWidth;
+    uint y = gl_GlobalInvocationID.x / simulationWidth;
 
-    uint topY = (y + 1) % height;
-    uint bottomY = (y == 0) ? height - 1 : y - 1;
+    uint topY = (y + 1) % simulationHeight;
+    uint bottomY = (y == 0) ? simulationHeight - 1 : y - 1;
 
-    uint rightX = (x + 1) % width;
-    uint leftX = (x == 0) ? width - 1 : x - 1;
+    uint rightX = (x + 1) % simulationWidth;
+    uint leftX = (x == 0) ? simulationWidth - 1 : x - 1;
 
     // Calculate wrapped indices
-    uint topYCalc = topY * width;
-    uint middleYCalc = y * width;
-    uint bottomYCalc = bottomY * width;
+    uvec2 readOffset = uvec2(0, 0);
+    uvec2 writeOffset = uvec2(0, 0);
 
-    uint topLeftIndex = topYCalc + leftX;
-    uint topCenterIndex = topYCalc + x;
-    uint topRightIndex = topYCalc + rightX;
+    uint readWidth = simulationWidth;
+    uint writeWidth = simulationWidth;
 
-    uint middleLeftIndex = middleYCalc + leftX;
-    uint middleCenterIndex = gl_GlobalInvocationID.x;
-    uint middleRightIndex = middleYCalc + rightX;
+    if (readIndex == 0) {
+        readOffset = uvec2(simulationData.targetPosition);
+        readWidth = simulationData.width;
+    }
 
-    uint bottomLeftIndex = bottomYCalc + leftX;
-    uint bottomCenterIndex = bottomYCalc + x;
-    uint bottomRightIndex = bottomYCalc + rightX;
+    if (writeIndex == 0) {
+        writeOffset = uvec2(simulationData.targetPosition);
+        writeWidth = simulationData.width;
+    }
+
+    uint topYCalc = topY * simulationWidth;
+    uint middleYCalc = y * simulationWidth;
+    uint bottomYCalc = bottomY * simulationWidth;
+
+    uint topLeftIndex = getGlobalIndex(leftX, topY, readWidth, readOffset) + readIndex;
+    uint topCenterIndex = getGlobalIndex(x, topY, readWidth, readOffset) + readIndex;
+    uint topRightIndex = getGlobalIndex(rightX, topY, readWidth, readOffset) + readIndex;
+
+    uint middleLeftIndex = getGlobalIndex(leftX, y, readWidth, readOffset) + readIndex;
+    uint middleCenterIndex = getGlobalIndex(x, y, readWidth, readOffset) + readIndex;
+    uint middleRightIndex = getGlobalIndex(rightX, y, readWidth, readOffset) + readIndex;
+
+    uint bottomLeftIndex = getGlobalIndex(leftX, bottomY, readWidth, readOffset) + readIndex;
+    uint bottomCenterIndex = getGlobalIndex(x, bottomY, readWidth, readOffset) + readIndex;
+    uint bottomRightIndex = getGlobalIndex(rightX, bottomY, readWidth, readOffset) + readIndex;
 
     // Read pixels
-    Pixel topLeftPixel = pixels[topLeftIndex + readIndex];
-    Pixel topCenterPixel = pixels[topCenterIndex + readIndex];
-    Pixel topRightPixel = pixels[topRightIndex + readIndex];
+    Pixel topLeftPixel = pixels[topLeftIndex];
+    Pixel topCenterPixel = pixels[topCenterIndex];
+    Pixel topRightPixel = pixels[topRightIndex];
 
-    Pixel middleLeftPixel = pixels[middleLeftIndex + readIndex];
-    Pixel middleCenterPixel = pixels[middleCenterIndex + readIndex];
-    Pixel middleRightPixel = pixels[middleRightIndex + readIndex];
+    Pixel middleLeftPixel = pixels[middleLeftIndex];
+    Pixel middleCenterPixel = pixels[middleCenterIndex];
+    Pixel middleRightPixel = pixels[middleRightIndex];
 
-    Pixel bottomLeftPixel = pixels[bottomLeftIndex + readIndex];
-    Pixel bottomCenterPixel = pixels[bottomCenterIndex + readIndex];
-    Pixel bottomRightPixel = pixels[bottomRightIndex + readIndex];
+    Pixel bottomLeftPixel = pixels[bottomLeftIndex];
+    Pixel bottomCenterPixel = pixels[bottomCenterIndex];
+    Pixel bottomRightPixel = pixels[bottomRightIndex];
 
     uint pixelID = middleCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu;
 
@@ -64,7 +80,7 @@ void main()
     uint charge = getCharge(middleCenterPixel.PixelID16_Charge8_Flags8);
     uint flags = getFlags(middleCenterPixel.PixelID16_Charge8_Flags8);
 
-    /* if (charge > 0 && bitsetHas(middleCenterPixelData.Flags, ElectricityReceiver))
+/* if (charge > 0 && bitsetHas(middleCenterPixelData.Flags, ElectricityReceiver))
      {
          charge--;
      }*/
@@ -80,7 +96,7 @@ void main()
         uint maxCharge = max(maxCharge0, maxCharge1);
 
         if (!bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter)) {
-            charge = uint(clamp(int(maxCharge)-1, 0, 255));
+            charge = uint(clamp(int(maxCharge) - 1, 0, 255));
         }
     }
 
@@ -115,7 +131,7 @@ void main()
         }
 
     } else if (temperature < middleCenterPixelData.LowerTemperatureLimit) {
-        pixelID =  middleCenterPixelData.LowerTemperatureLimitPixelID;
+        pixelID = middleCenterPixelData.LowerTemperatureLimitPixelID;
         PixelData newPixelData = simulationData.pixelLookup[pixelID];
         flags &= newPixelData.FlagsCarryover;
         temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
@@ -137,6 +153,9 @@ void main()
     middleCenterPixel.Temperature = temperature;
 
     // Write pixels to output and rendering buffer
-    pixels[middleCenterIndex + writeIndex] = middleCenterPixel;
-    readOnlyPixels[middleCenterIndex] = middleCenterPixel;
+    uint middleCenterIndexWrite = getGlobalIndex(x, y, writeWidth, writeOffset) + writeIndex;
+    uint middleCenterIndexWriteRead = getGlobalIndex(x, y, simulationWidth, uvec2(0, 0));
+    pixels[middleCenterIndexWrite] = middleCenterPixel;
+
+    readOnlyPixels[middleCenterIndexWriteRead] = middleCenterPixel;
 }

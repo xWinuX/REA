@@ -57,10 +57,27 @@ uint getRigidBodyIndex(uint packedData) {
     return (packedData >> 12u) & 0xFFFFFu;
 }
 
-const uint NumPixels = 1048576;
+uint getGlobalIndex(uint index, uint globalWidth, uvec2 localSize, uvec2 globalOffset)
+{
+    uint x = globalOffset.x + (index % localSize.x);
+    uint y = globalOffset.y + (index / localSize.x);
+
+    return y * globalWidth + x;
+}
+
+uint getGlobalIndex(uint x, uint y, uint globalWidth, uvec2 globalOffset)
+{
+    x += globalOffset.x;
+    y += globalOffset.y;
+
+    return y * globalWidth + x;
+}
+
+const uint NumSimulatedPixels = 1048576; // 1024 * 1024
+const uint NumPixels = 8388608 + NumSimulatedPixels; // 4096 x 2048 + Simulated Pixels for ping ponging buffer swapping
+
 const uint NumRigidbodies = 100;
 const uint NumMarchingSquareSegments = 100000;
-const uint NumMarchingSquares = uint(ceil(float(NumPixels) / 8.0f));
 
 const int MaxCharge = 255;
 

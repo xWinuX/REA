@@ -4,9 +4,10 @@
 
 namespace REA
 {
-	PixelGridBuilder& PixelGridBuilder::WithSize(glm::ivec2 size)
+	PixelGridBuilder& PixelGridBuilder::WithSize(glm::ivec2 worldSize, glm::ivec2 simulationSize)
 	{
-		_size = size;
+		_worldSize      = worldSize;
+		_simulationSize = simulationSize;
 		return *this;
 	}
 
@@ -41,8 +42,10 @@ namespace REA
 			pixelGrid.PixelDataLookup.push_back(pixelCreateInfo.Data);
 		}
 
-		pixelGrid.Width  = _size.x;
-		pixelGrid.Height = _size.y;
+		pixelGrid.Width            = _worldSize.x;
+		pixelGrid.Height           = _worldSize.y;
+		pixelGrid.SimulationWidth  = _simulationSize.x;
+		pixelGrid.SimulationHeight = _simulationSize.y;
 
 		_pixelCreateInfos.clear();
 

@@ -47,10 +47,10 @@ namespace REA::System
 			const Component::PixelGridRenderer& pixelGridRenderer = pixelGridRenderers[i];
 			SSBO_GridInfo*                      gridInfo          = _material->GetShader()->GetProperties().GetBufferData<SSBO_GridInfo>(0);
 
-			gridInfo->width           = pixelGrid.Width;
-			gridInfo->height          = pixelGrid.Height;
+			gridInfo->width           = pixelGrid.SimulationWidth;
+			gridInfo->height          = pixelGrid.SimulationHeight;
 			gridInfo->zoom            = pixelGridRenderer.Zoom;
-			gridInfo->offset          = pixelGridRenderer.Offset;
+			gridInfo->offset          = pixelGrid.ViewTargetPosition;
 			gridInfo->pointerPosition = pixelGridRenderer.PointerPosition;
 			gridInfo->renderMode      = pixelGridRenderer.RenderMode;
 			size_t size               = std::min(pixelGrid.PixelColorLookup.size(), std::size(gridInfo->colorLookup));

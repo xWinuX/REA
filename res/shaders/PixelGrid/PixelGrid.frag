@@ -16,15 +16,10 @@ layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     vec4 colorLookup[256];
 } gridInfo;
 
-layout(set = 1, binding = 1) buffer s_si_dl_Labels {
-    int labels[NumPixels];
-};
-
-
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
 
-layout(std430, set = 2, binding = 0) buffer s_PixelSSBOIn {
-    Pixel readOnlyPixels[NumPixels];
+layout(std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
+    Pixel readOnlyPixels[NumSimulatedPixels];
 };
 
 void main() {

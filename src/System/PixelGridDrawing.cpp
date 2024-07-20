@@ -148,11 +148,11 @@ namespace REA::System
 			glm::vec2 normalizedMousePos = glm::vec2((mousePosition / pixelGridRenderer.Zoom) + offset) / glm::vec2(windowSize);
 
 			// Map normalized mouse position to grid position
-			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.Width)));
-			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.Height) / pixelGridRenderer.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.Height)));
+			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.SimulationWidth)));
+			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.SimulationHeight) / pixelGridRenderer.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.SimulationHeight)));
 
-			gridX = static_cast<int>(glm::mod(static_cast<float>(gridX), static_cast<float>(pixelGrid.Width)));
-			gridY = static_cast<int>(glm::mod(static_cast<float>(gridY), static_cast<float>(pixelGrid.Height)));
+			gridX = static_cast<int>(glm::mod(static_cast<float>(gridX), static_cast<float>(pixelGrid.SimulationWidth)));
+			gridY = static_cast<int>(glm::mod(static_cast<float>(gridY), static_cast<float>(pixelGrid.SimulationHeight)));
 
 			pixelGridRenderer.PointerPosition = { gridX, gridY };
 
@@ -169,7 +169,7 @@ namespace REA::System
 			ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
 			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
 			ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());
-			ImGui::Text(std::format("Label: {0}", static_cast<int32_t>(pixelGrid.Labels[currentePixelindex])).c_str());
+			//ImGui::Text(std::format("Label: {0}", static_cast<int32_t>(pixelGrid.Labels[currentePixelindex])).c_str());
 
 
 			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
@@ -188,8 +188,8 @@ namespace REA::System
 					{
 						for (int y = -_radius; y < _radius; ++y)
 						{
-							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
-							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
+							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.SimulationWidth);
+							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.SimulationHeight);
 							const int index = yy * pixelGrid.Width + xx;
 							if (index < pixelGrid.Width * pixelGrid.Height)
 							{

@@ -1,33 +1,29 @@
-#include <glm/gtx/hash.hpp>
-
 #include "REA/System/PixelGridSimulation.hpp"
 
-#include <vector>
-#include <iostream>
+#include <CDT.h>
 #include <execution>
+#include <IconsFontAwesome.h>
 #include <imgui.h>
+#include <utility>
+#include <vector>
+#include <box2d/b2_edge_shape.h>
+#include <box2d/b2_polygon_shape.h>
 #include <glm/gtc/random.hpp>
+#include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 #include <SplitEngine/Debug/Performance.hpp>
+#include <SplitEngine/Rendering/Material.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
-#include <utility>
-#include <box2d/b2_polygon_shape.h>
-#include <box2d/b2_edge_shape.h>
-#include <SplitEngine/Application.hpp>
-#include <SplitEngine/Rendering/Material.hpp>
 
-#include "IconsFontAwesome.h"
-#include "REA/PixelType.hpp"
-#include "REA/Stage.hpp"
-#include "REA/Context/ImGui.hpp"
-
-#include "CDT.h"
 #include "REA/Assets.hpp"
 #include "REA/MarchingSquareMesherUtils.hpp"
+#include "REA/PixelType.hpp"
+#include "REA/Stage.hpp"
 #include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Component/Transform.hpp"
+#include "REA/Context/ImGui.hpp"
 
 namespace REA::System
 {
@@ -186,7 +182,7 @@ namespace REA::System
 				device.GetVkDevice().resetFences(_computeFence);
 				//				BENCHMARK_END("compute fence")
 
-				pixelGrid.PixelState = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2)->Pixels[_readIndex];
+				pixelGrid.PixelState = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2)->Pixels[0];
 				pixelGrid.Labels     = &_shaders.CCLInitialize->GetProperties().GetBufferData<Labels>(5)->L[0];
 			}
 
@@ -205,6 +201,14 @@ namespace REA::System
 
 				_numLineSegements = vi;
 */
+
+
+				if (Input::GetDown(KeyCode::RIGHT)) { pixelGrid.ViewTargetPosition .x += 1.0f; }
+				if (Input::GetDown(KeyCode::UP)) { pixelGrid.ViewTargetPosition .y += 1.0f; }
+				if (Input::GetDown(KeyCode::LEFT)) { pixelGrid.ViewTargetPosition .x -= 1.0f; }
+				if (Input::GetDown(KeyCode::DOWN)) { pixelGrid.ViewTargetPosition .y -= 1.0f; }
+
+				pixelGrid.ViewTargetPosition = glm::clamp(pixelGrid.ViewTargetPosition, {0.0f, 0.0f}, {pixelGrid.Width/2, pixelGrid.Height/2});
 
 				// Delete Rigidbodies
 				if (simulationData->timer % 4 == 0)
@@ -250,7 +254,6 @@ namespace REA::System
 						solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
 					}
 
-
 					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
 					if (collider.Body != nullptr)
 					{
@@ -282,9 +285,7 @@ namespace REA::System
 					std::span<CDT::V2d<float>> connectedSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->connectedSegments[0]),
 					                                                            marchingCubes->numConnectedSegments * 2);
 
-
 					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(connectedSegmentSpan, connectedEdges);
-
 
 					std::vector<MarchingSquareMesherUtils::Polyline> connectedPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(connectedSegmentSpan, connectedEdges);
 
@@ -341,121 +342,111 @@ namespace REA::System
 
 						if (polyline.Vertices.size() < 3) { continue; }
 
-						// Compute the index in the pixel grid
-						size_t index = (seedPoint.y * pixelGrid.Width + seedPoint.x);
-
 						b2AABB b2Aabb = polyline.AABB;
 
-						if (pixelGrid.PixelState[index].RigidBodyID == 0)
+						// Calculate size needed
+						b2Vec2     extends  = b2Aabb.GetExtents();
+						glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
+						size_t     dataSize = aabbSize.x * aabbSize.y;
+
+						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
+						                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
+
+						Component::Transform          transform{};
+						Component::PixelGridRigidBody pixelGridRigidBody{};
+						Component::Collider           collider{};
+
+						// Setup Transform
+						b2Vec2 center      = b2Aabb.GetCenter();
+						transform.Position = { center.x, center.y, 0.0f };
+
+						// Setup PixelGridRigidBody
+						uint32_t shaderID = -1u;
+						if (_availableRigidBodyIDs.IsEmpty())
 						{
-							// Calculate size needed
-							b2Vec2     extends  = b2Aabb.GetExtents();
-							glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
-							size_t     dataSize = aabbSize.x * aabbSize.y;
-
-							_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
-							                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
-
-							Component::Transform          transform{};
-							Component::PixelGridRigidBody pixelGridRigidBody{};
-							Component::Collider           collider{};
-
-							// Setup Transform
-							b2Vec2 center      = b2Aabb.GetCenter();
-							transform.Position = { center.x, center.y, 0.0f };
-
-							// Setup PixelGridRigidBody
-							uint32_t shaderID = -1u;
-							if (_availableRigidBodyIDs.IsEmpty())
-							{
-								shaderID = _rigidBodyIDCounter++;
-								_rigidBodyEntities.resize(_rigidBodyIDCounter);
-							}
-							else { shaderID = _availableRigidBodyIDs.Pop(); }
-
-							pixelGridRigidBody.ShaderRigidBodyID = shaderID;
-							pixelGridRigidBody.AllocationID      = _rigidBodyDataHeap.Allocate(dataSize);
-							pixelGridRigidBody.DataIndex         = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
-
-							pixelGridRigidBody.Size = aabbSize;
-
-							// Write RigidbodyInfo to shader
-							rigidBodyData->rigidBodies[shaderID].ID        = shaderID;
-							rigidBodyData->rigidBodies[shaderID].DataIndex = pixelGridRigidBody.DataIndex;
-							rigidBodyData->rigidBodies[shaderID].Size      = pixelGridRigidBody.Size;
-
-							// Setup Collider
-							collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
-							collider.InitialType     = b2_dynamicBody;
-
-							// Triangulate line
-							CDT::Triangulation<float> cdt = MarchingSquareMesherUtils::GenerateTriangulation(polyline);
-
-							b2Vec2     b2Center           = polyline.AABB.GetCenter();
-							b2Vec2     b2BottomLeftCorner = b2Center - extends;
-							glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
-
-							// Create collider
-							if (!cdt.vertices.empty())
-							{
-								CDT::V2d<float> vertices[3]{};
-
-								for (CDT::Triangle triangle: cdt.triangles)
-								{
-									vertices[0] = cdt.vertices[triangle.vertices[2]];
-									vertices[1] = cdt.vertices[triangle.vertices[1]];
-									vertices[2] = cdt.vertices[triangle.vertices[0]];
-
-									vertices[0] = { vertices[0].x - b2Center.x, vertices[0].y - b2Center.y };
-									vertices[1] = { vertices[1].x - b2Center.x, vertices[1].y - b2Center.y };
-									vertices[2] = { vertices[2].x - b2Center.x, vertices[2].y - b2Center.y };
-
-
-									float area = 0.5f * std::abs(vertices[0].x * (vertices[1].y - vertices[2].y) + vertices[1].x * (vertices[2].y - vertices[0].y) + vertices[2].x *
-									                             (vertices[0].y - vertices[1].y));
-
-									if (area < 0.01f) { continue; }
-
-									b2PolygonShape polygonShape;
-									polygonShape.Set(reinterpret_cast<const b2Vec2*>(&vertices[0]), 3);
-
-									collider.InitialShapes.push_back(polygonShape);
-								}
-							}
-
-							_newRigidBodies.push_back({ bottomLeftCorner, aabbSize, seedPoint, shaderID });
-
-							// Create entity
-							uint64_t rigidBodyEntity = ecsRegistry.CreateEntity<Component::Transform, Component::PixelGridRigidBody, Component::Collider>(std::move(transform),
-								std::move(pixelGridRigidBody),
-								std::move(collider));
-
-							_rigidBodyEntities[shaderID] = { rigidBodyEntity, true, false };
+							shaderID = _rigidBodyIDCounter++;
+							_rigidBodyEntities.resize(_rigidBodyIDCounter);
 						}
+						else { shaderID = _availableRigidBodyIDs.Pop(); }
+
+						pixelGridRigidBody.ShaderRigidBodyID = shaderID;
+						pixelGridRigidBody.AllocationID      = _rigidBodyDataHeap.Allocate(dataSize);
+						pixelGridRigidBody.DataIndex         = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
+
+						pixelGridRigidBody.Size = aabbSize;
+
+						// Write RigidbodyInfo to shader
+						rigidBodyData->rigidBodies[shaderID].ID        = shaderID;
+						rigidBodyData->rigidBodies[shaderID].DataIndex = pixelGridRigidBody.DataIndex;
+						rigidBodyData->rigidBodies[shaderID].Size      = pixelGridRigidBody.Size;
+
+						// Setup Collider
+						collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
+						collider.InitialType     = b2_dynamicBody;
+
+						// Triangulate line
+						CDT::Triangulation<float> cdt = MarchingSquareMesherUtils::GenerateTriangulation(polyline);
+
+						b2Vec2     b2Center           = polyline.AABB.GetCenter();
+						b2Vec2     b2BottomLeftCorner = b2Center - extends;
+						glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
+
+						// Create collider
+						if (!cdt.vertices.empty())
+						{
+							CDT::V2d<float> vertices[3]{};
+
+							for (CDT::Triangle triangle: cdt.triangles)
+							{
+								vertices[0] = cdt.vertices[triangle.vertices[2]];
+								vertices[1] = cdt.vertices[triangle.vertices[1]];
+								vertices[2] = cdt.vertices[triangle.vertices[0]];
+
+								vertices[0] = { vertices[0].x - b2Center.x, vertices[0].y - b2Center.y };
+								vertices[1] = { vertices[1].x - b2Center.x, vertices[1].y - b2Center.y };
+								vertices[2] = { vertices[2].x - b2Center.x, vertices[2].y - b2Center.y };
+
+
+								float area = 0.5f * std::abs(vertices[0].x * (vertices[1].y - vertices[2].y) + vertices[1].x * (vertices[2].y - vertices[0].y) + vertices[2].x * (
+									                             vertices[0].y - vertices[1].y));
+
+								if (area < 0.01f) { continue; }
+
+								b2PolygonShape polygonShape;
+								polygonShape.Set(reinterpret_cast<const b2Vec2*>(&vertices[0]), 3);
+
+								collider.InitialShapes.push_back(polygonShape);
+							}
+						}
+
+						_newRigidBodies.push_back({ bottomLeftCorner, aabbSize, seedPoint, shaderID });
+
+						// Create entity
+						uint64_t rigidBodyEntity = ecsRegistry.CreateEntity<Component::Transform, Component::PixelGridRigidBody, Component::Collider>(std::move(transform),
+							std::move(pixelGridRigidBody),
+							std::move(collider));
+
+						_rigidBodyEntities[shaderID] = { rigidBodyEntity, true, false };
 					}
 
 					marchingCubes->numConnectedSegments = 0;
 					marchingCubes->numSolidSegments     = 0;
 
-
-					if (Input::GetDown(KeyCode::SPACE))
-					{
-						if (_rigidBodyEntities.size() > 0 && _rigidBodyEntities[1].Active)
-						{
-							LOG("delte");
-							rigidBodyData->rigidBodies[1].NeedsRecalculation = true;
-						}
-					}
 				}
 			}
 
 			if (stage == Stage::GridComputeBegin)
 			{
-				size_t numPixels     = pixelGrid.Width * pixelGrid.Height;
+				size_t numPixels     = pixelGrid.SimulationWidth * pixelGrid.SimulationHeight;
 				size_t numWorkgroups = CeilDivide(numPixels, 64ull);
 
-				simulationData->width  = pixelGrid.Width;
-				simulationData->height = pixelGrid.Height;
+				LOG("num pixels {0}", numPixels);
+
+				simulationData->width            = pixelGrid.Width;
+				simulationData->height           = pixelGrid.Height;
+				simulationData->simulationWidth  = pixelGrid.SimulationWidth;
+				simulationData->simulationHeight = pixelGrid.SimulationHeight;
+				simulationData->targetPosition   = pixelGrid.ViewTargetPosition;
 
 				if (_firstUpdate)
 				{
@@ -483,7 +474,7 @@ namespace REA::System
 
 					_shaders.FallingSimulation->Update();
 
-					for (int i = 0; i < 8; ++i)
+					for (int i = 0; i < 7; ++i)
 					{
 						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
 
@@ -495,6 +486,7 @@ namespace REA::System
 						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
 
 						SwapPixelBuffer();
+
 						margolusOffset = GetMargolusOffset(timer + i);
 						flowIteration++;
 
@@ -512,7 +504,7 @@ namespace REA::System
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
 					SwapPixelBuffer();
-
+/*
 					// Do CCL if there are rigidbodies to discover
 					if (!_newRigidBodies.empty())
 					{
@@ -663,7 +655,7 @@ namespace REA::System
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
-					}
+					}*/
 
 					_commandBuffer.GetVkCommandBuffer().end();
 
@@ -684,22 +676,6 @@ namespace REA::System
 					_shaders.IdleSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
-
-					/*CmdWaitForPreviousComputeShader();
-
-					// Contour
-					SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
-					marchingCubes->numSegments        = 0;
-
-					_shaders.MarchingSquareAlgorithm->Update();
-
-					_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer());
-
-					_shaders.MarchingSquareAlgorithm->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
-
-					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->width + simulationData->height) * 3) - 2, 64u), 1, 1);
-
-					CmdWaitForPreviousComputeShader();*/
 
 					_commandBuffer.GetVkCommandBuffer().end();
 				}

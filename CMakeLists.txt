@@ -47,8 +47,6 @@ add_executable(
         src/System/PixelGridSimulation.cpp
         include/REA/System/PixelGridSimulation.hpp
         include/REA/Pixel.hpp
-        src/System/GameOfLifeSimulation.cpp
-        include/REA/System/GameOfLifeSimulation.hpp
         src/System/PixelGridDrawing.cpp
         include/REA/System/PixelGridDrawing.hpp
         src/System/ImGuiManager.cpp

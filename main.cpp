@@ -37,7 +37,6 @@
 #include "REA/Component/PixelGridRenderer.hpp"
 #include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Context/ImGui.hpp"
-#include "REA/System/GameOfLifeSimulation.hpp"
 #include "REA/System/ImGuiManager.hpp"
 #include "REA/System/PhysicsDebugRenderer.hpp"
 
@@ -381,7 +380,9 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 1024, 1024 }).WithPixelData(std::move(pixelLookup)).Build();
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 4096, 2048 }, {1024, 1024}).WithPixelData(std::move(pixelLookup)).Build();
+
+
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 
