@@ -148,13 +148,14 @@ namespace REA::System
 			glm::vec2 normalizedMousePos = glm::vec2((mousePosition / pixelGridRenderer.Zoom) + offset) / glm::vec2(windowSize);
 
 			// Map normalized mouse position to grid position
+			glm::uvec2 targetPosition = pixelGrid.ViewTargetPosition;
 			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.SimulationWidth)));
 			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.SimulationHeight) / pixelGridRenderer.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.SimulationHeight)));
 
 			gridX = static_cast<int>(glm::mod(static_cast<float>(gridX), static_cast<float>(pixelGrid.SimulationWidth)));
 			gridY = static_cast<int>(glm::mod(static_cast<float>(gridY), static_cast<float>(pixelGrid.SimulationHeight)));
 
-			pixelGridRenderer.PointerPosition = { gridX, gridY };
+			pixelGridRenderer.PointerPosition = { targetPosition.x + gridX, targetPosition.y + gridY };
 
 			int currentePixelindex = gridY * pixelGrid.Width + gridX;
 

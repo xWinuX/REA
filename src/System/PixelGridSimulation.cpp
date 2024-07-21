@@ -191,16 +191,18 @@ namespace REA::System
 				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
 
 
-				/*size_t     vi = 0;
+				size_t     vi = 0;
 				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
-				for (vi = 0; vi< marchingCubes->numSegments; ++vi)
+				for (vi = 0; vi< marchingCubes->numSolidSegments; ++vi)
 				{
-					v[vi * 2]     = { marchingCubes->segments[vi * 2].x, marchingCubes->segments[vi * 2].y };
-					v[vi * 2 + 1] = { marchingCubes->segments[vi * 2 + 1].x, marchingCubes->segments[vi * 2 + 1].y };
+					v[vi * 2]     = { marchingCubes->solidSegments[vi * 2].x, marchingCubes->solidSegments[vi * 2].y };
+					v[vi * 2 + 1] = { marchingCubes->solidSegments[vi * 2 + 1].x, marchingCubes->solidSegments[vi * 2 + 1].y };
 				}
 
-				_numLineSegements = vi;
-*/
+				if (marchingCubes->numSolidSegments > 0)
+				{
+					_numLineSegements = vi;
+				}
 
 
 				if (Input::GetDown(KeyCode::RIGHT)) { pixelGrid.ViewTargetPosition .x += 1.0f; }

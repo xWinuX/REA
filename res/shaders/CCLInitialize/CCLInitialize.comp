@@ -16,7 +16,7 @@ void main()
         return;
     }
 
-    uint pixelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+    uint pixelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, uvec2(simulationData.targetPosition) + Offset);
     uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.simulationWidth, Size, Offset);
 
     uint flags = getFlags(pixels[pixelIndex].PixelID16_Charge8_Flags8);

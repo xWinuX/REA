@@ -18,7 +18,7 @@ void main()
         return;
     }
 
-    uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.simulationWidth, Size, Offset);
+    uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.simulationWidth, Size, Offset-uvec2(simulationData.targetPosition));
 
     if (labels[labelIndex] != -1)
     {

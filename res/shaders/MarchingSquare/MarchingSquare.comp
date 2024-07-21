@@ -169,10 +169,15 @@ void main()
         Pixel bottomLeftPixel = pixels[bottomLeftIndex];
         Pixel bottomRightPixel = pixels[bottomRightIndex];
 
-        uint topLeftPixelFlags = getFlags(topLeftPixel.PixelID16_Charge8_Flags8);
-        uint topRightPixelFlags = getFlags(topRightPixel.PixelID16_Charge8_Flags8);
-        uint bottomLeftPixelFlags = getFlags(bottomLeftPixel.PixelID16_Charge8_Flags8);
-        uint bottomRightPixelFlags = getFlags(bottomRightPixel.PixelID16_Charge8_Flags8);
+        bool isBoundary = x < 3     || x > simulationWidth-4    || y < 3    || y > simulationHeight-4;
+        bool isBoundaryY = x < 3    || x > simulationWidth-4    || y-1 < 3  || y-1 > simulationHeight-4;
+        bool isBoundaryX = x+1 < 3  || x+1 > simulationWidth-4  || y < 3    || y > simulationHeight-4;
+        bool isBoundaryXY = x+1 < 3 || x+1 > simulationWidth-4  || y-1 < 3  || y-1 > simulationHeight-4;
+
+        uint topLeftPixelFlags = isBoundary ? 0 : getFlags(topLeftPixel.PixelID16_Charge8_Flags8);
+        uint topRightPixelFlags = isBoundaryX ? 0 : getFlags(topRightPixel.PixelID16_Charge8_Flags8);
+        uint bottomLeftPixelFlags = isBoundaryY ? 0 : getFlags(bottomLeftPixel.PixelID16_Charge8_Flags8);
+        uint bottomRightPixelFlags = isBoundaryXY ? 0 : getFlags(bottomRightPixel.PixelID16_Charge8_Flags8);
 
         bool topLeftPixelSolid = bitsetHas(topLeftPixelFlags, Solid);
         bool topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
