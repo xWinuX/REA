@@ -170,8 +170,6 @@ namespace REA::System
 			ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
 			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
 			ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());
-			//ImGui::Text(std::format("Label: {0}", static_cast<int32_t>(pixelGrid.Labels[currentePixelindex])).c_str());
-
 
 			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{

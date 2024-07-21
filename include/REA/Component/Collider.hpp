@@ -5,6 +5,7 @@
 #include <box2d/b2_polygon_shape.h>
 #include <box2d/b2_body.h>
 #include <box2d/b2_world.h>
+#include <glm/vec3.hpp>
 
 #include "REA/PhysicsMaterial.hpp"
 
@@ -23,5 +24,7 @@ namespace REA::Component
 
 		b2World* World = nullptr;
 		b2Body*  Body  = nullptr;
+
+		glm::vec3 PreviousPosition = {0.0f , 0.0f, 0.0f};
 	};
 }

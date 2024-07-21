@@ -7,7 +7,9 @@ namespace REA
 	{
 		//BeginFrame =  20
 
-		PhysicsManagement = 49,
+		PhysicsManagement = 48,
+
+		PrePhysicsStep = 49,
 
 		Physics = 50,
 

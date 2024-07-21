@@ -144,17 +144,6 @@ namespace REA::System
 		}
 	}
 
-	struct LineSegment
-	{
-		CDT::V2d<float> startPoint;
-		CDT::V2d<float> endPoint;
-	};
-
-	struct Labels
-	{
-		int32_t L[1048576];
-	};
-
 	void PixelGridSimulation::Execute(Component::PixelGrid*  pixelGrids,
 	                                  Component::Collider*   colliders,
 	                                  std::vector<uint64_t>& entities,
@@ -177,21 +166,17 @@ namespace REA::System
 
 			if (stage == Stage::GridComputeEnd)
 			{
-				//BENCHMARK_BEGIN
 				device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 				device.GetVkDevice().resetFences(_computeFence);
-				//				BENCHMARK_END("compute fence")
 
 				pixelGrid.PixelState = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2)->Pixels[0];
-				pixelGrid.Labels     = &_shaders.CCLInitialize->GetProperties().GetBufferData<Labels>(5)->L[0];
 			}
 
 			if (stage == Stage::GridComputeHalted)
 			{
 				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
 
-
-				size_t     vi = 0;
+				/*size_t     vi = 0;
 				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
 				for (vi = 0; vi< marchingCubes->numSolidSegments; ++vi)
 				{
@@ -202,29 +187,34 @@ namespace REA::System
 				if (marchingCubes->numSolidSegments > 0)
 				{
 					_numLineSegements = vi;
+				}*/
+
+				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
+				{
+					glm::vec2 offset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight};
+
+					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position;
+					targetPosition -= offset/2.0f;
+
+					LOG("camera position x: {0} y: {1}", targetPosition.x, targetPosition.y);
+
+					targetPosition   = glm::clamp(targetPosition, {0.0f, 0.0f}, glm::vec2(pixelGrid.Width, pixelGrid.Height)-offset);
+
+					pixelGrid.ViewTargetPosition = targetPosition;
+
 				}
-
-
-				if (Input::GetDown(KeyCode::RIGHT)) { pixelGrid.ViewTargetPosition .x += 1.0f; }
-				if (Input::GetDown(KeyCode::UP)) { pixelGrid.ViewTargetPosition .y += 1.0f; }
-				if (Input::GetDown(KeyCode::LEFT)) { pixelGrid.ViewTargetPosition .x -= 1.0f; }
-				if (Input::GetDown(KeyCode::DOWN)) { pixelGrid.ViewTargetPosition .y -= 1.0f; }
-
-				pixelGrid.ViewTargetPosition = glm::clamp(pixelGrid.ViewTargetPosition, {0.0f, 0.0f}, {pixelGrid.Width/2, pixelGrid.Height/2});
 
 				// Delete Rigidbodies
 				if (simulationData->timer % 4 == 0)
 				{
 					for (uint32_t deleteRigidbody: _deleteRigidbody)
 					{
-						LOG("delete Rigidbody {0}", deleteRigidbody);
 						RigidbodyEntry& rigidbodyEntry = _rigidBodyEntities[deleteRigidbody];
 
 						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidbodyEntry.EntityID);
 
 						rigidBodyData->rigidBodies[pixelGridRigidBody.ShaderRigidBodyID].NeedsRecalculation = false;
 
-						LOG("Delete allocation id {0}", pixelGridRigidBody.AllocationID);
 						_rigidBodyDataHeap.Deallocate(pixelGridRigidBody.AllocationID);
 
 						ecsRegistry.DestroyEntity(rigidbodyEntry.EntityID);
@@ -237,10 +227,10 @@ namespace REA::System
 					_deleteRigidbody.clear();
 				}
 
+				// Crate Rigidbodies
 				if (simulationData->timer % 4 == 2)
 				{
-					//SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
-
+					// Create edges for "static" environment
 					std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(marchingCubes->numSolidSegments, CDT::Edge(0, 0));
 					for (int i = 0; i < marchingCubes->numSolidSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
@@ -281,6 +271,7 @@ namespace REA::System
 						}
 					}
 
+					// Create rigidbodies and their colission meshes
 					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->numConnectedSegments, CDT::Edge(0, 0));
 					for (int i = 0; i < marchingCubes->numConnectedSegments; ++i) { connectedEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
@@ -294,6 +285,8 @@ namespace REA::System
 					std::vector<size_t>                              polylinesToMove{};
 					std::vector<MarchingSquareMesherUtils::Polyline> polylines{};
 
+					// TODO: find a way to not do this
+					// Filter out holes
 					for (int currentPolyLineIndex = 0; currentPolyLineIndex < connectedPolylines.size(); ++currentPolyLineIndex)
 					{
 						MarchingSquareMesherUtils::Polyline& currentPolyline = connectedPolylines[currentPolyLineIndex];
@@ -317,31 +310,16 @@ namespace REA::System
 
 					for (size_t toMove: polylinesToMove) { polylines.push_back(std::move(connectedPolylines[toMove])); }
 
-					if (polylines.size() > 0) { _numLineSegements = 0; }
-
 					for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 					{
+						// TODO: Find reliable way to get seed point
 						// Convert to integer grid coordinates
 						glm::ivec2 seedPoint = glm::ivec2(glm::floor(polyline.Vertices[0].x), glm::floor(polyline.Vertices[0].y));
-
-						// Draw
-						size_t     vi = 0;
-						glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
-
-						for (vi = 0; vi < polyline.Vertices.size(); ++vi)
-						{
-							v[_numLineSegements * 2 + vi * 2]     = { polyline.Vertices[vi].x, polyline.Vertices[vi].y };
-							v[_numLineSegements * 2 + vi * 2 + 1] = {
-								polyline.Vertices[(vi + 1) % polyline.Vertices.size()].x,
-								polyline.Vertices[(vi + 1) % polyline.Vertices.size()].y
-							};
-						}
-
-						_numLineSegements += (polyline.Vertices.size());
 
 						// Simplify line
 						polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
 
+						// If a polyline is somehow and edge skip it
 						if (polyline.Vertices.size() < 3) { continue; }
 
 						b2AABB b2Aabb = polyline.AABB;
@@ -408,7 +386,7 @@ namespace REA::System
 								vertices[1] = { vertices[1].x - b2Center.x, vertices[1].y - b2Center.y };
 								vertices[2] = { vertices[2].x - b2Center.x, vertices[2].y - b2Center.y };
 
-
+								// Skip weird ass small polygons cdt sometime generates
 								float area = 0.5f * std::abs(vertices[0].x * (vertices[1].y - vertices[2].y) + vertices[1].x * (vertices[2].y - vertices[0].y) + vertices[2].x * (
 									                             vertices[0].y - vertices[1].y));
 
@@ -433,7 +411,6 @@ namespace REA::System
 
 					marchingCubes->numConnectedSegments = 0;
 					marchingCubes->numSolidSegments     = 0;
-
 				}
 			}
 
@@ -441,8 +418,6 @@ namespace REA::System
 			{
 				size_t numPixels     = pixelGrid.SimulationWidth * pixelGrid.SimulationHeight;
 				size_t numWorkgroups = CeilDivide(numPixels, 64ull);
-
-				LOG("num pixels {0}", numPixels);
 
 				simulationData->width            = pixelGrid.Width;
 				simulationData->height           = pixelGrid.Height;

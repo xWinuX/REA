@@ -50,9 +50,9 @@ namespace REA::System
 			if (contextProvider.Registry->IsEntityValid(cameraComponent.TargetEntity))
 			{
 				Component::Transform& targetTransform = contextProvider.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity);
-				transformComponent.Position           = glm::vec3(targetTransform.Position.x, targetTransform.Position.y, transformComponent.Position.z);
+				transformComponent.Position           = glm::mix( transformComponent.Position, glm::vec3(targetTransform.Position.x, targetTransform.Position.y, transformComponent.Position.z), 0.0125f);
 			}
-			else { transformComponent.Position = glm::vec3(cameraComponent.TargetPosition, 0.0f); }
+			else { transformComponent.Position = glm::mix( transformComponent.Position, glm::vec3(cameraComponent.TargetPosition, 0.0f), 0.25f); }
 
 			Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
 
@@ -60,7 +60,6 @@ namespace REA::System
 			//cameraUBO->identity = glm::identity<glm::mat4>();
 			//cameraUBO->view = glm::lookAt(transformComponent.Position, transformComponent.Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			//cameraUBO->proj = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / -static_cast<float>(height), 0.1f, 1000.0f) * cameraUBO->view;
-
 
 			ImGui::SliderFloat("pixelsPerUnit", &_pixelsPerUnit, 0.1f, 100.0f);
 			ImGui::SliderFloat("pixelSize", &_pixelSize, 0.1f, 50.0f);

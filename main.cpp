@@ -193,9 +193,10 @@ int main()
 		},
 	};
 
+
 	Application application = Application({
 		                                      {},
-		                                      { .RootExecutionStages = { Stage::Physics } },
+		                                      { .RootExecutionStages = { Stage::PrePhysicsStep, Stage::Physics } },
 		                                      {},
 		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
 	                                      });
@@ -309,7 +310,7 @@ int main()
 
 	ecs.RegisterContext<Context::ImGui>({});
 
-	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>(Stage::PhysicsManagement, 0, true);
+	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>({{Stage::PrePhysicsStep, 0},{Stage::PhysicsManagement, 0}}, true);
 
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::PlayerController>(Stage::Physics, 0);
@@ -374,15 +375,14 @@ int main()
 		{},
 		{ floppaSprite, 1.0f, 0 });
 
-	ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { playerEntity });
+	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { playerEntity });
 
 
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
 	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 4096, 2048 }, {1024, 1024}).WithPixelData(std::move(pixelLookup)).Build();
-
-
+	pixelGrid.CameraEntityID = camera;
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 

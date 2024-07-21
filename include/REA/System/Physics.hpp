@@ -24,16 +24,17 @@ namespace REA::System
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
-			void Execute(Component::Transform*, Component::Collider*, std::vector<uint64_t>& entities, ECS::ContextProvider& context, uint8_t stage) override;
+			void Execute(Component::Transform*, Component::Collider*, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 
 		private:
 			b2World _world;
-			float   _timeStep           = 1.0f / 60.0f;
-			int32   _velocityIterations = 8;
-			int32   _positionIterations = 3;
-			float   _frameAccumulator   = 0.0f;
-			bool    _enableDebugDraw    = false;
+			float   _timeStep                = 1.0f / 60.0f;
+			int32   _velocityIterations      = 8;
+			int32   _positionIterations      = 3;
+			float   _frameAccumulator        = 0.0f;
+			bool    _enableDebugDraw         = false;
 
-			std::vector<uint8_t> _stagesToRun = { Stage::Physics };
+			std::vector<uint8_t> _prePhysicsStage = { Stage::PrePhysicsStep };
+			std::vector<uint8_t> _physicsStage = { Stage::Physics };
 	};
 }

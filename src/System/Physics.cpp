@@ -19,16 +19,20 @@ namespace REA::System
 
 	void Physics::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
-		_frameAccumulator += contextProvider.GetContext<TimeContext>()->DeltaTime;
-
-		ECS::Registry& registry = contextProvider.GetContext<EngineContext>()->Application->GetECSRegistry();
-
-		while (_frameAccumulator > _timeStep)
+		if (stage == Stage::PhysicsManagement)
 		{
-			_world.Step(_timeStep, _velocityIterations, _positionIterations);
-			registry.ExecuteSystems(false, ECS::Registry::ListBehaviour::Inclusion, _stagesToRun);
-			if (_enableDebugDraw) { _world.DebugDraw(); }
-			_frameAccumulator -= _timeStep;
+			_frameAccumulator += contextProvider.GetContext<TimeContext>()->DeltaTime;
+
+			ECS::Registry& registry = contextProvider.GetContext<EngineContext>()->Application->GetECSRegistry();
+
+			while (_frameAccumulator > _timeStep)
+			{
+				registry.ExecuteSystems(false, ECS::Registry::ListBehaviour::Inclusion, _prePhysicsStage);
+				_world.Step(_timeStep, _velocityIterations, _positionIterations);
+				registry.ExecuteSystems(false, ECS::Registry::ListBehaviour::Inclusion, _physicsStage);
+				if (_enableDebugDraw) { _world.DebugDraw(); }
+				_frameAccumulator -= _timeStep;
+			}
 		}
 
 		System<Component::Transform, Component::Collider>::ExecuteArchetypes(archetypes, contextProvider, stage);
@@ -37,51 +41,65 @@ namespace REA::System
 	void Physics::Execute(Component::Transform*  transformComponents,
 	                      Component::Collider*   colliderComponents,
 	                      std::vector<uint64_t>& entities,
-	                      ECS::ContextProvider&  context,
+	                      ECS::ContextProvider&  contextProvider,
 	                      uint8_t                stage)
 	{
-		for (int i = 0; i < entities.size(); ++i)
+		if (stage == Stage::PhysicsManagement)
 		{
-			Component::Collider&  collider  = colliderComponents[i];
-			Component::Transform& transform = transformComponents[i];
-
-			// Create body if needed
-			if (collider.Body == nullptr)
+			for (int i = 0; i < entities.size(); ++i)
 			{
-				collider.World = &_world;
+				Component::Collider&  collider  = colliderComponents[i];
+				Component::Transform& transform = transformComponents[i];
 
-				b2BodyDef bodyDef = collider.PhysicsMaterial->GetBodyDefCopy();
-				bodyDef.type      = collider.InitialType;
-				bodyDef.position  = { transform.Position.x, transform.Position.y };
-				bodyDef.angle     = glm::radians(transform.Rotation);
-				collider.Body     = _world.CreateBody(&bodyDef);
-
-				// Fix MSVC vector bug
-				collider.Fixtures = std::vector<b2Fixture*>(0);
-
-				b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
-				for (b2PolygonShape& initialShape: collider.InitialShapes)
+				// Create body if needed
+				if (collider.Body == nullptr)
 				{
-					fixtureDef.shape   = &initialShape;
+					collider.World = &_world;
 
-					b2Fixture* fixture = collider.Body->CreateFixture(&fixtureDef);
-					collider.Fixtures.push_back(fixture);
+					b2BodyDef bodyDef = collider.PhysicsMaterial->GetBodyDefCopy();
+					bodyDef.type      = collider.InitialType;
+					bodyDef.position  = { transform.Position.x, transform.Position.y };
+					bodyDef.angle     = glm::radians(transform.Rotation);
+					collider.Body     = _world.CreateBody(&bodyDef);
+
+					// Fix MSVC vector bug
+					collider.Fixtures = std::vector<b2Fixture*>(0);
+
+					b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
+					for (b2PolygonShape& initialShape: collider.InitialShapes)
+					{
+						fixtureDef.shape = &initialShape;
+
+						b2Fixture* fixture = collider.Body->CreateFixture(&fixtureDef);
+						collider.Fixtures.push_back(fixture);
+					}
+
+					// TODO: Maybe free memory completely (only here so i don't forget that i can optimize here if needed)
+					collider.InitialShapes.clear();
+
+					collider.Body->GetUserData().EntityID = entities[i];
 				}
 
-				// TODO: Maybe free memory completely (only here so i don't forget that i can optimize here if needed)
-				collider.InitialShapes.clear();
-
-				collider.Body->GetUserData().EntityID = entities[i];
-			}
-
-			if (collider.Body->GetType() != b2BodyType::b2_staticBody)
-			{
 				const b2Vec2& position = collider.Body->GetPosition();
+				if (collider.Body->GetType() != b2BodyType::b2_staticBody)
+				{
+					float a              = _frameAccumulator / _timeStep;
+					transform.Position.x = position.x * a + collider.PreviousPosition.x * (1.0f - a);
+					transform.Position.y = position.y * a + collider.PreviousPosition.y * (1.0f - a);
 
-				transform.Position.x = position.x;
-				transform.Position.y = position.y;
+					transform.Rotation = glm::degrees(-collider.Body->GetAngle());
+				}
+			}
+		}
 
-				transform.Rotation = glm::degrees(-collider.Body->GetAngle());
+		if (stage == Stage::PrePhysicsStep)
+		{
+			for (int i = 0; i < entities.size(); ++i)
+			{
+				Component::Collider&  collider  = colliderComponents[i];
+				Component::Transform& transform = transformComponents[i];
+
+				if (collider.Body) { collider.PreviousPosition = { collider.Body->GetPosition().x, collider.Body->GetPosition().y, transform.Position.z }; }
 			}
 		}
 	}
