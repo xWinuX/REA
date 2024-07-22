@@ -80,6 +80,7 @@ namespace REA::System
 					collider.Body->GetUserData().EntityID = entities[i];
 				}
 
+				// Interpolate
 				const b2Vec2& position = collider.Body->GetPosition();
 				if (collider.Body->GetType() != b2BodyType::b2_staticBody)
 				{

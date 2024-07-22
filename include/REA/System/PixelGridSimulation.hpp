@@ -78,7 +78,7 @@ namespace REA::System
 
 			struct SSBO_RigidBodyData
 			{
-				RigidBody rigidBodies[100];
+				RigidBody rigidBodies[1024];
 			};
 
 

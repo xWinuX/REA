@@ -189,19 +189,17 @@ namespace REA::System
 					_numLineSegements = vi;
 				}*/
 
+				// Pixelgrid follows camera
 				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 				{
-					glm::vec2 offset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight};
+					glm::vec2 offset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
 
 					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position;
-					targetPosition -= offset/2.0f;
+					targetPosition -= offset / 2.0f;
 
-					LOG("camera position x: {0} y: {1}", targetPosition.x, targetPosition.y);
-
-					targetPosition   = glm::clamp(targetPosition, {0.0f, 0.0f}, glm::vec2(pixelGrid.Width, pixelGrid.Height)-offset);
+					targetPosition = glm::clamp(targetPosition, { 0.0f, 0.0f }, glm::vec2(pixelGrid.Width, pixelGrid.Height) - offset);
 
 					pixelGrid.ViewTargetPosition = targetPosition;
-
 				}
 
 				// Delete Rigidbodies
@@ -231,6 +229,23 @@ namespace REA::System
 				if (simulationData->timer % 4 == 2)
 				{
 					// Create edges for "static" environment
+					glm::vec2 xOffset = { pixelGrid.SimulationWidth, 0.0f};
+					glm::vec2 yOffset = { 0.0f, pixelGrid.SimulationHeight };
+					glm::vec2 xyOffset = {  pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
+
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2]     = pixelGrid.ViewTargetPosition;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 1] = pixelGrid.ViewTargetPosition + yOffset;
+
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 2] = pixelGrid.ViewTargetPosition + yOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 3] = pixelGrid.ViewTargetPosition + xyOffset;
+
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 4] = pixelGrid.ViewTargetPosition + xyOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 5] = pixelGrid.ViewTargetPosition + xOffset;
+
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 6] = pixelGrid.ViewTargetPosition + xOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 7] = pixelGrid.ViewTargetPosition;
+					marchingCubes->numSolidSegments += 4;
+
 					std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(marchingCubes->numSolidSegments, CDT::Edge(0, 0));
 					for (int i = 0; i < marchingCubes->numSolidSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
@@ -246,6 +261,11 @@ namespace REA::System
 						solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
 					}
 
+					if (solidPolylines.size() > 0)
+					{
+						_numLineSegements = 0;
+					}
+
 					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
 					if (collider.Body != nullptr)
 					{
@@ -256,8 +276,20 @@ namespace REA::System
 						b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
 						for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
 						{
+
 							for (int i = 0; i < solidPolyline.Vertices.size(); ++i)
 							{
+								// Draw
+								glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
+
+								v[_numLineSegements * 2 + i * 2]     = { solidPolyline.Vertices[i].x, solidPolyline.Vertices[i].y };
+								v[_numLineSegements * 2 + i * 2 + 1] = {
+									solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()].x,
+									solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()].y
+								};
+
+								_numLineSegements += (solidPolyline.Vertices.size());
+
 								CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
 								CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
 
@@ -485,7 +517,6 @@ namespace REA::System
 					// Do CCL if there are rigidbodies to discover
 					if (!_newRigidBodies.empty())
 					{
-						LOG("Do ccL");
 						b2Vec2 extends            = _cclRange.GetExtents();
 						b2Vec2 b2BottomLeftCorner = _cclRange.GetCenter() - extends;
 

@@ -76,7 +76,7 @@ uint getGlobalIndex(uint x, uint y, uint globalWidth, uvec2 globalOffset)
 const uint NumSimulatedPixels = 1048576; // 1024 * 1024
 const uint NumPixels = 8388608 + NumSimulatedPixels; // 4096 x 2048 + Simulated Pixels for ping ponging buffer swapping
 
-const uint NumRigidbodies = 100;
+const uint NumRigidbodies = 1024;
 const uint NumMarchingSquareSegments = 100000;
 
 const int MaxCharge = 255;
