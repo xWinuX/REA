@@ -17,6 +17,9 @@
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
 
+#define FASTNOISE_STATIC_LIB
+#include <FastNoise/FastNoise.h>
+
 #include "REA/Assets.hpp"
 #include "REA/MarchingSquareMesherUtils.hpp"
 #include "REA/PixelType.hpp"
@@ -24,6 +27,9 @@
 #include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Component/Transform.hpp"
 #include "REA/Context/ImGui.hpp"
+
+
+
 
 namespace REA::System
 {
@@ -460,6 +466,24 @@ namespace REA::System
 				if (_firstUpdate)
 				{
 					memcpy(simulationData->pixelLookup, pixelGrid.PixelDataLookup.data(), pixelGrid.PixelDataLookup.size() * sizeof(Pixel::Data));
+
+					std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
+
+					auto fnSimplex = FastNoise::New<FastNoise::Simplex>();
+
+					std::vector<float> genNoise = std::vector<float>(world.size());
+					fnSimplex->GenUniformGrid2D(genNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.2, 1234);
+
+					for (int i = 0; i < world.size(); ++i)
+					{
+						if (genNoise[i] > 0.1f)
+						{
+							world[i] = pixelGrid.PixelLookup[PixelType::Iron].PixelState;
+						}
+					}
+
+					memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
+
 					_firstUpdate = false;
 				}
 

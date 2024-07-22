@@ -15,6 +15,9 @@ file(DOWNLOAD
         ${CMAKE_SOURCE_DIR}/external/include/IconsFontAwesome.h
 )
 
+set(FASTNOISE2_NOISETOOL OFF CACHE BOOL "Build Noise Tool" FORCE) #example if don't need the graph tool
+add_subdirectory(submodules/FastNoise2)
+
 add_executable(
         REA
         main.cpp
@@ -87,6 +90,8 @@ target_link_libraries(REA PRIVATE box2d::box2d)
 
 find_package(CDT CONFIG REQUIRED)
 target_link_libraries(REA PRIVATE CDT::CDT)
+
+target_link_libraries(REA PRIVATE FastNoise2)
 
 add_custom_command(TARGET REA POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory

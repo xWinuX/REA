@@ -129,6 +129,8 @@ namespace REA::System
 
 			bool _firstUpdate = true;
 
+			std::vector<Pixel::State> _world {};
+
 			Rendering::Vulkan::Buffer _vertexBuffer;
 
 			b2AABB _cclRange = { { 10'000'000, 10'000'000 }, { 0, 0 } };
