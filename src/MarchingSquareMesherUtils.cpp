@@ -147,12 +147,14 @@ namespace REA
 				if (!found) { break; }
 			}
 
-			auto b2center = aabb.GetCenter();
+			auto originalCenter = aabb.GetCenter();
+			aabb                = { { aabb.lowerBound.x * 0.1f, aabb.lowerBound.y * 0.1f }, { aabb.upperBound.x * 0.1f, aabb.upperBound.y * 0.1f } };
+			auto newCenter      = aabb.GetCenter();
 			for (CDT::V2d<float>& polylineVert: sortedPolyline)
 			{
-				polylineVert = { polylineVert.x - b2center.x, polylineVert.y - b2center.y };
-				polylineVert = { polylineVert.x * 0.99f, polylineVert.y * 0.99f };
-				polylineVert = { polylineVert.x + b2center.x, polylineVert.y + b2center.y };
+				polylineVert = { polylineVert.x - originalCenter.x, polylineVert.y - originalCenter.y };
+				polylineVert = { polylineVert.x * 0.099f, polylineVert.y * 0.099f };
+				polylineVert = { polylineVert.x + newCenter.x, polylineVert.y + newCenter.y };
 			}
 
 			polylines.push_back({ aabb, std::move(sortedPolyline) });

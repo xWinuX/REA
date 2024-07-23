@@ -50,9 +50,17 @@ namespace REA::System
 			if (contextProvider.Registry->IsEntityValid(cameraComponent.TargetEntity))
 			{
 				Component::Transform& targetTransform = contextProvider.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity);
-				transformComponent.Position           = glm::mix( transformComponent.Position, glm::vec3(targetTransform.Position.x, targetTransform.Position.y, transformComponent.Position.z), 0.0125f);
+				glm::vec3             newPosition     = glm::mix(transformComponent.Position,
+				                                                 glm::vec3(targetTransform.Position.x, targetTransform.Position.y, transformComponent.Position.z),
+				                                                 0.125f);
+
+				float offset                = 102.4f / (2.0f * _pixelSize);
+				newPosition.x = glm::clamp(newPosition.x, offset, 409.6f-offset);
+				newPosition.y = glm::clamp(newPosition.y, offset, 204.8f-offset);
+
+				transformComponent.Position = newPosition;
 			}
-			else { transformComponent.Position = glm::mix( transformComponent.Position, glm::vec3(cameraComponent.TargetPosition, 0.0f), 0.25f); }
+			else { transformComponent.Position = glm::mix(transformComponent.Position, glm::vec3(cameraComponent.TargetPosition, 0.0f), 0.25f); }
 
 			Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
 
@@ -68,8 +76,8 @@ namespace REA::System
 			const uint32_t height = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
 
 			float left   = 0.0f;
-			float right  = static_cast<float>(width) / (_pixelSize);
-			float bottom = static_cast<float>(height) / (_pixelSize);
+			float right  = static_cast<float>(width) / (_pixelSize * _pixelsPerUnit);
+			float bottom = static_cast<float>(height) / (_pixelSize * _pixelsPerUnit);
 			float top    = 0.0f;
 
 			glm::vec3 windowSize = glm::vec3(right, bottom, 0.0f);

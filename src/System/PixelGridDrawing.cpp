@@ -137,25 +137,30 @@ namespace REA::System
 				pixelGridRenderer.Offset += glm::vec2(-delta.x, delta.y) / pixelGridRenderer.Zoom;
 			}
 
-			pixelGridRenderer.Zoom += (static_cast<float>(Input::GetMouseWheel().y) * 0.05f) * pixelGridRenderer.Zoom;
 
 			glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 
 			glm::vec2 mousePosition = Input::GetMousePosition();
+			mousePosition = {mousePosition.x, windowSize.y - mousePosition.y};
 
 			// Calculate normalized mouse position
-			glm::vec2 offset             = glm::ivec2(pixelGridRenderer.Offset.x, -pixelGridRenderer.Offset.y);
-			glm::vec2 normalizedMousePos = glm::vec2((mousePosition / pixelGridRenderer.Zoom) + offset) / glm::vec2(windowSize);
+			LOG("mouse {0} {1}", mousePosition.x, mousePosition.y);
+			LOG("viewtarget {0} {1}", pixelGrid.ViewTargetPosition.x, pixelGrid.ViewTargetPosition.y);
+
+			// Normalize mouse position within the window dimensions
+			glm::vec2 normalizedMousePos = mousePosition / glm::vec2(windowSize);
 
 			// Map normalized mouse position to grid position
 			glm::uvec2 targetPosition = pixelGrid.ViewTargetPosition;
 			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.SimulationWidth)));
-			int gridY = static_cast<int>(std::round((static_cast<float>(pixelGrid.SimulationHeight) / pixelGridRenderer.Zoom) - normalizedMousePos.y * static_cast<float>(pixelGrid.SimulationHeight)));
+			int gridY = static_cast<int>(std::round(normalizedMousePos.y * static_cast<float>(pixelGrid.SimulationHeight)));
 
-			gridX = static_cast<int>(glm::mod(static_cast<float>(gridX), static_cast<float>(pixelGrid.SimulationWidth)));
-			gridY = static_cast<int>(glm::mod(static_cast<float>(gridY), static_cast<float>(pixelGrid.SimulationHeight)));
+			gridX = static_cast<int>(targetPosition.x) + gridX;
+			gridY = static_cast<int>(targetPosition.y) + gridY;
 
-			pixelGridRenderer.PointerPosition = { targetPosition.x + gridX, targetPosition.y + gridY };
+
+
+			pixelGridRenderer.PointerPosition = { gridX, gridY };
 
 			int currentePixelindex = gridY * pixelGrid.Width + gridX;
 
@@ -187,8 +192,8 @@ namespace REA::System
 					{
 						for (int y = -_radius; y < _radius; ++y)
 						{
-							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.SimulationWidth);
-							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.SimulationHeight);
+							const int xx    = std::clamp<int>(gridX + x, 0, pixelGrid.Width);
+							const int yy    = std::clamp<int>(gridY + y, 0, pixelGrid.Height);
 							const int index = yy * pixelGrid.Width + xx;
 							if (index < pixelGrid.Width * pixelGrid.Height)
 							{

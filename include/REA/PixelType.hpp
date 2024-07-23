@@ -13,10 +13,13 @@ namespace REA
 		Oil,
 		Lava,
 		Stone,
+		Gravel,
 		Fire,
 		Smoke,
 		Spark,
 		Iron,
+		Dirt,
+		Grass,
 		MAX_VALUE,
 	};
 }

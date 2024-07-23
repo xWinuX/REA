@@ -22,8 +22,8 @@ namespace REA::System
 			             uint8_t                stage) override;
 
 		private:
-			float _pixelsPerUnit = 16.0f;
-			float _pixelSize = 10.0f;
+			float _pixelsPerUnit = 10.0f;
+			float _pixelSize = 2.0f;
 
 			struct CameraUBO
 			{

@@ -42,6 +42,7 @@ namespace REA
 		{
 			Floppa,
 			BlueBullet,
+			Rea_Idle_R
 		};
 
 		enum class SoundEffect

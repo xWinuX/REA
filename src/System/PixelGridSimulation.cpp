@@ -29,8 +29,6 @@
 #include "REA/Context/ImGui.hpp"
 
 
-
-
 namespace REA::System
 {
 	PixelGridSimulation::PixelGridSimulation(const SimulationShaders& simulationShaders, ECS::ContextProvider& contextProvider):
@@ -124,9 +122,13 @@ namespace REA::System
 				if (ImGui::Button(ICON_FA_FORWARD_STEP, { 50, 50 })) { _doStep = true; }
 			}
 
-			ImGui::Checkbox("remove on next frame", &_removeOnNextFrame);
+			ImGui::End();
 
-			ImGui::SliderFloat("Line Simplification Tolerance", &_lineSimplificationTolerance, 0.0f, 100.0f);
+			ImGui::Begin("World Gen");
+			if (ImGui::Button("Regenerate World")) { _generateWorld = true; }
+			ImGui::SliderFloat("Cave Noise Treshold", &_worldGenerationSettings.CaveNoiseTreshold, 0.0f, 1.0f);
+			ImGui::SliderFloat("Cave Noise Freqency", &_worldGenerationSettings.CaveNoiseFrequency, 0.0f, 0.1f);
+			ImGui::SliderFloat("Overworld Noise Freqency", &_worldGenerationSettings.OverworldNoiseFrequency, 0.0f, 0.1f);
 			ImGui::End();
 		}
 
@@ -200,7 +202,7 @@ namespace REA::System
 				{
 					glm::vec2 offset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
 
-					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position;
+					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position * 10.0f;
 					targetPosition -= offset / 2.0f;
 
 					targetPosition = glm::clamp(targetPosition, { 0.0f, 0.0f }, glm::vec2(pixelGrid.Width, pixelGrid.Height) - offset);
@@ -235,9 +237,9 @@ namespace REA::System
 				if (simulationData->timer % 4 == 2)
 				{
 					// Create edges for "static" environment
-					glm::vec2 xOffset = { pixelGrid.SimulationWidth, 0.0f};
-					glm::vec2 yOffset = { 0.0f, pixelGrid.SimulationHeight };
-					glm::vec2 xyOffset = {  pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
+					glm::vec2 xOffset  = { pixelGrid.SimulationWidth, 0.0f };
+					glm::vec2 yOffset  = { 0.0f, pixelGrid.SimulationHeight };
+					glm::vec2 xyOffset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
 
 					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2]     = pixelGrid.ViewTargetPosition;
 					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 1] = pixelGrid.ViewTargetPosition + yOffset;
@@ -267,10 +269,7 @@ namespace REA::System
 						solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
 					}
 
-					if (solidPolylines.size() > 0)
-					{
-						_numLineSegements = 0;
-					}
+					if (solidPolylines.size() > 0) { _numLineSegements = 0; }
 
 					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
 					if (collider.Body != nullptr)
@@ -282,11 +281,10 @@ namespace REA::System
 						b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
 						for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
 						{
-
 							for (int i = 0; i < solidPolyline.Vertices.size(); ++i)
 							{
 								// Draw
-								glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
+								glm::vec2* v = _vertexBuffer.GetMappedData<glm::vec2>();
 
 								v[_numLineSegements * 2 + i * 2]     = { solidPolyline.Vertices[i].x, solidPolyline.Vertices[i].y };
 								v[_numLineSegements * 2 + i * 2 + 1] = {
@@ -294,7 +292,6 @@ namespace REA::System
 									solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()].y
 								};
 
-								_numLineSegements += (solidPolyline.Vertices.size());
 
 								CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
 								CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
@@ -306,6 +303,8 @@ namespace REA::System
 
 								collider.Fixtures.push_back(collider.Body->CreateFixture(&fixtureDef));
 							}
+
+							_numLineSegements += (solidPolyline.Vertices.size());
 						}
 					}
 
@@ -364,7 +363,7 @@ namespace REA::System
 
 						// Calculate size needed
 						b2Vec2     extends  = b2Aabb.GetExtents();
-						glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
+						glm::uvec2 aabbSize = { glm::round(extends.x * 2 * 10.0f), glm::round(extends.y * 2 * 10.0f)  };
 						size_t     dataSize = aabbSize.x * aabbSize.y;
 
 						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
@@ -407,7 +406,7 @@ namespace REA::System
 
 						b2Vec2     b2Center           = polyline.AABB.GetCenter();
 						b2Vec2     b2BottomLeftCorner = b2Center - extends;
-						glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
+						glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x * 10.0f, b2BottomLeftCorner.y * 10.0f };
 
 						// Create collider
 						if (!cdt.vertices.empty())
@@ -467,24 +466,76 @@ namespace REA::System
 				{
 					memcpy(simulationData->pixelLookup, pixelGrid.PixelDataLookup.data(), pixelGrid.PixelDataLookup.size() * sizeof(Pixel::Data));
 
-					std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
-
-					auto fnSimplex = FastNoise::New<FastNoise::Simplex>();
-
-					std::vector<float> genNoise = std::vector<float>(world.size());
-					fnSimplex->GenUniformGrid2D(genNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.2, 1234);
-
-					for (int i = 0; i < world.size(); ++i)
-					{
-						if (genNoise[i] > 0.1f)
-						{
-							world[i] = pixelGrid.PixelLookup[PixelType::Iron].PixelState;
-						}
-					}
-
-					memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
-
 					_firstUpdate = false;
+				}
+
+				if (_generateWorld)
+				{
+					BENCHMARK_BEGIN
+						std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
+
+						auto caveNoiseGenerator =
+								FastNoise::NewFromEncodedNodeTree("IgAAAAA/j8J1Pg0AAwAAAB+FE0EQAM3MDEATAJqZGT8LAAAAAAAAAAAAAQAAAAQAAAAA9iicPwAfhes+AArXoz0ArkeNQQ==");
+						std::vector<float> caveNoise = std::vector<float>(world.size());
+						caveNoiseGenerator->GenUniformGrid2D(caveNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, _worldGenerationSettings.CaveNoiseFrequency, 1234);
+
+						auto overworldNoiseGenerator =
+								FastNoise::NewFromEncodedNodeTree("IQATAClcDz4UACkAAAAAgD8AAACAPwAAAAAAAAAAAAAQAOxR+D8ZAA0AAwAAAD0KF0ApAAAAAAA/AHsUrj4AzczMPQCPwnU+AAAAAD8=");
+						std::vector<float> overworldNoise = std::vector<float>(world.size());
+						overworldNoiseGenerator->GenUniformGrid2D(overworldNoise.data(),
+						                                          0,
+						                                          0,
+						                                          pixelGrid.Width,
+						                                          pixelGrid.Height,
+						                                          _worldGenerationSettings.OverworldNoiseFrequency,
+						                                          1234);
+
+						const float blendRegionHeight = 30.0f; // Height of the blending region
+						const float caveLayerHeight   = pixelGrid.Height / 2;
+
+						const float blendStart = caveLayerHeight;
+						const float blendEnd   = caveLayerHeight + blendRegionHeight;
+
+						const float waterLevelStart = caveLayerHeight + 100.0f;
+						const float waterLevelEnd = caveLayerHeight + 150.0f;
+
+
+						for (int i = 0; i < world.size(); ++i)
+						{
+							size_t x = i % pixelGrid.Width;
+							size_t y = i / pixelGrid.Width;
+
+							if (y < caveLayerHeight)
+							{
+								if (caveNoise[i] < _worldGenerationSettings.CaveNoiseTreshold) { world[i] = pixelGrid.PixelLookup[PixelType::Stone].PixelState; }
+							}
+							else
+							{
+								float noise         = glm::clamp(glm::abs(overworldNoise[x]) + 0.1f, 0.0f, 1.0f);
+								float terrainHeight = (noise * (caveLayerHeight / 2.0f)) + caveLayerHeight;
+
+								// Calculate blend factor
+								float blendFactor = (y - blendStart) / (blendEnd - blendStart);
+								blendFactor       = std::clamp(blendFactor, 0.0f, 1.0f);
+
+								if (terrainHeight > y && caveNoise[i] < glm::mix(_worldGenerationSettings.CaveNoiseTreshold, 0.80f, blendFactor))
+								{
+									if (y >= blendStart && y <= blendEnd)
+									{
+										float blendNoise = glm::abs(overworldNoise[x + (pixelGrid.Width * 100)]);
+										world[i]         = blendStart + (blendNoise * blendRegionHeight) > y
+											                   ? pixelGrid.PixelLookup[PixelType::Stone].PixelState
+											                   : pixelGrid.PixelLookup[PixelType::Dirt].PixelState;
+									}
+									else { world[i] = pixelGrid.PixelLookup[PixelType::Dirt].PixelState; }
+								}
+							}
+						}
+
+						memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
+
+						_generateWorld = false;
+					BENCHMARK_END("World Generation")
 				}
 
 				if (!_paused || _doStep)
@@ -681,7 +732,7 @@ namespace REA::System
 						Component::Transform&          transform          = ecsRegistry.GetComponent<Component::Transform>(rigidBodyEntry.EntityID);
 						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidBodyEntry.EntityID);
 
-						rigidBodyData->rigidBodies[rigidBodyShaderID].Position = transform.Position;
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Position = transform.Position * 10.0f;
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation = transform.Rotation;
 
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);

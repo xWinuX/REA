@@ -2,11 +2,11 @@
 
 #include "../PixelGridGlobals.glsl"
 
-layout(location = 0) in vec2 v_PixelPosition;
+layout (location = 0) in vec2 v_PixelPosition;
 
-layout(location = 0) out vec4 outColor;
+layout (location = 0) out vec4 outColor;
 
-layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
+layout (std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     int width;
     int height;
     float zoom;
@@ -16,9 +16,9 @@ layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     vec4 colorLookup[256];
 } gridInfo;
 
-layout(set = 1, binding = 1) uniform sampler2D texSampler;
+layout (set = 1, binding = 1) uniform sampler2D texSampler;
 
-layout(std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
+layout (std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
     Pixel readOnlyPixels[NumSimulatedPixels];
 };
 
@@ -36,11 +36,12 @@ void main() {
 
     pixelColor = gridInfo.colorLookup[pixelID];
 
-    float temperatureScaled = temperature/255.0f;
+    float temperatureScaled = temperature / 255.0f;
     if (gridInfo.renderMode == RenderMode_Normal) {
-        pixelColor *= 1 + vec4(temperature/100.0f, temperatureScaled, temperatureScaled, 1.0f);
+        pixelColor *= 1 + vec4(temperature / 100.0f, temperatureScaled, temperatureScaled, 1.0f);
+        pixelColor += vec4((charge / 255.0f) * 2.0f, (charge / 255.0f) * 0.2, 0.0f, 0.0f);
 
-        /*
+    /*
         //            pixelColor = vec4(dirColor.xyz, 1.0f);
         int label = labels[index];
 
@@ -48,16 +49,11 @@ void main() {
 
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
-        //    pixelColor = vec4(temperature/255.0f, 0.0f, 0.0f, 1.0f);
-        //pixelColor = vec4(dirColor.xyz + (0.5f * dirColor.w), 1.0f);
-
-        uint id = getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20);
-
-
-        pixelColor = vec4(id/4.0f, 0.0f, 0.0f, 1.0f);
+        pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
     }
 
-    bool isCursorPixel = int(gridInfo.pointerPosition.x) == position.x && int(gridInfo.pointerPosition.y) == position.y;
+    uvec2 offset = uvec2(gridInfo.offset);
+    bool isCursorPixel = int(gridInfo.pointerPosition.x - offset.x) == position.x && int(gridInfo.pointerPosition.y - offset.y) == position.y;
 
     outColor = (isCursorPixel ? vec4(1.0f) : pixelColor);
 

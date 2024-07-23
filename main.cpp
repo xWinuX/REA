@@ -51,7 +51,7 @@ int main()
 		{
 			.ID = PixelType::Air,
 			.Name = "Air",
-			.Color = Color(0x5890FFFF),
+			.Color = Color(0x183675FF),
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 10, .SpreadingFactor = 4, .TemperatureResistance = 0.3f, .BaseTemperature = airTemperature, },
 		},
 		{
@@ -129,10 +129,11 @@ int main()
 				.LowerTemperatureLimitPixelID = PixelType::Stone,
 			}
 		},
+		{ .ID = PixelType::Stone, .Name = "Stone", .Color = Color(0x465466FF), .Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, } },
 		{
-			.ID = PixelType::Stone,
-			.Name = "Stone",
-			.Color = Color(0x465466FF),
+			.ID = PixelType::Gravel,
+			.Name = "Gravel",
+			.Color = Color(0x708D91FF),
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Solid),
@@ -189,8 +190,9 @@ int main()
 			.ID = PixelType::Iron,
 			.Name = "Iron",
 			.Color = Color(0x313642FF),
-			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Electricity), .Density = 100, .BaseCharge = 0, }
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Electricity), .Density = 100,  .TemperatureResistance = 1.0f, .BaseCharge = 0}
 		},
+		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100,  } },
 	};
 
 
@@ -198,7 +200,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::PrePhysicsStep, Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped }
+		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
 	                                      });
 
 	application.GetWindow().SetSize(1024, 1024);
@@ -230,7 +232,7 @@ int main()
 	                                                                                                                 });
 
 	pipelineCreateInfo.AssemblyStateCreateInfo.primitiveRestartEnable = vk::False;
-	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineList ;
+	pipelineCreateInfo.AssemblyStateCreateInfo.topology               = vk::PrimitiveTopology::eLineList;
 	AssetHandle<Rendering::Shader> marchingSquareDebugShader          = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::MarchingSquare,
 	                                                                                                                 {
 		                                                                                                                 {
@@ -260,11 +262,13 @@ int main()
 
 	uint64_t floppaPackerID     = texturePacker.AddImage("res/textures/Floppa.png");
 	uint64_t blueBulletPackerID = texturePacker.AddRelatedImages(Tools::ImageSlicer::Slice("res/textures/BlueBullet.png", { 3 }));
+	uint64_t reaIdleRPackerID   = texturePacker.AddImage("res/textures/Rea_Idle_r.png");
 
 	Tools::ImagePacker::PackingData packingData = texturePacker.Pack(2048);
 
 	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::BlueBullet, { blueBulletPackerID, packingData });
+	AssetHandle<SpriteTexture> reaIdleRSprite   = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::Rea_Idle_R, { reaIdleRPackerID, packingData });
 
 	auto pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Idle,
 	                                                                         { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
@@ -273,7 +277,7 @@ int main()
 	                                                                              { { "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp" } });
 
 	auto pixelGridRigidBodyRemove = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
-																				  { { "res/shaders/PixelGridRigidBodyRemove/PixelGridRigidBodyRemove.comp" } });
+	                                                                             { { "res/shaders/PixelGridRigidBodyRemove/PixelGridRigidBodyRemove.comp" } });
 
 	auto pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Fall,
 	                                                                         { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
@@ -310,7 +314,7 @@ int main()
 
 	ecs.RegisterContext<Context::ImGui>({});
 
-	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>({{Stage::PrePhysicsStep, 0},{Stage::PhysicsManagement, 0}}, true);
+	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>({ { Stage::PrePhysicsStep, 0 }, { Stage::PhysicsManagement, 0 } }, true);
 
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::PlayerController>(Stage::Physics, 0);
@@ -359,21 +363,21 @@ int main()
 	b2PolygonShape boxShape{};
 	boxShape.SetAsBox(1000.0f, 1.0f);
 
-	uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 100.0f, -10.0f } },
+	/*uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 100.0f, -10.0f } },
 	                                                                                                        { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
 	                                                                                                        { floppaSprite, 1.0f, 0 });
-
+*/
 	/*	boxShape.SetAsBox(0.5f, 0.5f);
 		uint64_t floor2 = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 10.0f, -10.0f } },
 		                                                                                                         { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
 		                                                                                                         { carstenSprite, 1.0f, 0 });
 	*/
 
-	boxShape.SetAsBox(10.0f, 10.0f);
-	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 200.0f, -10.0f } },
+	boxShape.SetAsBox(1.0f, 1.0f);
+	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 102.4f, -10.0f } },
 		{ defaultPhysicsMaterial, b2BodyType::b2_dynamicBody, { boxShape } },
 		{},
-		{ floppaSprite, 1.0f, 0 });
+		{ reaIdleRSprite, 1.0f, 0 });
 
 	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { playerEntity });
 
@@ -381,8 +385,8 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 4096, 2048 }, {1024, 1024}).WithPixelData(std::move(pixelLookup)).Build();
-	pixelGrid.CameraEntityID = camera;
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 4096, 2048 }, { 1024, 1024 }).WithPixelData(std::move(pixelLookup)).Build();
+	pixelGrid.CameraEntityID       = camera;
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 

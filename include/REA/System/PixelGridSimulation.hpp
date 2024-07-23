@@ -33,8 +33,6 @@ namespace REA::System
 
 			AssetHandle<Rendering::Material> DebugMaterial;
 
-			bool _removeOnNextFrame = false;
-
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
 			void Execute(Component::PixelGrid*  pixelGrids,
@@ -63,7 +61,7 @@ namespace REA::System
 				uint32_t    height           = 0;
 				uint32_t    simulationWidth  = 0;
 				uint32_t    simulationHeight = 0;
-				uint32_t    _pad = 0;
+				uint32_t    _pad             = 0;
 				glm::vec2   targetPosition   = { 0.0f, 0.0f };
 				Pixel::Data pixelLookup[1024];
 			};
@@ -97,6 +95,12 @@ namespace REA::System
 				bool     Active   = false;
 			};
 
+			struct WorldGenerationSettings
+			{
+				float CaveNoiseTreshold  = 0.5f;
+				float CaveNoiseFrequency = 0.01f;
+				float OverworldNoiseFrequency = 0.005f;
+			};
 
 			std::vector<RigidbodyEntry> _rigidBodyEntities{};
 			std::vector<NewRigidBody>   _newRigidBodies{};
@@ -112,7 +116,7 @@ namespace REA::System
 
 			uint32_t _fif = 0;
 
-			float _lineSimplificationTolerance = 5.0f;
+			float _lineSimplificationTolerance = 0.5f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;
@@ -121,15 +125,19 @@ namespace REA::System
 
 			std::ranges::iota_view<size_t, size_t> _indexes;
 
-			bool _paused = true;
-			bool _doStep = false;
+			bool _paused        = true;
+			bool _doStep        = false;
+			bool _generateWorld = true;
+
+
+			WorldGenerationSettings _worldGenerationSettings {};
 
 			uint32_t _readIndex  = 0;
 			uint32_t _writeIndex = 8388608;
 
 			bool _firstUpdate = true;
 
-			std::vector<Pixel::State> _world {};
+			std::vector<Pixel::State> _world{};
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
 
