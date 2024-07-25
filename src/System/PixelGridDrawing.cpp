@@ -144,8 +144,8 @@ namespace REA::System
 			mousePosition = {mousePosition.x, windowSize.y - mousePosition.y};
 
 			// Calculate normalized mouse position
-			LOG("mouse {0} {1}", mousePosition.x, mousePosition.y);
-			LOG("viewtarget {0} {1}", pixelGrid.ViewTargetPosition.x, pixelGrid.ViewTargetPosition.y);
+			//LOG("mouse {0} {1}", mousePosition.x, mousePosition.y);
+			//LOG("viewtarget {0} {1}", pixelGrid.ViewTargetPosition.x, pixelGrid.ViewTargetPosition.y);
 
 			// Normalize mouse position within the window dimensions
 			glm::vec2 normalizedMousePos = mousePosition / glm::vec2(windowSize);

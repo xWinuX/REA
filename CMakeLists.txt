@@ -74,6 +74,8 @@ add_executable(
         include/REA/Component/PixelGridRigidBody.hpp
         src/MemoryHeap.cpp
         include/REA/MemoryHeap.hpp
+        src/WorldGenerator.cpp
+        include/REA/WorldGenerator.hpp
 )
 
 target_include_directories(REA PRIVATE include)

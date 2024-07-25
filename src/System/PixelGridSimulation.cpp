@@ -17,13 +17,15 @@
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
 
-#define FASTNOISE_STATIC_LIB
-#include <FastNoise/FastNoise.h>
+
+#include <glm/ext/matrix_transform.hpp>
 
 #include "REA/Assets.hpp"
 #include "REA/MarchingSquareMesherUtils.hpp"
+#include "REA/Math.hpp"
 #include "REA/PixelType.hpp"
 #include "REA/Stage.hpp"
+#include "REA/WorldGenerator.hpp"
 #include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Component/Transform.hpp"
 #include "REA/Context/ImGui.hpp"
@@ -127,8 +129,8 @@ namespace REA::System
 			ImGui::Begin("World Gen");
 			if (ImGui::Button("Regenerate World")) { _generateWorld = true; }
 			ImGui::SliderFloat("Cave Noise Treshold", &_worldGenerationSettings.CaveNoiseTreshold, 0.0f, 1.0f);
-			ImGui::SliderFloat("Cave Noise Freqency", &_worldGenerationSettings.CaveNoiseFrequency, 0.0f, 0.1f);
-			ImGui::SliderFloat("Overworld Noise Freqency", &_worldGenerationSettings.OverworldNoiseFrequency, 0.0f, 0.1f);
+			ImGui::SliderFloat("Cave Noise Freqency", &_worldGenerationSettings.CaveNoiseFrequency, 0.0f, 1.0f);
+			ImGui::SliderFloat("Overworld Noise Freqency", &_worldGenerationSettings.OverworldNoiseFrequency, 0.0f, 1.0f);
 			ImGui::End();
 		}
 
@@ -363,7 +365,7 @@ namespace REA::System
 
 						// Calculate size needed
 						b2Vec2     extends  = b2Aabb.GetExtents();
-						glm::uvec2 aabbSize = { glm::round(extends.x * 2 * 10.0f), glm::round(extends.y * 2 * 10.0f)  };
+						glm::uvec2 aabbSize = { glm::round(extends.x * 2 * 10.0f), glm::round(extends.y * 2 * 10.0f) };
 						size_t     dataSize = aabbSize.x * aabbSize.y;
 
 						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
@@ -474,63 +476,7 @@ namespace REA::System
 					BENCHMARK_BEGIN
 						std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
 
-						auto caveNoiseGenerator =
-								FastNoise::NewFromEncodedNodeTree("IgAAAAA/j8J1Pg0AAwAAAB+FE0EQAM3MDEATAJqZGT8LAAAAAAAAAAAAAQAAAAQAAAAA9iicPwAfhes+AArXoz0ArkeNQQ==");
-						std::vector<float> caveNoise = std::vector<float>(world.size());
-						caveNoiseGenerator->GenUniformGrid2D(caveNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, _worldGenerationSettings.CaveNoiseFrequency, 1234);
-
-						auto overworldNoiseGenerator =
-								FastNoise::NewFromEncodedNodeTree("IQATAClcDz4UACkAAAAAgD8AAACAPwAAAAAAAAAAAAAQAOxR+D8ZAA0AAwAAAD0KF0ApAAAAAAA/AHsUrj4AzczMPQCPwnU+AAAAAD8=");
-						std::vector<float> overworldNoise = std::vector<float>(world.size());
-						overworldNoiseGenerator->GenUniformGrid2D(overworldNoise.data(),
-						                                          0,
-						                                          0,
-						                                          pixelGrid.Width,
-						                                          pixelGrid.Height,
-						                                          _worldGenerationSettings.OverworldNoiseFrequency,
-						                                          1234);
-
-						const float blendRegionHeight = 30.0f; // Height of the blending region
-						const float caveLayerHeight   = pixelGrid.Height / 2;
-
-						const float blendStart = caveLayerHeight;
-						const float blendEnd   = caveLayerHeight + blendRegionHeight;
-
-						const float waterLevelStart = caveLayerHeight + 100.0f;
-						const float waterLevelEnd = caveLayerHeight + 150.0f;
-
-
-						for (int i = 0; i < world.size(); ++i)
-						{
-							size_t x = i % pixelGrid.Width;
-							size_t y = i / pixelGrid.Width;
-
-							if (y < caveLayerHeight)
-							{
-								if (caveNoise[i] < _worldGenerationSettings.CaveNoiseTreshold) { world[i] = pixelGrid.PixelLookup[PixelType::Stone].PixelState; }
-							}
-							else
-							{
-								float noise         = glm::clamp(glm::abs(overworldNoise[x]) + 0.1f, 0.0f, 1.0f);
-								float terrainHeight = (noise * (caveLayerHeight / 2.0f)) + caveLayerHeight;
-
-								// Calculate blend factor
-								float blendFactor = (y - blendStart) / (blendEnd - blendStart);
-								blendFactor       = std::clamp(blendFactor, 0.0f, 1.0f);
-
-								if (terrainHeight > y && caveNoise[i] < glm::mix(_worldGenerationSettings.CaveNoiseTreshold, 0.80f, blendFactor))
-								{
-									if (y >= blendStart && y <= blendEnd)
-									{
-										float blendNoise = glm::abs(overworldNoise[x + (pixelGrid.Width * 100)]);
-										world[i]         = blendStart + (blendNoise * blendRegionHeight) > y
-											                   ? pixelGrid.PixelLookup[PixelType::Stone].PixelState
-											                   : pixelGrid.PixelLookup[PixelType::Dirt].PixelState;
-									}
-									else { world[i] = pixelGrid.PixelLookup[PixelType::Dirt].PixelState; }
-								}
-							}
-						}
+						WorldGenerator::GenerateWorld(world, pixelGrid, _worldGenerationSettings);
 
 						memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
 

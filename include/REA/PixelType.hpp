@@ -20,6 +20,7 @@ namespace REA
 		Iron,
 		Dirt,
 		Grass,
+		Leaf,
 		MAX_VALUE,
 	};
 }

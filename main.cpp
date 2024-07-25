@@ -193,6 +193,8 @@ int main()
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Electricity), .Density = 100,  .TemperatureResistance = 1.0f, .BaseCharge = 0}
 		},
 		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100,  } },
+		{ .ID = PixelType::Grass, .Name = "Grass", .Color = Color(0x2E922EFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100,  } },
+		{ .ID = PixelType::Leaf, .Name = "Grass", .Color = Color(0x509229FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected), .Density = 100,  } },
 	};
 
 

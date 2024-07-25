@@ -5,6 +5,7 @@
 #include <SplitEngine/Rendering/Vulkan/CommandBuffer.hpp>
 
 #include "REA/MemoryHeap.hpp"
+#include "REA/WorldGenerator.hpp"
 #include "REA/Component/Collider.hpp"
 #include "REA/Component/PixelGrid.hpp"
 
@@ -98,8 +99,8 @@ namespace REA::System
 			struct WorldGenerationSettings
 			{
 				float CaveNoiseTreshold  = 0.5f;
-				float CaveNoiseFrequency = 0.01f;
-				float OverworldNoiseFrequency = 0.005f;
+				float CaveNoiseFrequency = 0.001f;
+				float OverworldNoiseFrequency = 0.0005f;
 			};
 
 			std::vector<RigidbodyEntry> _rigidBodyEntities{};
@@ -130,7 +131,7 @@ namespace REA::System
 			bool _generateWorld = true;
 
 
-			WorldGenerationSettings _worldGenerationSettings {};
+			WorldGenerator::GenerationSettings _worldGenerationSettings {};
 
 			uint32_t _readIndex  = 0;
 			uint32_t _writeIndex = 8388608;
