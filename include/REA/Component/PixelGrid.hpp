@@ -5,12 +5,12 @@
 
 #include "REA/Pixel.hpp"
 
-
 namespace REA::Component
 {
 	struct PixelGrid
 	{
-		Pixel::State* PixelState = nullptr;
+		PixelChunks* Chunks = nullptr;
+		PixelChunkMapping* ChunkMapping = nullptr;
 
 		int32_t Width  = 512;
 		int32_t Height = 512;

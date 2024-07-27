@@ -19,7 +19,7 @@ layout (std430, set = 1, binding = 0) readonly buffer c_GridInfo {
 layout (set = 1, binding = 1) uniform sampler2D texSampler;
 
 layout (std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
-    Pixel readOnlyPixels[NumSimulatedPixels];
+    Pixel viewportPixels[NumSimulatedPixels];
 };
 
 void main() {
@@ -29,7 +29,7 @@ void main() {
 
     int height = gridInfo.height;
     int index = (position.y * gridInfo.width) + position.x;
-    Pixel pixel = readOnlyPixels[index];
+    Pixel pixel = viewportPixels[index];
     uint pixelID = getPixelID(pixel.PixelID16_Charge8_Flags8);
     uint charge = getCharge(pixel.PixelID16_Charge8_Flags8);
     float temperature = pixel.Temperature;

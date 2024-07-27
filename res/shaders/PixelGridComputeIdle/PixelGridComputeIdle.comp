@@ -2,24 +2,17 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
-layout(push_constant) uniform PushConstant {
-    uint readIndex;
-};
 
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint simulationWidth = simulationData.simulationWidth;
-    uint simulationHeight = simulationData.simulationHeight;
+    BoundaryCheck();
 
-    if (gl_GlobalInvocationID.x >= simulationWidth * simulationHeight) {
-        return;
-    }
+    SetupPixelVars(middleCenter, gl_GlobalInvocationID.x);
 
-    uint x = gl_GlobalInvocationID.x % simulationWidth;
-    uint y = gl_GlobalInvocationID.x / simulationWidth;
+    GetWritePixel(middleCenter) = GetPixel(middleCenter);
 
-    uint middleCenterIndex = getGlobalIndex(x, y, simulationData.width, uvec2(simulationData.targetPosition));
+    uvec2 position = GetPixelPosition(middleCenter);
 
-    readOnlyPixels[gl_GlobalInvocationID.x] = pixels[middleCenterIndex];
+    viewportPixels[PositionToIndex(position)] = GetPixel(middleCenter);
 }

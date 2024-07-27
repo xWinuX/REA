@@ -2,7 +2,9 @@
 
 #include "SplitEngine/DataStructures.hpp"
 
-#include <limits>
+#include <array>
+
+#include "Constants.hpp"
 
 using namespace SplitEngine;
 
@@ -65,8 +67,16 @@ namespace REA
 		State       PixelState{};
 	};
 
+	typedef std::array<std::array<Pixel::State, Constants::NUM_ELEMENTS_IN_CHUNK>, Constants::NUM_CHUNKS> PixelChunks;
+	typedef std::array<uint32_t, Constants::NUM_CHUNKS> PixelChunkMapping;
+
 	struct SSBO_Pixels
 	{
-		Pixel::State Pixels[2097152];
+		PixelChunks Chunks;
+	};
+
+	struct SSBO_CopyPixels
+	{
+		Pixel::State Pixels[1048576];
 	};
 }

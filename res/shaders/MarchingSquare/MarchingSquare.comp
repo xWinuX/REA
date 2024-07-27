@@ -6,7 +6,7 @@ layout (push_constant) uniform PushConstant {
     uint ReadIndex;
 };
 
-layout (std430, set = 1, binding = 5) writeonly buffer s_c_si_MarchingSquares {
+layout (std430, set = 1, binding = 6) writeonly buffer s_c_si_MarchingSquares {
     uint numConnectedSegments;
     uint numSolidSegments;
     vec2 segments[NumMarchingSquareSegments * 2];
@@ -70,8 +70,6 @@ const vec2 edgeOffsets[4] = vec2[4](
     vec2(0.5f, 1.0f), // 2 -> midpoint of edge between 2 and 3
     vec2(0.0f, 0.5f)// 3 -> midpoint of edge between 3 and 0
 );
-
-
 
 
 const uint Vertical = 0;
@@ -160,7 +158,7 @@ void main()
 
         uvec2 targetOffset = uvec2(simulationData.targetPosition);
         uint topLeftIndex = getGlobalIndex(x, y, simulationData.width, targetOffset);
-        uint topRightIndex= getGlobalIndex(topRightX, topRightY, simulationData.width, targetOffset);
+        uint topRightIndex = getGlobalIndex(topRightX, topRightY, simulationData.width, targetOffset);
         uint bottomLeftIndex = getGlobalIndex(bottomLeftX, bottomLeftY, simulationData.width, targetOffset);
         uint bottomRightIndex= getGlobalIndex(bottomRightX, bottomRightY, simulationData.width, targetOffset);
 

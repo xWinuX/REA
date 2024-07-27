@@ -56,11 +56,6 @@ namespace REA::System
 			size_t size               = std::min(pixelGrid.PixelColorLookup.size(), std::size(gridInfo->colorLookup));
 			if (_sameGridCounter < Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT) { for (int i = 0; i < size; ++i) { gridInfo->colorLookup[i] = pixelGrid.PixelColorLookup[i]; } }
 
-
-			Pixel::State* pixels = _material->GetProperties().GetBufferData<SSBO_Pixels>(0)->Pixels;
-
-			pixelGrid.PixelState = pixels;
-
 			_material->GetShader()->BindGlobal(commandBuffer);
 
 			_material->GetShader()->Update();

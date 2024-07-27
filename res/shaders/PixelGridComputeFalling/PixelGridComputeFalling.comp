@@ -16,61 +16,28 @@ layout (push_constant) uniform PushConstant {
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint simulationWidth = simulationData.simulationWidth;
-    uint simulationHeight = simulationData.simulationHeight;
-
-    if (gl_GlobalInvocationID.x >= (simulationWidth * simulationHeight)) {
-        return;
-    }
+    BoundaryCheck();
 
     uint cellStep = gl_GlobalInvocationID.x * 2;
-    uint margolusX = ((cellStep + margolusOffset.x) % simulationWidth);
-    uint margolusY = (((cellStep / simulationWidth) * 2) + 1) - margolusOffset.y;
+    uint margolusX = ((cellStep + margolusOffset.x) % NUM_ELEMENTS_X);
+    uint margolusY = (((cellStep / NUM_ELEMENTS_X) * 2) + 1) - margolusOffset.y;
 
     uint x = margolusX;
     uint y = margolusY;
 
-    uint topRightX = (x + 1) % simulationWidth;
+    uint topRightX = (x + 1) % NUM_ELEMENTS_X;
     uint topRightY = y;
 
     uint bottomLeftX = x;
-    uint bottomLeftY = (y == 0) ? simulationHeight - 1 : y - 1;
+    uint bottomLeftY = (y == 0) ? NUM_ELEMENTS_Y - 1 : y - 1;
 
     uint bottomRightX = topRightX;
     uint bottomRightY = bottomLeftY;
 
-    // Calculate wrapped indices
-    uvec2 readOffset = uvec2(0, 0);
-    uvec2 writeOffset = uvec2(0, 0);
-
-    uint readWidth = simulationWidth;
-    uint writeWidth = simulationWidth;
-
-    if (readIndex == 0) {
-        readOffset = uvec2(simulationData.targetPosition);
-        readWidth = simulationData.width;
-    }
-
-    if (writeIndex == 0) {
-        writeOffset = uvec2(simulationData.targetPosition);
-        writeWidth = simulationData.width;
-    }
-
-    uint topLeftIndexRead = getGlobalIndex(x, y, readWidth, readOffset) + readIndex;
-    uint topRightIndexRead = getGlobalIndex(topRightX, topRightY, readWidth, readOffset) + readIndex;
-    uint bottomLeftIndexRead = getGlobalIndex(bottomLeftX, bottomLeftY, readWidth, readOffset) + readIndex;
-    uint bottomRightIndexRead = getGlobalIndex(bottomRightX, bottomRightY, readWidth, readOffset) + readIndex;
-
-    uint topLeftIndexWrite = getGlobalIndex(x, y, writeWidth, writeOffset) + writeIndex;
-    uint topRightIndexWrite = getGlobalIndex(topRightX, topRightY, writeWidth, writeOffset) + writeIndex;
-    uint bottomLeftIndexWrite = getGlobalIndex(bottomLeftX, bottomLeftY, writeWidth, writeOffset) + writeIndex;
-    uint bottomRightIndexWrite = getGlobalIndex(bottomRightX, bottomRightY, writeWidth, writeOffset) + writeIndex;
-
-    // Read pixels
-    Pixel topLeftPixel = pixels[topLeftIndexRead];
-    Pixel bottomLeftPixel = pixels[bottomLeftIndexRead];
-    Pixel topRightPixel = pixels[topRightIndexRead];
-    Pixel bottomRightPixel = pixels[bottomRightIndexRead];
+    SetupPixelVarsByPosition(topLeft, x, y);
+    SetupPixelVarsByPosition(topRight, topRightX, topRightY);
+    SetupPixelVarsByPosition(bottomLeft, bottomLeftX, bottomLeftY);
+    SetupPixelVarsByPosition(bottomRight, bottomRightX, bottomRightY);
 
     PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
     PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
@@ -78,10 +45,10 @@ void main()
     PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
     // Write pixels
-    pixels[topLeftIndexWrite] = topLeftPixel;
-    pixels[bottomLeftIndexWrite] = bottomLeftPixel;
-    pixels[topRightIndexWrite] = topRightPixel;
-    pixels[bottomRightIndexWrite] = bottomRightPixel;
+    GetWritePixel(topLeft) = topLeftPixel;
+    GetWritePixel(bottomLeft) = bottomLeftPixel;
+    GetWritePixel(topRight) = topRightPixel;
+    GetWritePixel(bottomRight) = bottomRightPixel;
 
     float topLeftTemperature = topLeftPixel.Temperature;
     float topRightTemperature = topRightPixel.Temperature;
@@ -110,7 +77,6 @@ void main()
     float bottomLeftDensity = bottomLeftPixelData.Density - (step * bottomLeftTemperature * float(bottomLeftCanFlow));
     float bottomRightDensity = bottomRightPixelData.Density - (step * bottomRightTemperature * float(bottomRightCanFlow));
 
-
     bool leftRowSwapped = false;
     bool rightRowSwapped = false;
 
@@ -118,8 +84,8 @@ void main()
     {
         if (topLeftDensity > bottomLeftDensity)
         {
-            pixels[topLeftIndexWrite] = bottomLeftPixel;
-            pixels[bottomLeftIndexWrite] = topLeftPixel;
+            GetWritePixel(topLeft) = bottomLeftPixel;
+            GetWritePixel(bottomLeft) = topLeftPixel;
 
             Pixel tmpPixel = topLeftPixel;
             PixelData tmpPixelData = topLeftPixelData;
@@ -144,8 +110,8 @@ void main()
     {
         if (topRightDensity > bottomRightDensity)
         {
-            pixels[topRightIndexWrite] = bottomRightPixel;
-            pixels[bottomRightIndexWrite] = topRightPixel;
+            GetWritePixel(topRight) = bottomRightPixel;
+            GetWritePixel(bottomRight) = topRightPixel;
 
             Pixel tmpPixel = topRightPixel;
             PixelData tmpPixelData = topRightPixelData;
@@ -169,8 +135,8 @@ void main()
     {
         if (topLeftGravity && bottomRightGravity && (topLeftCanFlow || !bottomRightPixelSolid) && topLeftDensity > bottomRightDensity)
         {
-            pixels[topLeftIndexWrite] = bottomRightPixel;
-            pixels[bottomRightIndexWrite] = topLeftPixel;
+            GetWritePixel(topLeft) = bottomRightPixel;
+            GetWritePixel(bottomRight) = topLeftPixel;
 
             Pixel tmpPixel = topLeftPixel;
             PixelData tmpPixelData = topLeftPixelData;
@@ -186,8 +152,8 @@ void main()
         }
         else if (topRightGravity && bottomLeftGravity && (topRightCanFlow || !bottomLeftPixelSolid) && topRightDensity > bottomLeftDensity)
         {
-            pixels[topRightIndexWrite] = bottomLeftPixel;
-            pixels[bottomLeftIndexWrite] = topRightPixel;
+            GetWritePixel(topRight) = bottomLeftPixel;
+            GetWritePixel(bottomLeft) = topRightPixel;
 
             Pixel tmpPixel = topRightPixel;
             PixelData tmpPixelData = topRightPixelData;
@@ -226,8 +192,8 @@ void main()
     )
     )
     {
-        pixels[topLeftIndexWrite] = topRightPixel;
-        pixels[topRightIndexWrite] = topLeftPixel;
+       GetWritePixel(topLeft) = topRightPixel;
+       GetWritePixel(topRight) = topLeftPixel;
 
         bool tmpSolid = topLeftPixelSolid;
         float tmpDensity = topLeftDensity;
@@ -249,8 +215,8 @@ void main()
     )
     )
     {
-        pixels[bottomLeftIndexWrite] = bottomRightPixel;
-        pixels[bottomRightIndexWrite] = bottomLeftPixel;
+        GetWritePixel(bottomLeft) = bottomRightPixel;
+        GetWritePixel(bottomRight) = bottomLeftPixel;
     }
     //}
 }

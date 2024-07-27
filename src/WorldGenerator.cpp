@@ -27,7 +27,6 @@ namespace REA
 		std::vector<float> overworldNoise = std::vector<float>(world.size());
 		overworldNoiseGenerator->GenUniformGrid2D(overworldNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.01f * generationSettings.OverworldNoiseFrequency, 1234);
 
-
 		auto normalNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IQATAClcDz4UACkAAAAAgD8AAACAPwAAAAAAAAAAAAAQAOxR+D8ZAA0AAwAAAD0KF0ApAAAAAAA/AHsUrj4AzczMPQCPwnU+AAAAAD8=");
 		std::vector<float> normalNoise = std::vector<float>(world.size());
 		normalNoiseGenerator->GenUniformGrid2D(normalNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.1f, 1234);
@@ -40,7 +39,6 @@ namespace REA
 
 		const float waterLevelStart = caveLayerHeight + 100.0f;
 		const float waterLevelEnd   = caveLayerHeight + 150.0f;
-
 
 		// Basic generation of Terrain and caves
 		for (int i = 0; i < world.size(); ++i)
@@ -91,11 +89,13 @@ namespace REA
 		}
 
 		// Trees
+		/*
 		float nextTreeEdge = 0;
 		for (int x = 300; x < pixelGrid.Width - 300; ++x)
 		{
 			if (x > nextTreeEdge+(300))
-			{
+			{*
+				int x = 300;
 				for (size_t y = pixelGrid.Height - 1; y > 0; --y)
 				{
 					size_t index      = y * pixelGrid.Width + x;
@@ -109,7 +109,7 @@ namespace REA
 						TreeGenerationSettings treeGenerationSettings{};
 
 						// Tree and leafs
-						treeGenerationSettings.Length            = 300;
+						treeGenerationSettings.Length            = 200;
 						treeGenerationSettings.StartingThickness = 50;
 						treeGenerationSettings.StartingAngle     = 90;
 						treeGenerationSettings.AngleIncrement    = 0.5f;
@@ -137,9 +137,9 @@ namespace REA
 
 						break;
 					}
-				}
-			}
-		}
+				}*/
+			//}
+		//}
 	}
 
 	glm::vec2 WorldGenerator::GenerateBranch(size_t                     startX,
@@ -190,7 +190,7 @@ namespace REA
 				TreeGenerationSettings branchGenerationSettings = treeGenerationSettings;
 				branchGenerationSettings.Length                 = static_cast<size_t>(static_cast<float>(treeGenerationSettings.Length) * (1.05 - branchProgress));
 				branchGenerationSettings.StartingThickness      = static_cast<float>(glm::max(branchWidth, branchHeight));
-				branchGenerationSettings.StartingAngle          = angle + (treeGenerationSettings.AngleRange * branchingDirection);
+				branchGenerationSettings.StartingAngle          = angle + (glm::linearRand(treeGenerationSettings.AngleRange-20, treeGenerationSettings.AngleRange+20) * branchingDirection);
 				branchingCounter                                = branchGenerationSettings.StartingThickness;
 				branchingDirection                              = branchingDirection == -1 ? 1 : -1;
 

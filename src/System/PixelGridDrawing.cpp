@@ -23,10 +23,25 @@ namespace REA::System
 
 	void PixelGridDrawing::ClearGrid(const Component::PixelGrid& pixelGrid)
 	{
-		Pixel::State* inputPixels = pixelGrid.PixelState;
 
-		Pixel::State pixelState = pixelGrid.PixelLookup[_clearPixelID].PixelState;
-		std::for_each(std::execution::par_unseq, inputPixels, inputPixels + (pixelGrid.Width * pixelGrid.Height), [this, pixelState](Pixel::State& pixel) { pixel = pixelState; });
+		uint32_t pixelIDs[3] = {PixelType::Air, PixelType::Sand, PixelType::Stone};
+		uint32_t pixelID = pixelIDs[0];
+
+		for (int i = 0; i < pixelGrid.Chunks->size(); ++i)
+		{
+			auto& chunk = (*pixelGrid.Chunks)[i];
+
+			Pixel::State pixelState = pixelGrid.PixelLookup[pixelID].PixelState;
+			for (Pixel::State& state: chunk)
+			{
+				state = pixelState;
+			}
+
+			pixelID = pixelIDs[i % 3];
+		}
+
+		//	Pixel::State pixelState = pixelGrid.PixelLookup[_clearPixelID].PixelState;
+		//	std::for_each(std::execution::par_unseq, inputPixels, inputPixels + (pixelGrid.Width * pixelGrid.Height), [this, pixelState](Pixel::State& pixel) { pixel = pixelState; });
 	}
 
 	void PixelGridDrawing::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
@@ -51,10 +66,10 @@ namespace REA::System
 		{
 			Component::PixelGrid&         pixelGrid         = pixelGrids[i];
 			Component::PixelGridRenderer& pixelGridRenderer = pixelGridRenderers[i];
-			Pixel::State*                 pixelState        = pixelGrid.PixelState;
+			PixelChunks*                  pixelState        = pixelGrid.Chunks;
 			std::vector<Pixel>&           pixelLookup       = pixelGrid.PixelLookup;
 
-			if (pixelState == nullptr) { continue; }
+			if (pixelState == nullptr || pixelGrid.ChunkMapping == nullptr) { continue; }
 
 			if (_firstRender)
 			{
@@ -141,7 +156,7 @@ namespace REA::System
 			glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 
 			glm::vec2 mousePosition = Input::GetMousePosition();
-			mousePosition = {mousePosition.x, windowSize.y - mousePosition.y};
+			mousePosition           = { mousePosition.x, windowSize.y - mousePosition.y };
 
 			// Calculate normalized mouse position
 			//LOG("mouse {0} {1}", mousePosition.x, mousePosition.y);
@@ -152,21 +167,30 @@ namespace REA::System
 
 			// Map normalized mouse position to grid position
 			glm::uvec2 targetPosition = pixelGrid.ViewTargetPosition;
-			int gridX = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.SimulationWidth)));
-			int gridY = static_cast<int>(std::round(normalizedMousePos.y * static_cast<float>(pixelGrid.SimulationHeight)));
+			int        gridX          = static_cast<int>(std::round(normalizedMousePos.x * static_cast<float>(pixelGrid.SimulationWidth)));
+			int        gridY          = static_cast<int>(std::round(normalizedMousePos.y * static_cast<float>(pixelGrid.SimulationHeight)));
 
 			gridX = static_cast<int>(targetPosition.x) + gridX;
 			gridY = static_cast<int>(targetPosition.y) + gridY;
-
 
 
 			pixelGridRenderer.PointerPosition = { gridX, gridY };
 
 			int currentePixelindex = gridY * pixelGrid.Width + gridX;
 
-			Pixel::State state = pixelState[currentePixelindex];
+			uint32_t chunkIndex = (gridY / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (gridX / Constants::CHUNK_SIZE);
+			uint32_t pixelIndex = (gridY % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (gridX % Constants::CHUNK_SIZE);
+			uint32_t chunkMapping = (*pixelGrid.ChunkMapping)[chunkIndex];
+
+
+
+			Pixel::State state = (*pixelState)[chunkMapping][pixelIndex];
+
+
 
 			ImGui::Text(std::format("Current Pixel Info:").c_str());
+			ImGui::Text(std::format("Chunk Index: {0}", chunkIndex).c_str());
+			ImGui::Text(std::format("Chunk Pixel Index: {0}", pixelIndex).c_str());
 			ImGui::Text(std::format("Index: {0}", currentePixelindex).c_str());
 			ImGui::Text(std::format("Pos: x {0} y {1}", gridX, gridY).c_str());
 			ImGui::Text(std::format("ID: {0}", state.PixelID).c_str());
@@ -181,12 +205,12 @@ namespace REA::System
 				Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
 				if (_radius == 1)
 				{
-					const int index   = gridY * pixelGrid.Width + gridX;
-					pixelState[index] = drawState;
+					//const int index   = gridY * pixelGrid.Width + gridX;
+					(*pixelState)[chunkMapping][pixelIndex] = drawState;
 
 					//pixelGrid.ReadOnlyPixels[index] = 1;
 				}
-				else
+				/*else
 				{
 					for (int x = -_radius; x < _radius; ++x)
 					{
@@ -202,7 +226,7 @@ namespace REA::System
 							}
 						}
 					}
-				}
+				}*/
 			}
 		}
 	}

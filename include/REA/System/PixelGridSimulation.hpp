@@ -55,16 +55,13 @@ namespace REA::System
 
 			struct SSBO_SimulationData
 			{
-				float       deltaTime        = 0.0f;
-				uint32_t    timer            = 0;
-				float       rng              = 0.0f;
-				uint32_t    width            = 0;
-				uint32_t    height           = 0;
-				uint32_t    simulationWidth  = 0;
-				uint32_t    simulationHeight = 0;
-				uint32_t    _pad             = 0;
-				glm::vec2   targetPosition   = { 0.0f, 0.0f };
-				Pixel::Data pixelLookup[1024];
+				float             deltaTime      = 0.0f;
+				uint32_t          timer          = 0;
+				float             rng            = 0.0f;
+				uint32_t          _pad           = 0;
+				glm::vec2         targetPosition = { 0.0f, 0.0f };
+				PixelChunkMapping chunkMapping;
+				Pixel::Data       pixelLookup[1024];
 			};
 
 			struct SSBO_MarchingCubes
@@ -98,8 +95,8 @@ namespace REA::System
 
 			struct WorldGenerationSettings
 			{
-				float CaveNoiseTreshold  = 0.5f;
-				float CaveNoiseFrequency = 0.001f;
+				float CaveNoiseTreshold       = 0.5f;
+				float CaveNoiseFrequency      = 0.001f;
 				float OverworldNoiseFrequency = 0.0005f;
 			};
 
@@ -131,7 +128,7 @@ namespace REA::System
 			bool _generateWorld = true;
 
 
-			WorldGenerator::GenerationSettings _worldGenerationSettings {};
+			WorldGenerator::GenerationSettings _worldGenerationSettings{};
 
 			uint32_t _readIndex  = 0;
 			uint32_t _writeIndex = 8388608;

@@ -17,7 +17,6 @@
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
 
-
 #include <glm/ext/matrix_transform.hpp>
 
 #include "REA/Assets.hpp"
@@ -39,8 +38,8 @@ namespace REA::System
 		EngineContext* engineContext = contextProvider.GetContext<EngineContext>();
 		ECS::Registry& ecsRegistry   = engineContext->Application->GetECSRegistry();
 
-		auto&                      properties = _shaders.FallingSimulation->GetProperties();
-		Rendering::Vulkan::Device* device     = _shaders.FallingSimulation->GetPipeline().GetDevice();
+		auto&                      properties = _shaders.IdleSimulation->GetProperties();
+		Rendering::Vulkan::Device* device     = _shaders.IdleSimulation->GetPipeline().GetDevice();
 
 		vk::DeviceSize bufferSizes[]        = { sizeof(glm::vec2) * 100'000, sizeof(uint16_t) * 100'000 };
 		vk::DeviceSize bufferElementSizes[] = { sizeof(glm::vec2), sizeof(uint16_t) };
@@ -68,14 +67,25 @@ namespace REA::System
 
 		_commandBuffer.GetVkCommandBufferRaw().SetFramePtr(&_fif);
 
+		Rendering::Vulkan::Buffer& writeBuffer = properties.GetBuffer(2);
+
+		for (int i = 0; i < device->MAX_FRAMES_IN_FLIGHT; ++i)
+		{
+			uint32_t fifIndex    = (i + 1) % device->MAX_FRAMES_IN_FLIGHT;
+			auto&    bufferInfos = properties.GetBufferInfo(2, fifIndex);
+			properties.SetBuffer(3, writeBuffer, bufferInfos.offset, bufferInfos.range, i);
+		}
+
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
-		_computeFence                       = _shaders.FallingSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
+		_computeFence                       = _shaders.IdleSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
 
 		Component::Collider collider;
 		collider.InitialType     = b2_staticBody;
 		collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
 
 		_staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
+
+		_shaders.IdleSimulation->Update();
 	}
 
 	void PixelGridSimulation::SwapPixelBuffer() { std::swap(_readIndex, _writeIndex); }
@@ -169,8 +179,8 @@ namespace REA::System
 
 		for (int entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
 		{
-			SSBO_SimulationData* simulationData = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
-			SSBO_RigidBodyData*  rigidBodyData  = _shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(3);
+			SSBO_SimulationData* simulationData = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
+			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(3);
 
 			Component::PixelGrid& pixelGrid = pixelGrids[entityIndex];
 
@@ -179,12 +189,13 @@ namespace REA::System
 				device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 				device.GetVkDevice().resetFences(_computeFence);
 
-				pixelGrid.PixelState = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2)->Pixels[0];
+				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2, _fif)->Chunks;
+				pixelGrid.ChunkMapping = &simulationData->chunkMapping;
 			}
 
 			if (stage == Stage::GridComputeHalted)
 			{
-				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
+				/*SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(6);
 
 				/*size_t     vi = 0;
 				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
@@ -212,6 +223,7 @@ namespace REA::System
 					pixelGrid.ViewTargetPosition = targetPosition;
 				}
 
+				/*
 				// Delete Rigidbodies
 				if (simulationData->timer % 4 == 0)
 				{
@@ -450,19 +462,22 @@ namespace REA::System
 
 					marchingCubes->numConnectedSegments = 0;
 					marchingCubes->numSolidSegments     = 0;
-				}
+				}*/
 			}
 
 			if (stage == Stage::GridComputeBegin)
 			{
 				size_t numPixels     = pixelGrid.SimulationWidth * pixelGrid.SimulationHeight;
 				size_t numWorkgroups = CeilDivide(numPixels, 64ull);
+				uint32_t fif = _fif;
 
-				simulationData->width            = pixelGrid.Width;
-				simulationData->height           = pixelGrid.Height;
-				simulationData->simulationWidth  = pixelGrid.SimulationWidth;
-				simulationData->simulationHeight = pixelGrid.SimulationHeight;
 				simulationData->targetPosition   = pixelGrid.ViewTargetPosition;
+
+
+				for (int i = 0; i < simulationData->chunkMapping.size(); ++i)
+				{
+					simulationData->chunkMapping[i] = i;
+				}
 
 				if (_firstUpdate)
 				{
@@ -473,15 +488,35 @@ namespace REA::System
 
 				if (_generateWorld)
 				{
+					/*std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
+
 					BENCHMARK_BEGIN
-						std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
-
 						WorldGenerator::GenerateWorld(world, pixelGrid, _worldGenerationSettings);
-
-						memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
-
-						_generateWorld = false;
 					BENCHMARK_END("World Generation")
+
+					BENCHMARK_BEGIN
+						memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
+					BENCHMARK_END("Copy CPU to GPU")
+
+					std::vector<Pixel::State> testVector = std::vector<Pixel::State>(pixelGrid.SimulationWidth * pixelGrid.SimulationHeight,
+					                                                                 pixelGrid.PixelLookup[PixelType::Air].PixelState);
+					Pixel::State* copyPixels = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_CopyPixels>(5)->Pixels[0];
+
+
+					Rendering::Vulkan::Buffer& pixelsBuffer     = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
+					Rendering::Vulkan::Buffer& copyPixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(5);
+
+					BENCHMARK_BEGIN
+						for (int i = 0; i < 8; ++i)
+						{
+							pixelsBuffer.Copy(copyPixelsBuffer, 0, 0, testVector.size() * sizeof(Pixel::State));
+
+							memcpy(testVector.data(), copyPixels, testVector.size() * sizeof(Pixel::State));
+						}
+					BENCHMARK_END("GPU To CPU Copy")
+*/
+
+					_generateWorld = false;
 				}
 
 				if (!_paused || _doStep)
@@ -489,6 +524,7 @@ namespace REA::System
 					simulationData->deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 					simulationData->timer     = simulationData->timer + 1;
 					simulationData->rng       = glm::linearRand(0.0f, 1.0f);
+
 
 					_commandBuffer.GetVkCommandBuffer().reset({});
 
@@ -506,7 +542,7 @@ namespace REA::System
 
 					for (int i = 0; i < 7; ++i)
 					{
-						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &_writeIndex);
@@ -515,7 +551,7 @@ namespace REA::System
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
 
-						SwapPixelBuffer();
+						fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 
 						margolusOffset = GetMargolusOffset(timer + i);
 						flowIteration++;
@@ -533,7 +569,7 @@ namespace REA::System
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
-					SwapPixelBuffer();
+					/*SwapPixelBuffer();
 
 					// Do CCL if there are rigidbodies to discover
 					if (!_newRigidBodies.empty())
@@ -684,7 +720,7 @@ namespace REA::System
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
-					}
+					}*/
 
 					_commandBuffer.GetVkCommandBuffer().end();
 
@@ -700,9 +736,9 @@ namespace REA::System
 
 					_shaders.IdleSimulation->Update();
 
-					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-					_shaders.IdleSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+				//	_shaders.IdleSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
@@ -715,7 +751,7 @@ namespace REA::System
 
 				computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
 
-				_fif = (_fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
+				_fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
 			}
 
 			if (stage == Stage::Rendering)
