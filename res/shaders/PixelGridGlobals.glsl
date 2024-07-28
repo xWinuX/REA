@@ -1,7 +1,5 @@
-const uint NumSimulatedPixels = 1048576; // 1024 * 1024
-const uint NumPixels = 8388608 + NumSimulatedPixels; // 4096 x 2048 + Simulated Pixels for ping ponging buffer swapping
 
-const uint CHUNKS_X = 8;
+const uint CHUNKS_X = 12;
 const uint CHUNKS_Y = 8;
 const uint CHUNK_SIZE = 128;
 
@@ -13,6 +11,9 @@ const uint NUM_ELEMENTS_X = CHUNKS_X * CHUNK_SIZE;
 const uint NUM_ELEMENTS_Y = CHUNKS_Y * CHUNK_SIZE;
 
 const vec2 GRID_SIZE_F = vec2(NUM_ELEMENTS_X, NUM_ELEMENTS_Y);
+
+const uint NumSimulatedPixels = MAX_ELEMENTS; // 1024 * 1024
+const uint NumPixels = 8388608 + NumSimulatedPixels; // 4096 x 2048 + Simulated Pixels for ping ponging buffer swapping
 
 const uint NumRigidbodies = 1024;
 const uint NumMarchingSquareSegments = 100000;
@@ -86,9 +87,12 @@ uint getFlags(uint packedData) {
 }
 
 uint getRigidBodyID(uint packedData) {
-    return packedData & 0xFFFu;
+    return packedData & 0x7FFu; // 11 bits mask (binary: 00000000000 00000000000 00000001111 11111111111)
 }
 
+uint getRigidBodyIndex(uint packedData) {
+    return (packedData >> 11u) & 0x1FFFFFu; // Shift by 11 bits, mask 21 bits (binary: 00000000000 00000000001 11111111111 11111111111)
+}
 uvec2 getChunkPosition(uint index)
 {
     uint chunkIndex = index / NUM_ELEMENTS_IN_CHUNK;
@@ -101,11 +105,6 @@ uvec2 getChunkPosition(uint index, uvec2 chunkOffset)
     uint chunkIndex = index / NUM_ELEMENTS_IN_CHUNK;
 
     return chunkOffset + uvec2(chunkIndex % CHUNKS_X, chunkIndex / CHUNKS_X);
-}
-
-
-uint getRigidBodyIndex(uint packedData) {
-    return (packedData >> 12u) & 0xFFFFFu;
 }
 
 uint getGlobalIndex(uint index, uint globalWidth, uvec2 localSize, uvec2 globalOffset)

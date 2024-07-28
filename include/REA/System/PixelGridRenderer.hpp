@@ -32,7 +32,7 @@ namespace REA::System
 				int32_t               height;
 				float                 zoom;
 				Component::RenderMode renderMode;
-				glm::vec2             offset;
+				glm::ivec2            offset;
 				glm::vec2             pointerPosition;
 				Color                 colorLookup[256];
 			};

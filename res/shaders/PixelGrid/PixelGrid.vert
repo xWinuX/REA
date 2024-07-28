@@ -26,7 +26,7 @@ layout(std430, set = 1, binding = 0) readonly buffer c_GridInfo {
     int height;
     float zoom;
     uint renderMode;
-    vec2 offset;
+    ivec2 offset;
     vec2 pointerPosition;
     vec4 colorLookup[256];
 } gridInfo;
@@ -35,7 +35,7 @@ void main() {
 
     vec2 gridSize = vec2(gridInfo.width, gridInfo.height);
 
-    gl_Position = cameraProperties.proj * cameraProperties.view * vec4(((POSITION[a_Index]*GRID_SIZE_F) + gridInfo.offset) / cameraProperties.pixelsPerUnit, -100.0f, 1.0f);
+    gl_Position = cameraProperties.proj * cameraProperties.view * vec4(((POSITION[a_Index]*GRID_SIZE_F) + (gridInfo.offset * CHUNK_SIZE)) / cameraProperties.pixelsPerUnit, -100.0f, 1.0f);
 
     v_PixelPosition = UV[a_Index] * GRID_SIZE_F;
 }

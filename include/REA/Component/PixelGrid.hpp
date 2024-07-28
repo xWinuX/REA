@@ -9,16 +9,24 @@ namespace REA::Component
 {
 	struct PixelGrid
 	{
-		PixelChunks* Chunks = nullptr;
-		PixelChunkMapping* ChunkMapping = nullptr;
+		std::array<PixelChunk, Constants::NUM_CHUNKS>* Chunks       = nullptr;
+		std::vector<uint32_t>                          ChunkMapping = {};
 
-		int32_t Width  = 512;
-		int32_t Height = 512;
+		std::vector<std::vector<Pixel::State>> World{};
 
-		int32_t SimulationWidth  = 256;
-		int32_t SimulationHeight = 256;
+		glm::ivec2 ChunkOffset = { 0, 0 };
 
-		glm::vec2 ViewTargetPosition = { 0.0f, 0.0f };
+		int32_t WorldChunksX = 16;
+		int32_t WorldChunksY = 16;
+
+		int32_t SimulationChunksX = 8;
+		int32_t SimulationChunksY = 8;
+
+		int32_t WorldWidth  = 1024;
+		int32_t WorldHeight = 1024;
+
+		int32_t SimulationWidth  = 1024;
+		int32_t SimulationHeight = 1024;
 
 		uint64_t CameraEntityID = -1u;
 

@@ -30,9 +30,8 @@ layout (std430, set = 1, binding = 5) buffer s_si_dl_RigidBodyPixelData {
 };
 
 layout (std430, set = 1, binding = 6) buffer s_c_td_CopyPixels {
-    Pixel copyPixels[NumSimulatedPixels];
+    Pixel copyPixels[NUM_CHUNKS][NUM_ELEMENTS_IN_CHUNK];
 };
-
 
 #define SetupPixelVars(name, index) \
 uint name##ChunkIndex = index / NUM_ELEMENTS_IN_CHUNK; \
@@ -45,13 +44,11 @@ Pixel name##Pixel = readPixels[name##ChunkMapping][name##PixelIndex];
     (name##ChunkIndex / CHUNKS_X) * CHUNK_SIZE + (name##PixelIndex / CHUNK_SIZE) \
 )
 
-
 #define SetupPixelVarsByPosition(name, x, y) \
 uint name##ChunkIndex = (y / CHUNK_SIZE) * CHUNKS_X + (x / CHUNK_SIZE); \
 uint name##PixelIndex = (y % CHUNK_SIZE) * CHUNK_SIZE + (x % CHUNK_SIZE); \
 uint name##ChunkMapping = simulationData.chunkMapping[name##ChunkIndex]; \
 Pixel name##Pixel = readPixels[name##ChunkMapping][name##PixelIndex];
-
 
 #define BoundaryCheck() if (gl_GlobalInvocationID.x >= MAX_ELEMENTS) { return; }
 

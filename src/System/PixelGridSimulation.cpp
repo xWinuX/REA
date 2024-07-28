@@ -164,6 +164,8 @@ namespace REA::System
 		}
 	}
 
+	int mod(int a, int b) { return (a % b + b) % b; }
+
 	void PixelGridSimulation::Execute(Component::PixelGrid*  pixelGrids,
 	                                  Component::Collider*   colliders,
 	                                  std::vector<uint64_t>& entities,
@@ -190,7 +192,7 @@ namespace REA::System
 				device.GetVkDevice().resetFences(_computeFence);
 
 				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2, _fif)->Chunks;
-				pixelGrid.ChunkMapping = &simulationData->chunkMapping;
+				//pixelGrid.ChunkMapping = &simulationData->chunkMapping;
 			}
 
 			if (stage == Stage::GridComputeHalted)
@@ -210,17 +212,129 @@ namespace REA::System
 					_numLineSegements = vi;
 				}*/
 
+
 				// Pixelgrid follows camera
 				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 				{
-					glm::vec2 offset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
+					// This is inside of the pixelGrid variable
+					struct PixelGrid
+					{
+						std::array<PixelChunk, Constants::NUM_CHUNKS>* Chunks       = nullptr;
+						std::array<uint32_t, Constants::NUM_CHUNKS>*   ChunkMapping = nullptr;
+
+						std::vector<std::vector<Pixel::State>> World{};
+
+						glm::ivec2 ChunkOffset = { 0, 0 };
+
+						int32_t WorldChunksX = 16;
+						int32_t WorldChunksY = 16;
+
+						int32_t SimulationChunksX = 8;
+						int32_t SimulationChunksY = 8;
+
+						int32_t WorldWidth  = 1024;
+						int32_t WorldHeight = 1024;
+
+						int32_t SimulationWidth  = 1024;
+						int32_t SimulationHeight = 1024;
+
+						uint64_t CameraEntityID = -1u;
+
+						std::vector<Pixel>       PixelLookup{};
+						std::vector<Pixel::Data> PixelDataLookup;
+						std::vector<Color>       PixelColorLookup{};
+					};
+
+					glm::vec2 offset = { -pixelGrid.SimulationWidth, -pixelGrid.SimulationHeight };
 
 					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position * 10.0f;
-					targetPosition -= offset / 2.0f;
 
-					targetPosition = glm::clamp(targetPosition, { 0.0f, 0.0f }, glm::vec2(pixelGrid.Width, pixelGrid.Height) - offset);
+					targetPosition += offset / 2.0f;
 
-					pixelGrid.ViewTargetPosition = targetPosition;
+					targetPosition = glm::clamp(targetPosition, { 0.0f, 0.0f }, glm::vec2(pixelGrid.WorldWidth, pixelGrid.WorldHeight) + offset);
+
+					glm::ivec2 previousOffset = pixelGrid.ChunkOffset;
+					pixelGrid.ChunkOffset     = glm::ivec2(static_cast<uint32_t>(targetPosition.x) / Constants::CHUNK_SIZE,
+					                                       static_cast<uint32_t>(targetPosition.y) / Constants::CHUNK_SIZE);
+
+					if (previousOffset != pixelGrid.ChunkOffset)
+					{
+						BENCHMARK_BEGIN
+						PixelChunks* copyPixels = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_CopyPixels>(6)->Chunks;
+
+						// Copy data from the world to the chunk
+						Rendering::Vulkan::Buffer& copyPixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(6);
+						Rendering::Vulkan::Buffer& pixelsBuffer     = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
+
+						pixelsBuffer.Copy(copyPixelsBuffer);
+
+						// Save old chunks
+						glm::ivec2 loadDirection = previousOffset - pixelGrid.ChunkOffset;
+						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+						{
+							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+							{
+								int oldWorldX = previousOffset.x + x;
+								int oldWorldY = previousOffset.y + y;
+
+								bool wasInOldBounds = x + loadDirection.x < 0 || x + loadDirection.x >= pixelGrid.SimulationChunksX || y  + loadDirection.y < 0 || y  + loadDirection.y >= pixelGrid.SimulationChunksY;
+
+								int chunkIndex = y * pixelGrid.SimulationChunksX + x;
+
+								if (wasInOldBounds)
+								{
+									int worldIndex = oldWorldY * pixelGrid.WorldChunksX + oldWorldX;
+									memcpy(pixelGrid.World[worldIndex].data(),
+									       (*copyPixels)[pixelGrid.ChunkMapping[chunkIndex]].data(),
+									       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
+								}
+							}
+						}
+
+						// Remap mappings
+						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+						{
+							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+							{
+								int chunkIndex = y * pixelGrid.SimulationChunksX + x;
+
+								int wrappedX = mod(x - pixelGrid.ChunkOffset.x, pixelGrid.SimulationChunksX);
+								int wrappedY = mod(y - pixelGrid.ChunkOffset.y, pixelGrid.SimulationChunksY);
+
+								if (wrappedX < 0) { wrappedX += pixelGrid.SimulationChunksX; }
+								if (wrappedY < 0) { wrappedY += pixelGrid.SimulationChunksY; }
+
+								int newMappingIndex                     = wrappedY * pixelGrid.SimulationChunksX + wrappedX;
+								pixelGrid.ChunkMapping[newMappingIndex] = chunkIndex;
+							}
+						}
+
+						// Load new chunks
+						loadDirection = pixelGrid.ChunkOffset - previousOffset;
+						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+						{
+							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+							{
+								int chunkIndex = y * pixelGrid.SimulationChunksX + x;
+
+								int newWorldX = pixelGrid.ChunkOffset.x + x;
+								int newWorldY = pixelGrid.ChunkOffset.y + y;
+
+								bool isInNewBounds = x + loadDirection.x < 0 || x + loadDirection.x >= pixelGrid.SimulationChunksX || y  + loadDirection.y < 0 || y  + loadDirection.y >= pixelGrid.SimulationChunksY;
+
+								if (isInNewBounds)
+								{
+									int worldIndex = newWorldY * pixelGrid.WorldChunksX + newWorldX;
+
+									memcpy((*pixelGrid.Chunks)[pixelGrid.ChunkMapping[chunkIndex]].data(),
+									       pixelGrid.World[worldIndex].data(),
+									       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
+								}
+							}
+						}
+
+						BENCHMARK_END("Chunking")
+					}
 				}
 
 				/*
@@ -467,17 +581,15 @@ namespace REA::System
 
 			if (stage == Stage::GridComputeBegin)
 			{
-				size_t numPixels     = pixelGrid.SimulationWidth * pixelGrid.SimulationHeight;
-				size_t numWorkgroups = CeilDivide(numPixels, 64ull);
-				uint32_t fif = _fif;
+				size_t   numPixels     = pixelGrid.SimulationWidth * pixelGrid.SimulationHeight;
+				size_t   numWorkgroups = CeilDivide(numPixels, 64ull);
+				uint32_t fif           = _fif;
 
-				simulationData->targetPosition   = pixelGrid.ViewTargetPosition;
+				simulationData->targetPosition = pixelGrid.ChunkOffset;
 
 
-				for (int i = 0; i < simulationData->chunkMapping.size(); ++i)
-				{
-					simulationData->chunkMapping[i] = i;
-				}
+				for (int i = 0; i < simulationData->chunkMapping.size(); ++i) { simulationData->chunkMapping[i] = pixelGrid.ChunkMapping[i]; }
+
 
 				if (_firstUpdate)
 				{
@@ -488,33 +600,74 @@ namespace REA::System
 
 				if (_generateWorld)
 				{
-					/*std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.Width * pixelGrid.Height, pixelGrid.PixelLookup[PixelType::Air].PixelState);
+					std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.WorldWidth * pixelGrid.WorldHeight, pixelGrid.PixelLookup[PixelType::Air].PixelState);
 
 					BENCHMARK_BEGIN
 						WorldGenerator::GenerateWorld(world, pixelGrid, _worldGenerationSettings);
+
+						// Split up world into chunks
+						for (int chunkY = 0; chunkY < pixelGrid.WorldChunksY; ++chunkY)
+						{
+							for (int chunkX = 0; chunkX < pixelGrid.WorldChunksX; ++chunkX)
+							{
+								std::vector<Pixel::State>& chunk = pixelGrid.World[chunkY * pixelGrid.WorldChunksX + chunkX];
+
+								for (int y = 0; y < Constants::CHUNK_SIZE; ++y)
+								{
+									for (int x = 0; x < Constants::CHUNK_SIZE; ++x)
+									{
+										int worldX = chunkX * Constants::CHUNK_SIZE + x;
+										int worldY = chunkY * Constants::CHUNK_SIZE + y;
+
+										if (worldX < pixelGrid.WorldWidth && worldY < pixelGrid.WorldHeight)
+										{
+											int worldIndex    = worldY * pixelGrid.WorldWidth + worldX;
+											int chunkIndex    = y * Constants::CHUNK_SIZE + x;
+											chunk[chunkIndex] = world[worldIndex];
+										}
+									}
+								}
+							}
+						}
 					BENCHMARK_END("World Generation")
 
+
 					BENCHMARK_BEGIN
-						memcpy(pixelGrid.PixelState, world.data(), world.size() * sizeof(Pixel::State));
+						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+						{
+							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+							{
+								// Calculate the corresponding world coordinates
+								int worldX = x + pixelGrid.ChunkOffset.x;
+								int worldY = y + pixelGrid.ChunkOffset.y;
+
+								memcpy((*pixelGrid.Chunks)[pixelGrid.ChunkMapping[y * pixelGrid.SimulationChunksX + x]].data(),
+								       pixelGrid.World[worldY * pixelGrid.WorldChunksX + worldX].data(),
+								       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
+							}
+						}
 					BENCHMARK_END("Copy CPU to GPU")
 
-					std::vector<Pixel::State> testVector = std::vector<Pixel::State>(pixelGrid.SimulationWidth * pixelGrid.SimulationHeight,
-					                                                                 pixelGrid.PixelLookup[PixelType::Air].PixelState);
-					Pixel::State* copyPixels = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_CopyPixels>(5)->Pixels[0];
 
-
-					Rendering::Vulkan::Buffer& pixelsBuffer     = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
+					/*
+										std::vector<Pixel::State> testVector = std::vector<Pixel::State>(pixelGrid.SimulationWidth * pixelGrid.SimulationHeight,
+										                                                                 pixelGrid.PixelLookup[PixelType::Air].PixelState);
+										Pixel::State* copyPixels = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_CopyPixels>(5)->Pixels[0];
 					Rendering::Vulkan::Buffer& copyPixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(5);
+										*/
+					/*
+										Rendering::Vulkan::Buffer& pixelsBuffer     = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
 
-					BENCHMARK_BEGIN
-						for (int i = 0; i < 8; ++i)
-						{
-							pixelsBuffer.Copy(copyPixelsBuffer, 0, 0, testVector.size() * sizeof(Pixel::State));
 
-							memcpy(testVector.data(), copyPixels, testVector.size() * sizeof(Pixel::State));
-						}
-					BENCHMARK_END("GPU To CPU Copy")
-*/
+										BENCHMARK_BEGIN
+											for (int i = 0; i < 8; ++i)
+											{
+												pixelsBuffer.Copy(copyPixelsBuffer, 0, 0, testVector.size() * sizeof(Pixel::State));
+
+												memcpy(testVector.data(), copyPixels, testVector.size() * sizeof(Pixel::State));
+											}
+										BENCHMARK_END("GPU To CPU Copy")
+					*/
 
 					_generateWorld = false;
 				}
@@ -738,7 +891,7 @@ namespace REA::System
 
 					_shaders.IdleSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-				//	_shaders.IdleSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+					//	_shaders.IdleSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 

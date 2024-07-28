@@ -20,19 +20,19 @@ namespace REA
 	{
 		auto caveNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IgAAAAA/j8J1Pg0AAwAAAB+FE0EQAM3MDEATAJqZGT8LAAAAAAAAAAAAAQAAAAQAAAAA9iicPwAfhes+AArXoz0ArkeNQQ==");
 		std::vector<float> caveNoise = std::vector<float>(world.size());
-		caveNoiseGenerator->GenUniformGrid2D(caveNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.01f * generationSettings.CaveNoiseFrequency, 1234);
+		caveNoiseGenerator->GenUniformGrid2D(caveNoise.data(), 0, 0, pixelGrid.WorldWidth, pixelGrid.WorldHeight, 0.01f * generationSettings.CaveNoiseFrequency, 1234);
 
 		auto overworldNoiseGenerator =
 				FastNoise::NewFromEncodedNodeTree("IQATAClcDz4UACkAAAAAgD8AAACAPwAAAAAAAAAAAAAQAOxR+D8ZAA0AAwAAAD0KF0ApAAAAAAA/AHsUrj4AzczMPQCPwnU+AAAAAD8=");
 		std::vector<float> overworldNoise = std::vector<float>(world.size());
-		overworldNoiseGenerator->GenUniformGrid2D(overworldNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.01f * generationSettings.OverworldNoiseFrequency, 1234);
+		overworldNoiseGenerator->GenUniformGrid2D(overworldNoise.data(), 0, 0, pixelGrid.WorldWidth, pixelGrid.WorldHeight, 0.01f * generationSettings.OverworldNoiseFrequency, 1234);
 
 		auto normalNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IQATAClcDz4UACkAAAAAgD8AAACAPwAAAAAAAAAAAAAQAOxR+D8ZAA0AAwAAAD0KF0ApAAAAAAA/AHsUrj4AzczMPQCPwnU+AAAAAD8=");
 		std::vector<float> normalNoise = std::vector<float>(world.size());
-		normalNoiseGenerator->GenUniformGrid2D(normalNoise.data(), 0, 0, pixelGrid.Width, pixelGrid.Height, 0.1f, 1234);
+		normalNoiseGenerator->GenUniformGrid2D(normalNoise.data(), 0, 0, pixelGrid.WorldWidth, pixelGrid.WorldHeight, 0.1f, 1234);
 
 		const float blendRegionHeight = 30.0f; // Height of the blending region
-		const float caveLayerHeight   = pixelGrid.Height / 2;
+		const float caveLayerHeight   = pixelGrid.WorldHeight / 2;
 
 		const float blendStart = caveLayerHeight;
 		const float blendEnd   = caveLayerHeight + blendRegionHeight;
@@ -43,8 +43,8 @@ namespace REA
 		// Basic generation of Terrain and caves
 		for (int i = 0; i < world.size(); ++i)
 		{
-			size_t x = i % pixelGrid.Width;
-			size_t y = i / pixelGrid.Width;
+			size_t x = i % pixelGrid.WorldWidth;
+			size_t y = i / pixelGrid.WorldWidth;
 
 			if (y < caveLayerHeight) { if (caveNoise[i] < generationSettings.CaveNoiseTreshold) { world[i] = GET_PIXEL(PixelType::Stone); } }
 			else
@@ -60,7 +60,7 @@ namespace REA
 				{
 					if (y >= blendStart && y <= blendEnd)
 					{
-						float blendNoise = glm::abs(overworldNoise[x + (pixelGrid.Width * 100)]);
+						float blendNoise = glm::abs(overworldNoise[x + (pixelGrid.WorldWidth * 100)]);
 						world[i]         = blendStart + (blendNoise * blendRegionHeight) > y ? GET_PIXEL(PixelType::Stone) : GET_PIXEL(PixelType::Dirt);
 					}
 					else { world[i] = GET_PIXEL(PixelType::Dirt); }
@@ -73,12 +73,12 @@ namespace REA
 		uint32_t grassHeight = 3;
 		for (int i = 0; i < grassHeight; ++i)
 		{
-			for (int x = 0; x < pixelGrid.Width; ++x)
+			for (int x = 0; x < pixelGrid.WorldWidth; ++x)
 			{
-				for (int y = pixelGrid.Height - 1; y > 0; --y)
+				for (int y = pixelGrid.WorldHeight - 1; y > 0; --y)
 				{
-					size_t index      = y * pixelGrid.Width + x;
-					size_t belowIndex = (y - 1) * pixelGrid.Width + x;
+					size_t index      = y * pixelGrid.WorldWidth + x;
+					size_t belowIndex = (y - 1) * pixelGrid.WorldWidth + x;
 					if (world[belowIndex].PixelID == PixelType::Dirt || world[belowIndex].PixelID == PixelType::Grass)
 					{
 						world[index] = GET_PIXEL(PixelType::Grass);
@@ -89,17 +89,16 @@ namespace REA
 		}
 
 		// Trees
-		/*
+
 		float nextTreeEdge = 0;
-		for (int x = 300; x < pixelGrid.Width - 300; ++x)
+		for (int x = 300; x < pixelGrid.WorldWidth - 300; ++x)
 		{
 			if (x > nextTreeEdge+(300))
-			{*
-				int x = 300;
-				for (size_t y = pixelGrid.Height - 1; y > 0; --y)
+			{
+				for (size_t y = pixelGrid.WorldHeight - 1; y > 0; --y)
 				{
-					size_t index      = y * pixelGrid.Width + x;
-					size_t belowIndex = (y - 1) * pixelGrid.Width + x;
+					size_t index      = y * pixelGrid.WorldWidth + x;
+					size_t belowIndex = (y - 1) * pixelGrid.WorldWidth + x;
 					if (world[belowIndex].PixelID == PixelType::Grass)
 					{
 						uint32_t treeHeight = 100;
@@ -137,9 +136,9 @@ namespace REA
 
 						break;
 					}
-				}*/
-			//}
-		//}
+				}
+			}
+		}
 	}
 
 	glm::vec2 WorldGenerator::GenerateBranch(size_t                     startX,
@@ -179,7 +178,7 @@ namespace REA
 					size_t absBranchX = (static_cast<size_t>(position.x) - branchHalfWidth) + branchX;
 					size_t absBranchY = (static_cast<size_t>(position.y) - branchHalfHeight) + branchY;
 
-					size_t branchIndex = (absBranchY) * pixelGrid.Width + (absBranchX);
+					size_t branchIndex = (absBranchY) * pixelGrid.WorldWidth + (absBranchX);
 
 					if (branchIndex < world.size()) { world[branchIndex] = GET_PIXEL(PixelType::Wood); }
 				}
@@ -222,7 +221,7 @@ namespace REA
 					maxPosition = glm::vec2(glm::max(maxPosition.x, static_cast<float>(newX)), glm::max(maxPosition.y, static_cast<float>(newY)));
 
 					// Bounds checking
-					size_t index = newY * pixelGrid.Width + newX;
+					size_t index = newY * pixelGrid.WorldWidth + newX;
 					if (index < world.size())
 					{
 						float randomRadius = leafRadius + (noise[index] * 5.0f);

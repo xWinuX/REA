@@ -4,10 +4,10 @@
 
 namespace REA
 {
-	PixelGridBuilder& PixelGridBuilder::WithSize(glm::ivec2 worldSize, glm::ivec2 simulationSize)
+	PixelGridBuilder& PixelGridBuilder::WithSize(glm::ivec2 worldChunkSize, glm::ivec2 simulationChunkSize)
 	{
-		_worldSize      = worldSize;
-		_simulationSize = simulationSize;
+		_worldChunkSize      = worldChunkSize;
+		_simulationChunkSize = simulationChunkSize;
 		return *this;
 	}
 
@@ -42,10 +42,22 @@ namespace REA
 			pixelGrid.PixelDataLookup.push_back(pixelCreateInfo.Data);
 		}
 
-		pixelGrid.Width            = _worldSize.x;
-		pixelGrid.Height           = _worldSize.y;
-		pixelGrid.SimulationWidth  = _simulationSize.x;
-		pixelGrid.SimulationHeight = _simulationSize.y;
+		pixelGrid.WorldChunksX = _worldChunkSize.x;
+		pixelGrid.WorldChunksY = _worldChunkSize.y;
+		pixelGrid.WorldWidth   = _worldChunkSize.x * static_cast<int32_t>(Constants::CHUNK_SIZE);
+		pixelGrid.WorldHeight  = _worldChunkSize.y * static_cast<int32_t>(Constants::CHUNK_SIZE);
+
+		pixelGrid.SimulationChunksX = _simulationChunkSize.x;
+		pixelGrid.SimulationChunksY = _simulationChunkSize.y;
+		pixelGrid.SimulationWidth   = _simulationChunkSize.x * static_cast<int32_t>(Constants::CHUNK_SIZE);
+		pixelGrid.SimulationHeight  = _simulationChunkSize.y * static_cast<int32_t>(Constants::CHUNK_SIZE);
+
+		// Setup world chunks
+		for (int i = 0; i < pixelGrid.WorldChunksX * pixelGrid.WorldChunksY; ++i)
+		{
+			pixelGrid.World.push_back(std::vector<Pixel::State>(Constants::NUM_ELEMENTS_IN_CHUNK, {}));
+			pixelGrid.ChunkMapping.push_back(i);
+		}
 
 		_pixelCreateInfos.clear();
 

@@ -17,13 +17,13 @@ namespace REA
 				Pixel::Data Data{};
 			};
 
-			PixelGridBuilder&    WithSize(glm::ivec2 worldSize, glm::ivec2 simulationSize);
+			PixelGridBuilder&    WithSize(glm::ivec2 worldChunkSize, glm::ivec2 simulationChunkSize);
 			PixelGridBuilder&    WithPixelData(std::vector<PixelCreateInfo>&& pixelData);
 			Component::PixelGrid Build();
 
 		private:
-			glm::ivec2                   _worldSize = { 0, 0 };
-			glm::ivec2                   _simulationSize = { 0, 0 };
+			glm::ivec2                   _worldChunkSize      = { 0, 0 };
+			glm::ivec2                   _simulationChunkSize = { 0, 0 };
 			std::vector<PixelCreateInfo> _pixelCreateInfos{};
 	};
 }

@@ -54,9 +54,9 @@ namespace REA::System
 				                                                 glm::vec3(targetTransform.Position.x, targetTransform.Position.y, transformComponent.Position.z),
 				                                                 0.125f);
 
-				float offset                = 102.4f / (2.0f * _pixelSize);
-				newPosition.x = glm::clamp(newPosition.x, offset, 409.6f-offset);
-				newPosition.y = glm::clamp(newPosition.y, offset, 204.8f-offset);
+				//float offset                = 102.4f / (2.0f * _pixelSize);
+				//newPosition.x = glm::clamp(newPosition.x, offset, 409.6f-offset);
+				//newPosition.y = glm::clamp(newPosition.y, offset, 204.8f-offset);
 
 				transformComponent.Position = newPosition;
 			}

@@ -37,8 +37,8 @@ namespace REA
 
 			struct
 			{
-				uint32_t RigidBodyID: 12 = 0u;
-				uint32_t Index      : 20 = 0u;
+				uint32_t RigidBodyID: 11 = 0u;
+				uint32_t Index      : 21 = 0u;
 			};
 		};
 
@@ -67,7 +67,8 @@ namespace REA
 		State       PixelState{};
 	};
 
-	typedef std::array<std::array<Pixel::State, Constants::NUM_ELEMENTS_IN_CHUNK>, Constants::NUM_CHUNKS> PixelChunks;
+	typedef std::array<Pixel::State, Constants::NUM_ELEMENTS_IN_CHUNK> PixelChunk;
+	typedef std::array<PixelChunk, Constants::NUM_CHUNKS> PixelChunks;
 	typedef std::array<uint32_t, Constants::NUM_CHUNKS> PixelChunkMapping;
 
 	struct SSBO_Pixels
@@ -77,6 +78,6 @@ namespace REA
 
 	struct SSBO_CopyPixels
 	{
-		Pixel::State Pixels[1048576];
+		PixelChunks Chunks;
 	};
 }

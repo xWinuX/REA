@@ -377,7 +377,7 @@ int main()
 	*/
 
 	boxShape.SetAsBox(1.0f, 1.0f);
-	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 102.4f, -10.0f } },
+	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 0.0f, -10.0f } },
 		{ defaultPhysicsMaterial, b2BodyType::b2_dynamicBody, { boxShape } },
 		{},
 		{ reaIdleRSprite, 1.0f, 0 });
@@ -388,7 +388,7 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ Constants::NUM_ELEMENTS_X, Constants::NUM_ELEMENTS_Y }, { Constants::NUM_ELEMENTS_X, Constants::NUM_ELEMENTS_Y }).
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 24 }, { 12, 8 }).
 	                                                  WithPixelData(std::move(pixelLookup)).Build();
 	pixelGrid.CameraEntityID = camera;
 
