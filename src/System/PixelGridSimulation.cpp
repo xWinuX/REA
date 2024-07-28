@@ -28,6 +28,7 @@
 #include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Component/Transform.hpp"
 #include "REA/Context/ImGui.hpp"
+#include "REA/Constants.hpp"
 
 
 namespace REA::System
@@ -182,7 +183,7 @@ namespace REA::System
 		for (int entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
 		{
 			SSBO_SimulationData* simulationData = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
-			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(3);
+			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(4);
 
 			Component::PixelGrid& pixelGrid = pixelGrids[entityIndex];
 
@@ -197,9 +198,9 @@ namespace REA::System
 
 			if (stage == Stage::GridComputeHalted)
 			{
-				/*SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(6);
+				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(7);
 
-				/*size_t     vi = 0;
+				size_t     vi = 0;
 				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
 				for (vi = 0; vi< marchingCubes->numSolidSegments; ++vi)
 				{
@@ -210,41 +211,13 @@ namespace REA::System
 				if (marchingCubes->numSolidSegments > 0)
 				{
 					_numLineSegements = vi;
-				}*/
+				}
 
 
 				// Pixelgrid follows camera
 				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 				{
 					// This is inside of the pixelGrid variable
-					struct PixelGrid
-					{
-						std::array<PixelChunk, Constants::NUM_CHUNKS>* Chunks       = nullptr;
-						std::array<uint32_t, Constants::NUM_CHUNKS>*   ChunkMapping = nullptr;
-
-						std::vector<std::vector<Pixel::State>> World{};
-
-						glm::ivec2 ChunkOffset = { 0, 0 };
-
-						int32_t WorldChunksX = 16;
-						int32_t WorldChunksY = 16;
-
-						int32_t SimulationChunksX = 8;
-						int32_t SimulationChunksY = 8;
-
-						int32_t WorldWidth  = 1024;
-						int32_t WorldHeight = 1024;
-
-						int32_t SimulationWidth  = 1024;
-						int32_t SimulationHeight = 1024;
-
-						uint64_t CameraEntityID = -1u;
-
-						std::vector<Pixel>       PixelLookup{};
-						std::vector<Pixel::Data> PixelDataLookup;
-						std::vector<Color>       PixelColorLookup{};
-					};
-
 					glm::vec2 offset = { -pixelGrid.SimulationWidth, -pixelGrid.SimulationHeight };
 
 					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position * 10.0f;
@@ -337,7 +310,6 @@ namespace REA::System
 					}
 				}
 
-				/*
 				// Delete Rigidbodies
 				if (simulationData->timer % 4 == 0)
 				{
@@ -368,18 +340,19 @@ namespace REA::System
 					glm::vec2 xOffset  = { pixelGrid.SimulationWidth, 0.0f };
 					glm::vec2 yOffset  = { 0.0f, pixelGrid.SimulationHeight };
 					glm::vec2 xyOffset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
+					glm::vec2 chunkOffset = glm::vec2(pixelGrid.ChunkOffset.x, pixelGrid.ChunkOffset.y) * static_cast<float>(Constants::CHUNK_SIZE);
 
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2]     = pixelGrid.ViewTargetPosition;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 1] = pixelGrid.ViewTargetPosition + yOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2]     = chunkOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 1] = chunkOffset + yOffset;
 
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 2] = pixelGrid.ViewTargetPosition + yOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 3] = pixelGrid.ViewTargetPosition + xyOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 2] = chunkOffset + yOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 3] = chunkOffset + xyOffset;
 
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 4] = pixelGrid.ViewTargetPosition + xyOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 5] = pixelGrid.ViewTargetPosition + xOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 4] = chunkOffset + xyOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 5] = chunkOffset + xOffset;
 
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 6] = pixelGrid.ViewTargetPosition + xOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 7] = pixelGrid.ViewTargetPosition;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 6] = chunkOffset + xOffset;
+					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 7] = chunkOffset;
 					marchingCubes->numSolidSegments += 4;
 
 					std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(marchingCubes->numSolidSegments, CDT::Edge(0, 0));
@@ -576,7 +549,7 @@ namespace REA::System
 
 					marchingCubes->numConnectedSegments = 0;
 					marchingCubes->numSolidSegments     = 0;
-				}*/
+				}
 			}
 
 			if (stage == Stage::GridComputeBegin)
@@ -585,8 +558,7 @@ namespace REA::System
 				size_t   numWorkgroups = CeilDivide(numPixels, 64ull);
 				uint32_t fif           = _fif;
 
-				simulationData->targetPosition = pixelGrid.ChunkOffset;
-
+				simulationData->chunkOffset = pixelGrid.ChunkOffset;
 
 				for (int i = 0; i < simulationData->chunkMapping.size(); ++i) { simulationData->chunkMapping[i] = pixelGrid.ChunkMapping[i]; }
 
@@ -648,27 +620,6 @@ namespace REA::System
 						}
 					BENCHMARK_END("Copy CPU to GPU")
 
-
-					/*
-										std::vector<Pixel::State> testVector = std::vector<Pixel::State>(pixelGrid.SimulationWidth * pixelGrid.SimulationHeight,
-										                                                                 pixelGrid.PixelLookup[PixelType::Air].PixelState);
-										Pixel::State* copyPixels = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_CopyPixels>(5)->Pixels[0];
-					Rendering::Vulkan::Buffer& copyPixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(5);
-										*/
-					/*
-										Rendering::Vulkan::Buffer& pixelsBuffer     = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
-
-
-										BENCHMARK_BEGIN
-											for (int i = 0; i < 8; ++i)
-											{
-												pixelsBuffer.Copy(copyPixelsBuffer, 0, 0, testVector.size() * sizeof(Pixel::State));
-
-												memcpy(testVector.data(), copyPixels, testVector.size() * sizeof(Pixel::State));
-											}
-										BENCHMARK_END("GPU To CPU Copy")
-					*/
-
 					_generateWorld = false;
 				}
 
@@ -693,7 +644,7 @@ namespace REA::System
 
 					_shaders.FallingSimulation->Update();
 
-					for (int i = 0; i < 7; ++i)
+					for (int i = 0; i < 8; ++i)
 					{
 						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
@@ -715,14 +666,13 @@ namespace REA::System
 					// Temperature and Charge
 					_shaders.AccumulateSimulation->Update();
 
-					_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+					_shaders.AccumulateSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 					_shaders.AccumulateSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 					_shaders.AccumulateSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &_writeIndex);
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
-					/*SwapPixelBuffer();
 
 					// Do CCL if there are rigidbodies to discover
 					if (!_newRigidBodies.empty())
@@ -739,7 +689,7 @@ namespace REA::System
 
 						_shaders.CCLInitialize->Update();
 
-						_shaders.CCLInitialize->Bind(_commandBuffer.GetVkCommandBuffer());
+						_shaders.CCLInitialize->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 						_shaders.CCLInitialize->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &offset);
@@ -751,7 +701,7 @@ namespace REA::System
 
 						_shaders.CCLColumn->Update();
 
-						_shaders.CCLColumn->Bind(_commandBuffer.GetVkCommandBuffer());
+						_shaders.CCLColumn->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 						_shaders.CCLColumn->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
 						_shaders.CCLColumn->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
@@ -767,7 +717,7 @@ namespace REA::System
 
 							_shaders.CCLMerge->Update();
 
-							_shaders.CCLMerge->Bind(_commandBuffer.GetVkCommandBuffer());
+							_shaders.CCLMerge->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
 							_shaders.CCLMerge->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
@@ -784,7 +734,7 @@ namespace REA::System
 						// Relabel
 						_shaders.CCLRelabel->Update();
 
-						_shaders.CCLRelabel->Bind(_commandBuffer.GetVkCommandBuffer());
+						_shaders.CCLRelabel->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 						_shaders.CCLRelabel->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &offset);
 						_shaders.CCLRelabel->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &size);
@@ -796,7 +746,7 @@ namespace REA::System
 						// Extract
 						_shaders.CCLExtract->Update();
 
-						_shaders.CCLExtract->Bind(_commandBuffer.GetVkCommandBuffer());
+						_shaders.CCLExtract->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 						for (NewRigidBody newRigidBody: _newRigidBodies)
 						{
@@ -817,7 +767,7 @@ namespace REA::System
 					// Rigidbody Remove
 					_shaders.RigidBodyRemove->Update();
 
-					_shaders.RigidBodyRemove->Bind(_commandBuffer.GetVkCommandBuffer());
+					_shaders.RigidBodyRemove->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 					_shaders.RigidBodyRemove->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
@@ -828,13 +778,15 @@ namespace REA::System
 					// Contour
 					if (simulationData->timer % 4 == 2)
 					{
+						CmdWaitForPreviousComputeShader();
+
 						_shaders.MarchingSquareAlgorithm->Update();
 
-						_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer());
+						_shaders.MarchingSquareAlgorithm->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 						_shaders.MarchingSquareAlgorithm->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
-						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((simulationData->simulationWidth + simulationData->simulationHeight) * 3) - 2, 64u), 1, 1);
+						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((pixelGrid.SimulationWidth + pixelGrid.SimulationHeight) * 3) - 2, 64), 1, 1);
 
 						CmdWaitForPreviousComputeShader();
 					}
@@ -842,7 +794,7 @@ namespace REA::System
 					// Rigidbody
 					_shaders.RigidBodySimulation->Update();
 
-					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer());
+					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
 					_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
@@ -873,7 +825,7 @@ namespace REA::System
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
-					}*/
+					}
 
 					_commandBuffer.GetVkCommandBuffer().end();
 

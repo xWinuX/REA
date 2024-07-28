@@ -18,13 +18,19 @@ void main()
         return;
     }
 
-    uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.simulationWidth, Size, Offset-uvec2(simulationData.targetPosition));
+    uvec2 offset = Offset-(simulationData.chunkOffset * CHUNK_SIZE);
+
+    uint x = offset.x + (gl_GlobalInvocationID.x % Size.x);
+    uint y = offset.y + (gl_GlobalInvocationID.x / Size.x);
+
+    uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, NUM_ELEMENTS_X, Size, offset);
 
     if (labels[labelIndex] != -1)
     {
-        uint pixelIndex = getGlobalIndex(gl_GlobalInvocationID.x, simulationData.width, Size, Offset);
+        SetupWritePixelVarsByPosition(middleCenter, x, y);
+
         uint localIndex = rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x;
 
-        pixels[pixelIndex].RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
+        GetWritePixel(middleCenter).RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
     }
 }

@@ -5,7 +5,7 @@ namespace REA
 {
 	namespace Constants
 	{
-		constexpr uint32_t CHUNKS_X   = 12;
+		constexpr uint32_t CHUNKS_X   = 8;
 		constexpr uint32_t CHUNKS_Y   = 8;
 		constexpr uint32_t CHUNK_SIZE = 128;
 

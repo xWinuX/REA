@@ -275,28 +275,27 @@ int main()
 
 	auto pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Idle,
 	                                                                         { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
-	/*
-		auto pixelGridComputeRigidBody = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
-		                                                                              { { "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp" } });
 
-		auto pixelGridRigidBodyRemove = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
-		                                                                             { { "res/shaders/PixelGridRigidBodyRemove/PixelGridRigidBodyRemove.comp" } });
-*/
-		auto pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Fall,
-		                                                                         { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
+	auto pixelGridComputeRigidBody = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
+	                                                                              { { "res/shaders/PixelGridRigidBody/PixelGridRigidBody.comp" } });
 
-		auto pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Accumulate,
-		                                                                               { { "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp" } });
-	/*
-		AssetHandle<Rendering::Shader> marchingSquareShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_MarchingSquare,
-		                                                                                                   { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
-	*/
+	auto pixelGridRigidBodyRemove = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_RigidBody,
+	                                                                             { { "res/shaders/PixelGridRigidBodyRemove/PixelGridRigidBodyRemove.comp" } });
+
+	auto pixelGridComputeFall = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Fall,
+	                                                                         { { "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp" } });
+
+	auto pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Accumulate,
+	                                                                               { { "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp" } });
+
+	auto marchingSquareShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_MarchingSquare, { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
+
 	// CCL
-	//auto cclInitialize = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLInitialize, { { "res/shaders/CCLInitialize/CCLInitialize.comp" } });
-	//auto cclColumn     = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLColumn, { { "res/shaders/CCLColumn/CCLColumn.comp" } });
-	//auto cclMerge      = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLMerge, { { "res/shaders/CCLMerge/CCLMerge.comp" } });
-	//auto cclRelabel    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLRelabel, { { "res/shaders/CCLRelabel/CCLRelabel.comp" } });
-	//auto cclExtract    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLExtract, { { "res/shaders/CCLExtract/CCLExtract.comp" } });
+	auto cclInitialize = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLInitialize, { { "res/shaders/CCLInitialize/CCLInitialize.comp" } });
+	auto cclColumn     = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLColumn, { { "res/shaders/CCLColumn/CCLColumn.comp" } });
+	auto cclMerge      = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLMerge, { { "res/shaders/CCLMerge/CCLMerge.comp" } });
+	auto cclRelabel    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLRelabel, { { "res/shaders/CCLRelabel/CCLRelabel.comp" } });
+	auto cclExtract    = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_CCLExtract, { { "res/shaders/CCLExtract/CCLExtract.comp" } });
 
 	AssetHandle<PhysicsMaterial> defaultPhysicsMaterial = assetDatabase.CreateAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut, { .Density = 1.0f });
 
@@ -330,16 +329,16 @@ int main()
 	// Simulation
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {
 		.IdleSimulation = pixelGridComputeIdle,
-		//.RigidBodySimulation = pixelGridComputeRigidBody,
-		//.RigidBodyRemove = pixelGridRigidBodyRemove,
+		.RigidBodySimulation = pixelGridComputeRigidBody,
+		.RigidBodyRemove = pixelGridRigidBodyRemove,
 		.FallingSimulation = pixelGridComputeFall,
 		.AccumulateSimulation = pixelGridComputeAccumulate,
-		//.MarchingSquareAlgorithm = marchingSquareShader,
-		//.CCLInitialize = cclInitialize,
-		//.CCLColumn = cclColumn,
-		//.CCLMerge = cclMerge,
-		//.CCLRelabel = cclRelabel,
-		//.CCLExtract = cclExtract,
+		.MarchingSquareAlgorithm = marchingSquareShader,
+		.CCLInitialize = cclInitialize,
+		.CCLColumn = cclColumn,
+		.CCLMerge = cclMerge,
+		.CCLRelabel = cclRelabel,
+		.CCLExtract = cclExtract,
 	};
 
 	ECS::Registry::SystemHandle<System::PixelGridSimulation> simulation = ecs.AddSystem<System::PixelGridSimulation>({
@@ -388,9 +387,8 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 24 }, { 12, 8 }).
-	                                                  WithPixelData(std::move(pixelLookup)).Build();
-	pixelGrid.CameraEntityID = camera;
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 24 }, { 8, 8 }).WithPixelData(std::move(pixelLookup)).Build();
+	pixelGrid.CameraEntityID       = camera;
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 

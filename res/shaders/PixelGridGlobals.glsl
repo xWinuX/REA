@@ -1,5 +1,5 @@
 
-const uint CHUNKS_X = 12;
+const uint CHUNKS_X = 8;
 const uint CHUNKS_Y = 8;
 const uint CHUNK_SIZE = 128;
 
@@ -87,11 +87,11 @@ uint getFlags(uint packedData) {
 }
 
 uint getRigidBodyID(uint packedData) {
-    return packedData & 0x7FFu; // 11 bits mask (binary: 00000000000 00000000000 00000001111 11111111111)
+    return packedData & 0xFFFu;
 }
 
 uint getRigidBodyIndex(uint packedData) {
-    return (packedData >> 11u) & 0x1FFFFFu; // Shift by 11 bits, mask 21 bits (binary: 00000000000 00000000001 11111111111 11111111111)
+    return (packedData >> 12u) & 0xFFFFFu;
 }
 uvec2 getChunkPosition(uint index)
 {

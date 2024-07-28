@@ -6,7 +6,7 @@ layout (push_constant) uniform PushConstant {
     uint ReadIndex;
 };
 
-layout (std430, set = 1, binding = 6) writeonly buffer s_c_si_MarchingSquares {
+layout (std430, set = 1, binding = 7) writeonly buffer s_c_si_MarchingSquares {
     uint numConnectedSegments;
     uint numSolidSegments;
     vec2 segments[NumMarchingSquareSegments * 2];
@@ -80,44 +80,41 @@ const uint DiagonalRightToLeft = 3;
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint simulationWidth = simulationData.simulationWidth;
-    uint simulationHeight = simulationData.simulationHeight;
-
-    if (gl_GlobalInvocationID.x >= ((simulationWidth + simulationHeight) * 3) - 2) {
+    if (gl_GlobalInvocationID.x >= ((NUM_ELEMENTS_X + NUM_ELEMENTS_Y) * 3) - 2) {
         return;
     }
 
     uint direction = Vertical;
     ivec2 stepDirection = ivec2(0, 1);// Which direction will the cells step to cover one column/row/diagonal
     uvec2 position = uvec2(gl_GlobalInvocationID.x, 0);// Starting position of the iteration
-    uint numIterations = simulationHeight;
+    uint numIterations = NUM_ELEMENTS_Y;
     bool swapEndAndStart = false;
 
     // Vertical Iteration
-    if (gl_GlobalInvocationID.x < simulationWidth) {
+    if (gl_GlobalInvocationID.x < NUM_ELEMENTS_X) {
         direction = Vertical;
         stepDirection = ivec2(0, 1);
         position = uvec2(gl_GlobalInvocationID.x, 0);
-        numIterations = simulationHeight;
+        numIterations = NUM_ELEMENTS_Y;
 
         // Horizontal Iteration
-    } else if (gl_GlobalInvocationID.x < simulationWidth + simulationHeight) {
+    } else if (gl_GlobalInvocationID.x < NUM_ELEMENTS_X + NUM_ELEMENTS_Y) {
         direction = Horizontal;
         stepDirection = ivec2(1, 0);
-        position = uvec2(0, gl_GlobalInvocationID.x - simulationWidth);
-        numIterations = simulationWidth;
+        position = uvec2(0, gl_GlobalInvocationID.x - NUM_ELEMENTS_X);
+        numIterations = NUM_ELEMENTS_X;
         swapEndAndStart = true;
         // Diagonal Left to Right
-    } else if (gl_GlobalInvocationID.x < simulationWidth + simulationHeight + (simulationWidth + simulationHeight - 1)) {
+    } else if (gl_GlobalInvocationID.x < NUM_ELEMENTS_X + NUM_ELEMENTS_Y + (NUM_ELEMENTS_X + NUM_ELEMENTS_Y - 1)) {
         direction = DiagonalLeftToRight;
         stepDirection = ivec2(1, -1);
-        uint index = gl_GlobalInvocationID.x - (simulationWidth + simulationHeight);
-        if (index < simulationHeight) {
+        uint index = gl_GlobalInvocationID.x - (NUM_ELEMENTS_X + NUM_ELEMENTS_Y);
+        if (index < NUM_ELEMENTS_Y) {
             position = uvec2(0, index);
-            numIterations = min(index + 1, min(simulationWidth, simulationHeight));
+            numIterations = min(index + 1, min(NUM_ELEMENTS_X, NUM_ELEMENTS_Y));
         } else {
-            position = uvec2(index - simulationHeight + 1, simulationHeight - 1);
-            numIterations = min(simulationWidth - (index - simulationHeight + 1), simulationHeight);
+            position = uvec2(index - NUM_ELEMENTS_Y + 1, NUM_ELEMENTS_Y - 1);
+            numIterations = min(NUM_ELEMENTS_X - (index - NUM_ELEMENTS_Y + 1), NUM_ELEMENTS_Y);
         }
         swapEndAndStart = true;
 
@@ -125,13 +122,13 @@ void main()
     } else {
         direction = DiagonalRightToLeft;
         stepDirection = ivec2(-1, -1);
-        uint index = gl_GlobalInvocationID.x - (simulationWidth + simulationHeight + (simulationWidth + simulationHeight - 1));
-        if (index < simulationHeight) {
-            position = uvec2(simulationWidth - 1, index);
-            numIterations = min(index + 1, min(simulationWidth, simulationHeight));
+        uint index = gl_GlobalInvocationID.x - (NUM_ELEMENTS_X + NUM_ELEMENTS_Y + (NUM_ELEMENTS_X + NUM_ELEMENTS_Y - 1));
+        if (index < NUM_ELEMENTS_Y) {
+            position = uvec2(NUM_ELEMENTS_X - 1, index);
+            numIterations = min(index + 1, min(NUM_ELEMENTS_X, NUM_ELEMENTS_Y));
         } else {
-            position = uvec2(simulationWidth - (index - simulationHeight + 1), simulationHeight - 1);
-            numIterations = min(simulationWidth - (index - simulationHeight + 1), simulationHeight);
+            position = uvec2(NUM_ELEMENTS_X - (index - NUM_ELEMENTS_Y + 1), NUM_ELEMENTS_Y - 1);
+            numIterations = min(NUM_ELEMENTS_X - (index - NUM_ELEMENTS_Y + 1), NUM_ELEMENTS_Y);
         }
     }
 
@@ -147,30 +144,24 @@ void main()
 
         vec2 samplePosition = vec2(x, y);
 
-        uint topRightX = (x + 1) % simulationWidth;
+        uint topRightX = (x + 1) % NUM_ELEMENTS_X;
         uint topRightY = y;
 
         uint bottomLeftX = x;
-        uint bottomLeftY = (y == 0) ? simulationHeight - 1 : y - 1;
+        uint bottomLeftY = (y == 0) ? NUM_ELEMENTS_Y - 1 : y - 1;
 
         uint bottomRightX = topRightX;
         uint bottomRightY = bottomLeftY;
 
-        uvec2 targetOffset = uvec2(simulationData.targetPosition);
-        uint topLeftIndex = getGlobalIndex(x, y, simulationData.width, targetOffset);
-        uint topRightIndex = getGlobalIndex(topRightX, topRightY, simulationData.width, targetOffset);
-        uint bottomLeftIndex = getGlobalIndex(bottomLeftX, bottomLeftY, simulationData.width, targetOffset);
-        uint bottomRightIndex= getGlobalIndex(bottomRightX, bottomRightY, simulationData.width, targetOffset);
+        SetupWritePixelVarsByPosition(topLeft, x, y);
+        SetupWritePixelVarsByPosition(topRight, topRightX, topRightY);
+        SetupWritePixelVarsByPosition(bottomLeft, bottomLeftX, bottomLeftY);
+        SetupWritePixelVarsByPosition(bottomRight, bottomRightX, bottomRightY);
 
-        Pixel topLeftPixel = pixels[topLeftIndex];
-        Pixel topRightPixel = pixels[topRightIndex];
-        Pixel bottomLeftPixel = pixels[bottomLeftIndex];
-        Pixel bottomRightPixel = pixels[bottomRightIndex];
-
-        bool isBoundary = x < 3     || x > simulationWidth-4    || y < 3    || y > simulationHeight-4;
-        bool isBoundaryY = x < 3    || x > simulationWidth-4    || y-1 < 3  || y-1 > simulationHeight-4;
-        bool isBoundaryX = x+1 < 3  || x+1 > simulationWidth-4  || y < 3    || y > simulationHeight-4;
-        bool isBoundaryXY = x+1 < 3 || x+1 > simulationWidth-4  || y-1 < 3  || y-1 > simulationHeight-4;
+        bool isBoundary = x < 3     || x > NUM_ELEMENTS_X-4    || y < 3    || y > NUM_ELEMENTS_Y-4;
+        bool isBoundaryY = x < 3    || x > NUM_ELEMENTS_X-4    || y-1 < 3  || y-1 > NUM_ELEMENTS_Y-4;
+        bool isBoundaryX = x+1 < 3  || x+1 > NUM_ELEMENTS_X-4  || y < 3    || y > NUM_ELEMENTS_Y-4;
+        bool isBoundaryXY = x+1 < 3 || x+1 > NUM_ELEMENTS_X-4  || y-1 < 3  || y-1 > NUM_ELEMENTS_Y-4;
 
         uint topLeftPixelFlags = isBoundary ? 0 : getFlags(topLeftPixel.PixelID16_Charge8_Flags8);
         uint topRightPixelFlags = isBoundaryX ? 0 : getFlags(topRightPixel.PixelID16_Charge8_Flags8);
@@ -269,8 +260,8 @@ void main()
                                 idx = atomicAdd(numSolidSegments, 1);
                             }
                             uint offset = segmentsTypeIndex * NumMarchingSquareSegments;
-                            segments[offset + (idx * 2)] = targetOffset + start;
-                            segments[offset + ((idx * 2) + 1)] = targetOffset + end;
+                            segments[offset + (idx * 2)] = (simulationData.chunkOffset * CHUNK_SIZE) + start;
+                            segments[offset + ((idx * 2) + 1)] = (simulationData.chunkOffset * CHUNK_SIZE) + end;
                         }
                     }
 

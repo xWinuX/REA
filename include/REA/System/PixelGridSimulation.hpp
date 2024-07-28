@@ -55,11 +55,11 @@ namespace REA::System
 
 			struct SSBO_SimulationData
 			{
-				float             deltaTime      = 0.0f;
-				uint32_t          timer          = 0;
-				float             rng            = 0.0f;
-				uint32_t          _pad           = 0;
-				glm::vec2         targetPosition = { 0.0f, 0.0f };
+				float             deltaTime   = 0.0f;
+				uint32_t          timer       = 0;
+				float             rng         = 0.0f;
+				uint32_t          _pad        = 0;
+				glm::ivec2        chunkOffset = { 0.0f, 0.0f };
 				PixelChunkMapping chunkMapping;
 				Pixel::Data       pixelLookup[1024];
 			};

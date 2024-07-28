@@ -9,23 +9,17 @@ layout(push_constant) uniform PushConstant {
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    uint simulationWidth = simulationData.simulationWidth;
-    uint simulationHeight = simulationData.simulationHeight;
+    BoundaryCheck();
 
-    if (gl_GlobalInvocationID.x >= simulationWidth * simulationHeight) {
-        return;
-    }
+    uint x = gl_GlobalInvocationID.x % NUM_ELEMENTS_X;
+    uint y = gl_GlobalInvocationID.x / NUM_ELEMENTS_X;
 
-    uint x = gl_GlobalInvocationID.x % simulationWidth;
-    uint y = gl_GlobalInvocationID.x / simulationWidth;
+    SetupWritePixelVarsByPosition(middleCenter, x, y);
 
-    uint index = getGlobalIndex(x, y, simulationData.width, uvec2(simulationData.targetPosition));
-
-    Pixel pixel = pixels[index];
-    if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) != 0)
+    if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) != 0)
     {
-        rigidBodyData[getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20)] = pixel;
-        pixels[index].PixelID16_Charge8_Flags8 = 0;
-        pixels[index].RigidBodyID12_RigidBodyIndex20 = 0;
+        rigidBodyData[getRigidBodyIndex(middleCenterPixel.RigidBodyID12_RigidBodyIndex20)] = middleCenterPixel;
+        GetWritePixel(middleCenter).PixelID16_Charge8_Flags8 = 0;
+        GetWritePixel(middleCenter).RigidBodyID12_RigidBodyIndex20 = 0;
     }
 }

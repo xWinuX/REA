@@ -22,6 +22,11 @@ layout (std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
     Pixel viewportPixels[NumSimulatedPixels];
 };
 
+layout(set = 2, binding = 1) buffer s_si_Labels {
+    int labels[NumSimulatedPixels];
+};
+
+
 void main() {
     ivec2 position = ivec2(floor(v_PixelPosition));
 
@@ -43,13 +48,16 @@ void main() {
 
     /*
         //            pixelColor = vec4(dirColor.xyz, 1.0f);
-        int label = labels[index];
+
 
         pixelColor = vec4(0.0f, label/1048576.0f, pixelColor.z, 1.0f);*/
 
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
-        pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
+        int label = labels[index];
+        pixelColor = vec4(label/1048576.0f, 0.0f, 0.0f, 1.0f);
+
+    //pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
     }
 
     uvec2 offset = uvec2(gridInfo.offset);

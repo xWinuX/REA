@@ -37,8 +37,8 @@ namespace REA
 
 			struct
 			{
-				uint32_t RigidBodyID: 11 = 0u;
-				uint32_t Index      : 21 = 0u;
+				uint32_t RigidBodyID: 12 = 0u;
+				uint32_t Index      : 20 = 0u;
 			};
 		};
 

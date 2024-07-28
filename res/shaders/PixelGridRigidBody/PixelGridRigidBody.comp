@@ -11,8 +11,6 @@ layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
     RigidBody rigidBody = rigidBodies[rigidBodyIndex];
-    uint simulationWidth = simulationData.simulationWidth;
-    uint simulationHeight = simulationData.simulationHeight;
 
     uint rigidBodyWidth = rigidBody.Size.x;
     uint rigidBodyHeight = rigidBody.Size.y;
@@ -40,12 +38,10 @@ void main()
 
         vec2 position = rotationMatrix * (vec2(localX, localY) - center);
 
-        uint x = uint(floor(rigidBodyBottomLeftCorner.x + center.x + position.x));
-        uint y = uint(floor(rigidBodyBottomLeftCorner.y + center.y + position.y));
+        uint x = uint(floor(rigidBodyBottomLeftCorner.x + center.x + position.x)) - (simulationData.chunkOffset.x * CHUNK_SIZE);
+        uint y = uint(floor(rigidBodyBottomLeftCorner.y + center.y + position.y)) - (simulationData.chunkOffset.y * CHUNK_SIZE);
 
-        uint middleCenterIndex = y * simulationData.width + x;
-
-        Pixel middleCenterPixel = pixels[middleCenterIndex];
+        SetupWritePixelVarsByPosition(middleCenter, x, y);
 
         uint dataIndex = getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20);
         if (rigidBody.ID == 0)
@@ -59,7 +55,7 @@ void main()
 
         if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
         {
-            pixels[middleCenterIndex] = pixel;
+            GetWritePixel(middleCenter) = pixel;
         }
 
     }
