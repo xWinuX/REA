@@ -67,6 +67,7 @@ Pixel name##Pixel = writePixels[name##ChunkMapping][name##PixelIndex];
 #define BoundaryCheck() if (gl_GlobalInvocationID.x >= MAX_ELEMENTS) { return; }
 
 #define GetWritePixel(name) writePixels[name##ChunkMapping][name##PixelIndex]
+#define GetReadPixel(name) readPixels[name##ChunkMapping][name##PixelIndex]
 
 #define GetPixel(name) name##Pixel
 

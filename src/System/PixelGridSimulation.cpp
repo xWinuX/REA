@@ -655,8 +655,6 @@ namespace REA::System
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroupsMorgulus, 1, 1);
 
-						fif = (fif + 1) % device.MAX_FRAMES_IN_FLIGHT;
-
 						margolusOffset = GetMargolusOffset(timer + i);
 						flowIteration++;
 

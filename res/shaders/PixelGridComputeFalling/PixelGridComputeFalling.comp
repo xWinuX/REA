@@ -45,10 +45,17 @@ void main()
     PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
     // Write pixels
-    GetWritePixel(topLeft) = topLeftPixel;
-    GetWritePixel(bottomLeft) = bottomLeftPixel;
-    GetWritePixel(topRight) = topRightPixel;
-    GetWritePixel(bottomRight) = bottomRightPixel;
+    GetReadPixel(topLeft) = topLeftPixel;
+    GetReadPixel(bottomLeft) = bottomLeftPixel;
+    GetReadPixel(topRight) = topRightPixel;
+    GetReadPixel(bottomRight) = bottomRightPixel;
+
+    if (
+        topLeftPixel.PixelID16_Charge8_Flags8 == bottomLeftPixel.PixelID16_Charge8_Flags8 &&
+        bottomLeftPixel.PixelID16_Charge8_Flags8 == topRightPixel.PixelID16_Charge8_Flags8  &&
+        topRightPixel.PixelID16_Charge8_Flags8 == bottomRightPixel.PixelID16_Charge8_Flags8 &&
+        bottomRightPixel.PixelID16_Charge8_Flags8 == topLeftPixel.PixelID16_Charge8_Flags8
+    ) { return; }
 
     float topLeftTemperature = topLeftPixel.Temperature;
     float topRightTemperature = topRightPixel.Temperature;
@@ -84,8 +91,8 @@ void main()
     {
         if (topLeftDensity > bottomLeftDensity)
         {
-            GetWritePixel(topLeft) = bottomLeftPixel;
-            GetWritePixel(bottomLeft) = topLeftPixel;
+            GetReadPixel(topLeft) = bottomLeftPixel;
+            GetReadPixel(bottomLeft) = topLeftPixel;
 
             Pixel tmpPixel = topLeftPixel;
             PixelData tmpPixelData = topLeftPixelData;
@@ -110,8 +117,8 @@ void main()
     {
         if (topRightDensity > bottomRightDensity)
         {
-            GetWritePixel(topRight) = bottomRightPixel;
-            GetWritePixel(bottomRight) = topRightPixel;
+            GetReadPixel(topRight) = bottomRightPixel;
+            GetReadPixel(bottomRight) = topRightPixel;
 
             Pixel tmpPixel = topRightPixel;
             PixelData tmpPixelData = topRightPixelData;
@@ -135,8 +142,8 @@ void main()
     {
         if (topLeftGravity && bottomRightGravity && (topLeftCanFlow || !bottomRightPixelSolid) && topLeftDensity > bottomRightDensity)
         {
-            GetWritePixel(topLeft) = bottomRightPixel;
-            GetWritePixel(bottomRight) = topLeftPixel;
+            GetReadPixel(topLeft) = bottomRightPixel;
+            GetReadPixel(bottomRight) = topLeftPixel;
 
             Pixel tmpPixel = topLeftPixel;
             PixelData tmpPixelData = topLeftPixelData;
@@ -152,8 +159,8 @@ void main()
         }
         else if (topRightGravity && bottomLeftGravity && (topRightCanFlow || !bottomLeftPixelSolid) && topRightDensity > bottomLeftDensity)
         {
-            GetWritePixel(topRight) = bottomLeftPixel;
-            GetWritePixel(bottomLeft) = topRightPixel;
+            GetReadPixel(topRight) = bottomLeftPixel;
+            GetReadPixel(bottomLeft) = topRightPixel;
 
             Pixel tmpPixel = topRightPixel;
             PixelData tmpPixelData = topRightPixelData;
@@ -192,8 +199,8 @@ void main()
     )
     )
     {
-       GetWritePixel(topLeft) = topRightPixel;
-       GetWritePixel(topRight) = topLeftPixel;
+        GetReadPixel(topLeft) = topRightPixel;
+        GetReadPixel(topRight) = topLeftPixel;
 
         bool tmpSolid = topLeftPixelSolid;
         float tmpDensity = topLeftDensity;
@@ -215,8 +222,8 @@ void main()
     )
     )
     {
-        GetWritePixel(bottomLeft) = bottomRightPixel;
-        GetWritePixel(bottomRight) = bottomLeftPixel;
+        GetReadPixel(bottomLeft) = bottomRightPixel;
+        GetReadPixel(bottomRight) = bottomLeftPixel;
     }
     //}
 }
