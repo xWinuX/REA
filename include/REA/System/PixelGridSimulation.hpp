@@ -130,7 +130,7 @@ namespace REA::System
 
 			uint32_t _fif = 1;
 
-			float _lineSimplificationTolerance = 0.5f;
+			float _lineSimplificationTolerance = 1.0f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;

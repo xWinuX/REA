@@ -7,8 +7,6 @@
 
 namespace REA
 {
-	std::vector<std::vector<uint32_t>> MarchingSquareMesherUtils::_adjacencyList{};
-
 	MarchingSquareMesherUtils::Polyline MarchingSquareMesherUtils::SimplifyPolylines(const Polyline& polyline, float threshold)
 	{
 		if (polyline.Vertices.size() < 2) { SplitEngine::ErrorHandler::ThrowRuntimeError("Not enough points to simplify"); }
@@ -66,20 +64,21 @@ namespace REA
 	{
 		if (vertices.empty() || edges.empty()) { return {}; }
 
-		std::vector<Polyline>        polylines;
-		std::unordered_set<uint32_t> visited;
+		std::vector<std::vector<uint32_t>> adjacencyList{};
+		std::vector<Polyline>              polylines;
+		std::unordered_set<uint32_t>       visited;
 
 		// Build adjecency list
-		_adjacencyList.resize(vertices.size());
+		adjacencyList.resize(vertices.size());
 		for (const auto& edge: edges)
 		{
-			_adjacencyList[edge.v1()].push_back(edge.v2());
-			_adjacencyList[edge.v2()].push_back(edge.v1());
+			adjacencyList[edge.v1()].push_back(edge.v2());
+			adjacencyList[edge.v2()].push_back(edge.v1());
 		}
 
 		// Find connected components
 		std::vector<std::vector<uint32_t>> separatePolylineIndices;
-		for (uint32_t vertexID = 0; vertexID < _adjacencyList.size(); ++vertexID)
+		for (uint32_t vertexID = 0; vertexID < adjacencyList.size(); ++vertexID)
 		{
 			if (!visited.contains(vertexID))
 			{
@@ -99,7 +98,7 @@ namespace REA
 					visited.insert(currentNode);
 					component.push_back(currentNode);
 
-					for (const uint32_t neighborIndex: _adjacencyList[currentNode]) { if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); } }
+					for (const uint32_t neighborIndex: adjacencyList[currentNode]) { if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); } }
 				}
 
 				separatePolylineIndices.push_back(std::move(component));
@@ -121,10 +120,7 @@ namespace REA
 
 			// Find endpoints
 			std::vector<uint32_t> endpoints;
-			for (uint32_t vertexID: polylineIndices)
-			{
-				if (_adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); }
-			}
+			for (uint32_t vertexID: polylineIndices) { if (adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); } }
 
 			// Start from an endpoint if available, otherwise start from any vertex
 			uint32_t startVertex = !endpoints.empty() ? endpoints[0] : polylineIndices[0];
@@ -136,7 +132,7 @@ namespace REA
 			while (sortedPolyline.size() < polylineIndices.size())
 			{
 				bool found = false;
-				for (uint32_t neighbor: _adjacencyList[currentIndex])
+				for (uint32_t neighbor: adjacencyList[currentIndex])
 				{
 					if (visited.contains(neighbor)) { continue; }
 
@@ -169,7 +165,7 @@ namespace REA
 		}
 
 		// Clear adjecency list
-		for (std::vector<uint32_t>& adjacencyList: _adjacencyList) { adjacencyList.clear(); }
+		for (std::vector<uint32_t>& adjacencyList: adjacencyList) { adjacencyList.clear(); }
 
 		return polylines;
 	}

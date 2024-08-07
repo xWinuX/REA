@@ -51,8 +51,5 @@ namespace REA
 			static CDT::DuplicatesInfo RemoveDuplicatesAndRemapEdges(std::span<CDT::V2d<float>>& vertices, std::vector<CDT::Edge>& edges);
 
 			static CDT::Triangulation<float> GenerateTriangulation(const Polyline& polyline);
-
-		private:
-			static std::vector<std::vector<uint32_t>> _adjacencyList;
 	};
 }

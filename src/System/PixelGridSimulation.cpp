@@ -224,20 +224,7 @@ namespace REA::System
 				device.GetVkDevice().resetFences(_computeFence);
 
 				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2, _fif)->Chunks;
-				BENCHMARK_BEGIN
 				memcpy(pixelGrid.ChunkRegenerate.data(), &updates->regenerateChunks[0], sizeof(uint32_t) * Constants::NUM_CHUNKS);
-				BENCHMARK_END("copy chunk regen")
-
-				uint32_t sum = 0;
-				BENCHMARK_BEGIN
-				for (int i = 0; i < Constants::NUM_CHUNKS; ++i)
-				{
-					sum += pixelGrid.ChunkRegenerate[i];
-				}
-				BENCHMARK_END("chunk read")
-
-				LOG("sum {0}", sum);
-				//pixelGrid.ChunkMapping = &simulationData->chunkMapping;
 			}
 
 			if (stage == Stage::GridComputeHalted)
@@ -262,26 +249,46 @@ namespace REA::System
 				if (simulationData->timer % 4 == 2)
 				{
 					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
-					for (int chunkIndex = 0; chunkIndex < marchingCubes->worldChunks.size(); ++chunkIndex)
+
+					_indexes = std::ranges::iota_view(0ull, static_cast<size_t>(Constants::NUM_CHUNKS));
+
+					std::vector<std::vector<MarchingSquareMesherUtils::Polyline>> solidPolylineCollection = std::vector<std::vector<
+						MarchingSquareMesherUtils::Polyline>>(Constants::NUM_CHUNKS, {});
+
+					std::for_each(std::execution::par_unseq,
+					              _indexes.begin(),
+					              _indexes.end(),
+					              [&](size_t chunkIndex)
+					              {
+						              uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+						              MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
+
+						              if (!pixelGrid.ChunkRegenerate[chunkMapping]) { return; }
+
+						              std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
+						              for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+
+						              std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
+
+						              MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
+
+						              std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines =
+								              MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
+
+						              for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
+						              {
+							              solidPolylineCollection[chunkMapping].push_back(std::move(MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline,
+								                                                                        _lineSimplificationTolerance)));
+						              }
+					              });
+
+					for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
 					{
-						uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
-						MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
+						uint32_t chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
 
 						if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
 
-						std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
-						for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
-
-						std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
-
-						MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
-
-						std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
-
-						for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
-						{
-							solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
-						}
+						std::vector<MarchingSquareMesherUtils::Polyline>& solidPolylines = solidPolylineCollection[chunkMapping];
 
 						if (collider.Body != nullptr)
 						{
@@ -292,7 +299,6 @@ namespace REA::System
 							b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
 							for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
 							{
-								LOG("for polyline");
 								size_t size = solidPolyline.Closed ? solidPolyline.Vertices.size() : solidPolyline.Vertices.size() - 1;
 								for (int i = 0; i < size; ++i)
 								{
@@ -306,8 +312,6 @@ namespace REA::System
 
 									pixelGrid.ChunkFixtures[chunkMapping].push_back(collider.Body->CreateFixture(&fixtureDef));
 								}
-
-								_numLineSegements += (solidPolyline.Vertices.size());
 							}
 
 							pixelGrid.ChunkRegenerate[chunkMapping] = false;
