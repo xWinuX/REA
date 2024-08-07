@@ -21,6 +21,9 @@ namespace REA
 		Dirt,
 		Grass,
 		Leaf,
+		Marker_Red,
+		Marker_Lime,
+		Marker_Yellow,
 		MAX_VALUE,
 	};
 }

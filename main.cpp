@@ -67,7 +67,7 @@ int main()
 			.Color = Color(0x84BCFFFF),
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Electricity),
+				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Conductive),
 				.Density = 12,
 				.SpreadingFactor = 8,
 				.TemperatureResistance = 0.6f,
@@ -83,7 +83,7 @@ int main()
 			.Color = Color(0x775937FF),
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Electricity | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
@@ -165,7 +165,8 @@ int main()
 			.ID = PixelType::Smoke,
 			.Name = "Smoke",
 			.Color = Color(0x525252FF),
-			.Data = {
+			.Data =
+			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
 				.Density = 3,
 				.SpreadingFactor = 5,
@@ -179,8 +180,9 @@ int main()
 			.ID = PixelType::Spark,
 			.Name = "Spark",
 			.Color = Color(0xFFFA66FF),
-			.Data = {
-				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Electricity | Pixel::ElectricityEmitter),
+			.Data =
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Conductive | Pixel::ElectricityEmitter),
 				.Density = 3,
 				.SpreadingFactor = 5,
 				.TemperatureResistance = 1.0f,
@@ -191,11 +193,39 @@ int main()
 			.ID = PixelType::Iron,
 			.Name = "Iron",
 			.Color = Color(0x313642FF),
-			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Electricity), .Density = 100, .TemperatureResistance = 1.0f, .BaseCharge = 0 }
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive), .Density = 100, .TemperatureResistance = 1.0f, .BaseCharge = 0 }
 		},
 		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100, } },
-		{ .ID = PixelType::Grass, .Name = "Grass", .Color = Color(0x2E922EFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100, } },
-		{ .ID = PixelType::Leaf, .Name = "Grass", .Color = Color(0x509229FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected), .Density = 100, } },
+		{
+			.ID = PixelType::Grass,
+			.Name = "Grass",
+			.Color = Color(0x2E922EFF),
+			.Data = Pixel::Data
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Solid),
+				.Density = 100,
+				.TemperatureResistance = 1.0f,
+				.BaseTemperature = airTemperature,
+				.HighTemperatureLimit = 600,
+				.HighTemperatureLimitPixelID = PixelType::Fire,
+			}
+		},
+		{
+			.ID = PixelType::Leaf,
+			.Name = "Grass",
+			.Color = Color(0x509229FF),
+			.Data = Pixel::Data{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected),
+				.Density = 100,
+				.TemperatureResistance = 1.0f,
+				.BaseTemperature = airTemperature,
+				.HighTemperatureLimit = 600,
+				.HighTemperatureLimitPixelID = PixelType::Fire,
+			}
+		},
+		{ .ID = PixelType::Marker_Red, .Name = "Red Marker", .Color = Color(0xFF0000FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid) } },
+		{ .ID = PixelType::Marker_Lime, .Name = "Lime Marker", .Color = Color(0x00FF00FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid) } },
+		{ .ID = PixelType::Marker_Yellow, .Name = "Yellow Marker", .Color = Color(0xFFFF00FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid) } },
 	};
 
 
@@ -203,7 +233,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::PrePhysicsStep, Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
+		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
 	                                      });
 
 	application.GetWindow().SetSize(1024, 1024);
@@ -356,7 +386,7 @@ int main()
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
 	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
 	ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
-	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, physicsHandle);
+	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
 
 	// Pre Rendering End
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
@@ -387,7 +417,7 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 24 }, { 8, 8 }).WithPixelData(std::move(pixelLookup)).Build();
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 128, 24 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(std::move(pixelLookup)).Build();
 	pixelGrid.CameraEntityID       = camera;
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});

@@ -1,6 +1,6 @@
 #include "PixelGridGlobals.glsl"
 
-layout (std430, set = 1, binding = 0) buffer c_s_si_SimulationData {
+layout (std430, set = 1, binding = 0) buffer s_si_SimulationData {
     float deltaTime;
     uint timer;
     float rng;
@@ -29,8 +29,8 @@ layout (std430, set = 1, binding = 5) buffer s_si_dl_RigidBodyPixelData {
     Pixel rigidBodyData[NumSimulatedPixels];
 };
 
-layout (std430, set = 1, binding = 6) buffer s_c_td_CopyPixels {
-    Pixel copyPixels[NUM_CHUNKS][NUM_ELEMENTS_IN_CHUNK];
+layout (std430, set = 1, binding = 6) buffer s_si_Updates  {
+    bool regenerateChunks[NUM_CHUNKS];
 };
 
 #define SetupPixelVars(name, index) \
@@ -45,7 +45,6 @@ uint name##PixelIndex = index % NUM_ELEMENTS_IN_CHUNK; \
 uint name##ChunkMapping = simulationData.chunkMapping[name##ChunkIndex]; \
 Pixel name##Pixel = readPixels[name##ChunkMapping][name##PixelIndex];
 
-
 #define GetPixelPosition(name) uvec2(\
     (name##ChunkIndex % CHUNKS_X) * CHUNK_SIZE + (name##PixelIndex % CHUNK_SIZE), \
     (name##ChunkIndex / CHUNKS_X) * CHUNK_SIZE + (name##PixelIndex / CHUNK_SIZE) \
@@ -56,7 +55,6 @@ uint name##ChunkIndex = (y / CHUNK_SIZE) * CHUNKS_X + (x / CHUNK_SIZE); \
 uint name##PixelIndex = (y % CHUNK_SIZE) * CHUNK_SIZE + (x % CHUNK_SIZE); \
 uint name##ChunkMapping = simulationData.chunkMapping[name##ChunkIndex]; \
 Pixel name##Pixel = readPixels[name##ChunkMapping][name##PixelIndex];
-
 
 #define SetupWritePixelVarsByPosition(name, x, y) \
 uint name##ChunkIndex = (y / CHUNK_SIZE) * CHUNKS_X + (x / CHUNK_SIZE); \

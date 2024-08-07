@@ -1,5 +1,6 @@
 #pragma once
 
+#include <box2d/b2_fixture.h>
 #include <glm/vec2.hpp>
 #include <SplitEngine/DataStructures.hpp>
 
@@ -9,12 +10,19 @@ namespace REA::Component
 {
 	struct PixelGrid
 	{
-		std::array<PixelChunk, Constants::NUM_CHUNKS>* Chunks       = nullptr;
-		std::vector<uint32_t>                          ChunkMapping = {};
+		typedef std::array<Pixel::State, Constants::NUM_ELEMENTS_IN_CHUNK> PixelChunk;
+
+		std::array<PixelChunk, Constants::NUM_CHUNKS>* Chunks        = nullptr;
+		std::vector<std::vector<b2Fixture*>>           ChunkFixtures = std::vector<std::vector<b2Fixture*>>(Constants::NUM_CHUNKS);
+		std::vector<uint32_t>                          ChunkMapping{};
+		std::vector<uint32_t>                          ChunkRegenerate{};
 
 		std::vector<std::vector<Pixel::State>> World{};
 
 		glm::ivec2 ChunkOffset = { 0, 0 };
+
+
+		glm::ivec2 PreviousChunkOffset = { 0, 0 };
 
 		int32_t WorldChunksX = 16;
 		int32_t WorldChunksY = 16;

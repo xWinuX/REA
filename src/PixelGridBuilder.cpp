@@ -53,11 +53,20 @@ namespace REA
 		pixelGrid.SimulationHeight  = _simulationChunkSize.y * static_cast<int32_t>(Constants::CHUNK_SIZE);
 
 		// Setup world chunks
+		pixelGrid.World.reserve(pixelGrid.WorldChunksX * pixelGrid.WorldChunksY);
 		for (int i = 0; i < pixelGrid.WorldChunksX * pixelGrid.WorldChunksY; ++i)
 		{
 			pixelGrid.World.push_back(std::vector<Pixel::State>(Constants::NUM_ELEMENTS_IN_CHUNK, {}));
-			pixelGrid.ChunkMapping.push_back(i);
 		}
+
+		// Setup chunk mapping and regenerate
+		pixelGrid.ChunkMapping.reserve(pixelGrid.SimulationChunksX * pixelGrid.SimulationChunksY);
+		for (int i = 0; i < pixelGrid.SimulationChunksX * pixelGrid.SimulationChunksY; ++i)
+		{
+			pixelGrid.ChunkMapping.push_back(i);
+			pixelGrid.ChunkRegenerate.push_back(true);
+		}
+
 
 		_pixelCreateInfos.clear();
 

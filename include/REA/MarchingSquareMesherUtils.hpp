@@ -15,6 +15,7 @@ namespace REA
 			struct Polyline
 			{
 				b2AABB                       AABB;
+				bool                         Closed = false;
 				std::vector<CDT::V2d<float>> Vertices;
 			};
 

@@ -26,10 +26,6 @@ void main()
         vec2 center = vec2(rigidBody.Size/2.0f);
         vec2 rigidBodyBottomLeftCorner = vec2(rigidBody.Position - center);
 
-        if (rigidBodyBottomLeftCorner.x < 0 || rigidBodyBottomLeftCorner.y < 0) {
-            return;
-        }
-
         float angle = radians(rigidBody.Rotation);
         mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
@@ -38,10 +34,14 @@ void main()
 
         vec2 position = rotationMatrix * (vec2(localX, localY) - center);
 
-        uint x = uint(floor(rigidBodyBottomLeftCorner.x + center.x + position.x)) - (simulationData.chunkOffset.x * CHUNK_SIZE);
-        uint y = uint(floor(rigidBodyBottomLeftCorner.y + center.y + position.y)) - (simulationData.chunkOffset.y * CHUNK_SIZE);
+        int x = int(floor(rigidBodyBottomLeftCorner.x + center.x + position.x)) - int(simulationData.chunkOffset.x * CHUNK_SIZE);
+        int y = int(floor(rigidBodyBottomLeftCorner.y + center.y + position.y)) - int(simulationData.chunkOffset.y * CHUNK_SIZE);
 
-        SetupWritePixelVarsByPosition(middleCenter, x, y);
+        if (x < 0 || x >= NUM_ELEMENTS_X || y < 0 || y >= NUM_ELEMENTS_Y) {
+            return;
+        }
+
+        SetupPixelVarsByPosition(middleCenter, x, y);
 
         uint dataIndex = getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20);
         if (rigidBody.ID == 0)
@@ -55,7 +55,7 @@ void main()
 
         if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
         {
-            GetWritePixel(middleCenter) = pixel;
+            GetReadPixel(middleCenter) = pixel;
         }
 
     }

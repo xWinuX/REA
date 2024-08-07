@@ -23,7 +23,7 @@ namespace REA::System
 
 		private:
 			float _pixelsPerUnit = 10.0f;
-			float _pixelSize = 2.0f;
+			float _pixelSize = 1.0f;
 
 			struct CameraUBO
 			{

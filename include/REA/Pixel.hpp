@@ -19,7 +19,7 @@ namespace REA
 			Solid               = 1 << 0,  // Non Solids can pass through eachother for example water can pass trough air but can't pass through sand
 			Connected           = 1 << 1,  // Pixels with this set connect to each other and form rigidbodies
 			Gravity             = 1 << 8,  // Pixels with gravity will fall
-			Electricity         = 1 << 9,  // Can conduct Electricity
+			Conductive          = 1 << 9,  // Can conduct Electricity
 			ElectricityEmitter  = 1 << 10, // Does not loose charge
 			ElectricityReceiver = 1 << 11, // Consumes charge
 		};
@@ -68,8 +68,8 @@ namespace REA
 	};
 
 	typedef std::array<Pixel::State, Constants::NUM_ELEMENTS_IN_CHUNK> PixelChunk;
-	typedef std::array<PixelChunk, Constants::NUM_CHUNKS> PixelChunks;
-	typedef std::array<uint32_t, Constants::NUM_CHUNKS> PixelChunkMapping;
+	typedef std::array<PixelChunk, Constants::NUM_CHUNKS>              PixelChunks;
+	typedef std::array<uint32_t, Constants::NUM_CHUNKS>                PixelChunkMapping;
 
 	struct SSBO_Pixels
 	{

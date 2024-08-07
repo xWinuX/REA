@@ -78,6 +78,8 @@ namespace REA::System
 					collider.InitialShapes.clear();
 
 					collider.Body->GetUserData().EntityID = entities[i];
+
+					collider.PreviousPosition = transform.Position;
 				}
 
 				// Interpolate

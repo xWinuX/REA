@@ -26,7 +26,6 @@ namespace REA::System
 
 			glm::vec2 inputAxis = Input::GetAxis2DActionDown(InputAction::Move);
 
-
 			if (collider.Body != nullptr)
 			{
 				b2Vec2 force = { inputAxis.x, inputAxis.y };

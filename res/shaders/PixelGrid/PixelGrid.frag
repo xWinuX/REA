@@ -22,7 +22,7 @@ layout (std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
     Pixel viewportPixels[NumSimulatedPixels];
 };
 
-layout(set = 2, binding = 1) buffer s_si_Labels {
+layout(set = 2, binding = 1) buffer s_si_dl_Labels {
     int labels[NumSimulatedPixels];
 };
 
@@ -45,6 +45,10 @@ void main() {
     if (gridInfo.renderMode == RenderMode_Normal) {
         pixelColor *= 1 + vec4(temperature / 100.0f, temperatureScaled, temperatureScaled, 1.0f);
         pixelColor += vec4((charge / 255.0f) * 2.0f, (charge / 255.0f) * 0.2, 0.0f, 0.0f);
+
+        /*if (pixelID == 0) {
+            pixelColor.xyz =  mix(pixelColor.xyz, vec3(), 1.0f - (v_PixelPosition.y / float(gridInfo.height)));
+        }*/
 
     /*
         //            pixelColor = vec4(dirColor.xyz, 1.0f);

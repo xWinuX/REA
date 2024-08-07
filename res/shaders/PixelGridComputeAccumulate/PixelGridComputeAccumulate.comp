@@ -51,18 +51,15 @@ void main()
      }*/
 
 
-    if (bitsetHas(middleCenterPixelData.Flags, Electricity))
+    if (bitsetHas(middleCenterPixelData.Flags, Conductive) && !bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter))
     {
-        int aroundCharge = 0;
-
         uint maxCharge0 = max(getCharge(middleRightPixel.PixelID16_Charge8_Flags8), getCharge(topCenterPixel.PixelID16_Charge8_Flags8));
         uint maxCharge1 = max(getCharge(middleLeftPixel.PixelID16_Charge8_Flags8), getCharge(bottomCenterPixel.PixelID16_Charge8_Flags8));
 
         uint maxCharge = max(maxCharge0, maxCharge1);
 
-        if (!bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter)) {
-            charge = uint(clamp(int(maxCharge) - 1, 0, 255));
-        }
+        charge = uint(clamp(int(maxCharge) - 1, 0, 255));
+
     }
 
     float temperatureResistance = middleCenterPixelData.TemperatureResistance;
@@ -95,6 +92,7 @@ void main()
             rigidBodies[rigidBodyID].NeedsRecalculation = true;
         }
 
+        regenerateChunks[middleCenterChunkMapping] = true;
     } else if (temperature < middleCenterPixelData.LowerTemperatureLimit) {
         pixelID = middleCenterPixelData.LowerTemperatureLimitPixelID;
         PixelData newPixelData = simulationData.pixelLookup[pixelID];
@@ -106,6 +104,8 @@ void main()
         {
             rigidBodies[rigidBodyID].NeedsRecalculation = true;
         }
+
+        regenerateChunks[middleCenterChunkMapping] = true;
     }
 
     // Clear Info

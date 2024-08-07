@@ -115,16 +115,24 @@ namespace REA
 
 			if (polylineIndices.empty())
 			{
-				polylines.push_back({ {}, sortedPolyline });
+				polylines.push_back({ {}, false, sortedPolyline });
 				continue;
 			}
 
-			uint32_t        currentIndex = polylineIndices[0];
-			CDT::V2d<float> current      = vertices[currentIndex];
-			b2AABB          aabb         = b2AABB({ current.x, current.y }, { current.x, current.y });
+			// Find endpoints
+			std::vector<uint32_t> endpoints;
+			for (uint32_t vertexID: polylineIndices)
+			{
+				if (_adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); }
+			}
+
+			// Start from an endpoint if available, otherwise start from any vertex
+			uint32_t startVertex = !endpoints.empty() ? endpoints[0] : polylineIndices[0];
+			uint32_t currentIndex = startVertex;
+			b2AABB   aabb = { { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() }, { std::numeric_limits<float>::min(), std::numeric_limits<float>::min() } };
 			visited.insert(currentIndex);
 
-			sortedPolyline.push_back(current);
+			sortedPolyline.push_back(vertices[currentIndex]);
 			while (sortedPolyline.size() < polylineIndices.size())
 			{
 				bool found = false;
@@ -157,7 +165,7 @@ namespace REA
 				polylineVert = { polylineVert.x + newCenter.x, polylineVert.y + newCenter.y };
 			}
 
-			polylines.push_back({ aabb, std::move(sortedPolyline) });
+			polylines.push_back({ aabb, endpoints.empty(), std::move(sortedPolyline) });
 		}
 
 		// Clear adjecency list

@@ -53,6 +53,20 @@ namespace REA::System
 				glm::uvec2 Size               = { 0, 0 };
 			};
 
+			struct MarchingSquareWorld
+			{
+				uint32_t                                                 numSegments = 0;
+				uint32_t                                                 _pad{};
+				std::array<glm::vec2, Constants::MAX_WORLD_SEGMENTS * 2> segments{};
+			};
+
+			struct MarchingSquareChunk
+			{
+				uint32_t                                                 numSegments = 0;
+				uint32_t                                                 _pad{};
+				std::array<glm::vec2, Constants::MAX_CHUNK_SEGMENTS * 2> segments{};
+			};
+
 			struct SSBO_SimulationData
 			{
 				float             deltaTime   = 0.0f;
@@ -66,10 +80,8 @@ namespace REA::System
 
 			struct SSBO_MarchingCubes
 			{
-				uint32_t  numConnectedSegments = 0;
-				uint32_t  numSolidSegments     = 0;
-				glm::vec2 connectedSegments[100000];
-				glm::vec2 solidSegments[100000];
+				MarchingSquareWorld                                    connectedChunk;
+				std::array<MarchingSquareChunk, Constants::NUM_CHUNKS> worldChunks;
 			};
 
 			struct SSBO_RigidBodyData
@@ -77,6 +89,10 @@ namespace REA::System
 				RigidBody rigidBodies[1024];
 			};
 
+			struct SSBO_Updates
+			{
+				uint32_t regenerateChunks[Constants::NUM_CHUNKS];
+			};
 
 			struct NewRigidBody
 			{
@@ -112,7 +128,7 @@ namespace REA::System
 
 			uint32_t _rigidBodyIDCounter = 1;
 
-			uint32_t _fif = 0;
+			uint32_t _fif = 1;
 
 			float _lineSimplificationTolerance = 0.5f;
 
@@ -133,11 +149,15 @@ namespace REA::System
 			uint32_t _readIndex  = 0;
 			uint32_t _writeIndex = 8388608;
 
+			int32_t _shownChunkIndex = 0;
+
 			bool _firstUpdate = true;
 
 			std::vector<Pixel::State> _world{};
 
 			Rendering::Vulkan::Buffer _vertexBuffer;
+
+			Rendering::Vulkan::Buffer _copyBuffer;
 
 			b2AABB _cclRange = { { 10'000'000, 10'000'000 }, { 0, 0 } };
 

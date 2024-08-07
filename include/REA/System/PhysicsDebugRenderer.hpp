@@ -17,7 +17,10 @@ namespace REA::System
 	class PhysicsDebugRenderer : public ECS::SystemBase, public b2Draw
 	{
 		public:
-			PhysicsDebugRenderer(AssetHandle<Rendering::Material> material, ECS::Registry::SystemHandle<System::Physics> physicsHandle, ECS::ContextProvider& contextProvider);
+			PhysicsDebugRenderer(AssetHandle<Rendering::Material>             wireFrameMaterial,
+			                     AssetHandle<Rendering::Material>             lineMaterial,
+			                     ECS::Registry::SystemHandle<System::Physics> physicsHandle,
+			                     ECS::ContextProvider&                        contextProvider);
 
 			void DrawPolygon(const b2Vec2* vertices, int32 vertexCount, const b2Color& color) override;
 
@@ -38,17 +41,20 @@ namespace REA::System
 		private:
 			const uint64_t MAX_VERTICES = 10'000;
 
-			size_t _numVertices = 0;
-			size_t _numIndices = 0;
+			size_t _numWireFrameVertices = 0;
+			size_t _numWireFrameIndices  = 0;
 
-			glm::vec2* _vertices;
-			uint16_t*  _indices;
+			glm::vec2* _wireFrameVertices;
+			uint16_t*  _wireFrameIndices;
 
-			AssetHandle<Rendering::Material>             _material;
+			size_t     _numLineVertices = 0;
+			glm::vec2* _lineVertices;
+
+			AssetHandle<Rendering::Material>             _wireFrameMaterial;
+			AssetHandle<Rendering::Material>             _lineMaterial;
 			ECS::Registry::SystemHandle<System::Physics> _physicsHandle;
 
 			Rendering::Vulkan::Buffer _modelBuffer;
-
 
 			bool _registeredToWorld = false;
 	};

@@ -6,10 +6,24 @@ layout (push_constant) uniform PushConstant {
     uint ReadIndex;
 };
 
+const uint MAX_CHUNK_SEGMENTS = 32768;
+const uint MAX_WORLD_SEGMENTS = 32768;
+
+struct MarchingSquareWorld {
+    uint numSegments;
+    bool regenerate;
+    vec2 segments[MAX_WORLD_SEGMENTS * 2];
+};
+
+struct MarchingSquareChunk {
+    uint numSegments;
+    bool regenerate;
+    vec2 segments[MAX_CHUNK_SEGMENTS * 2];
+};
+
 layout (std430, set = 1, binding = 7) writeonly buffer s_c_si_MarchingSquares {
-    uint numConnectedSegments;
-    uint numSolidSegments;
-    vec2 segments[NumMarchingSquareSegments * 2];
+    MarchingSquareWorld connectedChunk;
+    MarchingSquareChunk worldChunks[NUM_CHUNKS];
 };
 
 const uint caseLookup[16] = {
@@ -136,6 +150,7 @@ void main()
     vec2 previousPosition[2] = { vec2(1.0f), vec2(1.0f) };
     uint previousCaseIndex[2] = { 16, 16 };
     uint previousCaseNumber[2] = { 16, 16 };
+    uint previousChunkMapping = -1u;
 
     for (int stepIndex = 0; stepIndex < numIterations; stepIndex++)
     {
@@ -158,15 +173,15 @@ void main()
         SetupWritePixelVarsByPosition(bottomLeft, bottomLeftX, bottomLeftY);
         SetupWritePixelVarsByPosition(bottomRight, bottomRightX, bottomRightY);
 
-        bool isBoundary = x < 3     || x > NUM_ELEMENTS_X-4    || y < 3    || y > NUM_ELEMENTS_Y-4;
-        bool isBoundaryY = x < 3    || x > NUM_ELEMENTS_X-4    || y-1 < 3  || y-1 > NUM_ELEMENTS_Y-4;
-        bool isBoundaryX = x+1 < 3  || x+1 > NUM_ELEMENTS_X-4  || y < 3    || y > NUM_ELEMENTS_Y-4;
-        bool isBoundaryXY = x+1 < 3 || x+1 > NUM_ELEMENTS_X-4  || y-1 < 3  || y-1 > NUM_ELEMENTS_Y-4;
+        bool isBoundary = x < 1 || x > NUM_ELEMENTS_X - 2 || y < 1 || y > NUM_ELEMENTS_Y - 2;
+        bool isBoundaryY = x < 1 || x > NUM_ELEMENTS_X - 2 || y - 1 < 1 || y - 1 > NUM_ELEMENTS_Y - 2;
+        bool isBoundaryX = x + 1 < 1 || x + 1 > NUM_ELEMENTS_X - 2 || y < 1 || y > NUM_ELEMENTS_Y - 2;
+        bool isBoundaryXY = x + 1 < 1 || x + 1 > NUM_ELEMENTS_X - 2 || y - 1 < 1 || y - 1 > NUM_ELEMENTS_Y - 2;
 
         uint topLeftPixelFlags = isBoundary ? 0 : getFlags(topLeftPixel.PixelID16_Charge8_Flags8);
         uint topRightPixelFlags = isBoundaryX ? 0 : getFlags(topRightPixel.PixelID16_Charge8_Flags8);
         uint bottomLeftPixelFlags = isBoundaryY ? 0 : getFlags(bottomLeftPixel.PixelID16_Charge8_Flags8);
-        uint bottomRightPixelFlags = isBoundaryXY ? 0 : getFlags(bottomRightPixel.PixelID16_Charge8_Flags8);
+        uint bottomRightPixelFlags = isBoundaryXY  ? 0 : getFlags(bottomRightPixel.PixelID16_Charge8_Flags8);
 
         bool topLeftPixelSolid = bitsetHas(topLeftPixelFlags, Solid);
         bool topRightPixelSolid = bitsetHas(topRightPixelFlags, Solid);
@@ -181,6 +196,7 @@ void main()
         for (int segmentsTypeIndex = 0; segmentsTypeIndex < 2; segmentsTypeIndex++)
         {
             uint caseNumber = 16;
+            bool forceCaseSwitch = false;
 
             if (segmentsTypeIndex == 0)
             {
@@ -195,13 +211,17 @@ void main()
                 (uint(topRightPixelSolid && !topRightPixelConnected) << 2u) |
                 (uint(bottomRightPixelSolid && !bottomRightPixelConnected) << 1u) |
                 uint(bottomLeftPixelSolid && !bottomLeftPixelConnected);
+
+                if (previousChunkMapping != -1u && previousChunkMapping != topLeftChunkMapping)
+                {
+                    forceCaseSwitch = true;
+                }
             }
 
             uint caseIndex = caseLookup[caseNumber];
 
             // TODO: fix diagonals for more performance
             // Add handling for diagonal cases
-            bool forceCaseSwitch = false;
             if (direction == DiagonalLeftToRight || direction == DiagonalRightToLeft) {
                 if (
                 (caseIndex >= 7) ||
@@ -252,16 +272,24 @@ void main()
                                 end = previousPosition[segmentsTypeIndex] + edgeOffsets[edges[i + 1]] + vec2(0.5, -0.5);
                             }
 
-                            uint idx = 0;
                             if (segmentsTypeIndex == 0) {
-                                idx = atomicAdd(numConnectedSegments, 1);
+                                uint idx = atomicAdd(connectedChunk.numSegments, 1);
+                                atomicMin(connectedChunk.numSegments, MAX_CHUNK_SEGMENTS);
+                                if (idx < MAX_CHUNK_SEGMENTS)
+                                {
+                                    connectedChunk.segments[(idx * 2)] = (simulationData.chunkOffset * CHUNK_SIZE) + start;
+                                    connectedChunk.segments[((idx * 2) + 1)] = (simulationData.chunkOffset * CHUNK_SIZE) + end;
+                                }
                             }
                             else {
-                                idx = atomicAdd(numSolidSegments, 1);
+                                uint idx = atomicAdd(worldChunks[previousChunkMapping].numSegments, 1);
+                                atomicMin(worldChunks[previousChunkMapping].numSegments, MAX_WORLD_SEGMENTS);
+                                if (idx < MAX_WORLD_SEGMENTS)
+                                {
+                                    worldChunks[previousChunkMapping].segments[(idx * 2)] = (simulationData.chunkOffset * CHUNK_SIZE) + start;
+                                    worldChunks[previousChunkMapping].segments[((idx * 2) + 1)] = (simulationData.chunkOffset * CHUNK_SIZE) + end;
+                                }
                             }
-                            uint offset = segmentsTypeIndex * NumMarchingSquareSegments;
-                            segments[offset + (idx * 2)] = (simulationData.chunkOffset * CHUNK_SIZE) + start;
-                            segments[offset + ((idx * 2) + 1)] = (simulationData.chunkOffset * CHUNK_SIZE) + end;
                         }
                     }
 
@@ -281,5 +309,6 @@ void main()
 
             previousPosition[segmentsTypeIndex] = samplePosition;
         }
+        previousChunkMapping = topLeftChunkMapping;
     }
 }

@@ -1,4 +1,3 @@
-
 const uint CHUNKS_X = 8;
 const uint CHUNKS_Y = 8;
 const uint CHUNK_SIZE = 128;
@@ -10,10 +9,9 @@ const uint MAX_ELEMENTS = NUM_ELEMENTS_IN_CHUNK * NUM_CHUNKS;
 const uint NUM_ELEMENTS_X = CHUNKS_X * CHUNK_SIZE;
 const uint NUM_ELEMENTS_Y = CHUNKS_Y * CHUNK_SIZE;
 
-const vec2 GRID_SIZE_F = vec2(NUM_ELEMENTS_X, NUM_ELEMENTS_Y);
+const vec2 GRID_SIZE_VEC = vec2(NUM_ELEMENTS_X, NUM_ELEMENTS_Y);
 
 const uint NumSimulatedPixels = MAX_ELEMENTS; // 1024 * 1024
-const uint NumPixels = 8388608 + NumSimulatedPixels; // 4096 x 2048 + Simulated Pixels for ping ponging buffer swapping
 
 const uint NumRigidbodies = 1024;
 const uint NumMarchingSquareSegments = 100000;
@@ -23,7 +21,7 @@ const int MaxCharge = 255;
 const uint Solid = 1u << 0u;
 const uint Connected = 1u << 1u;
 const uint Gravity = 1u << 8u;
-const uint Electricity = 1u << 9u;
+const uint Conductive = 1u << 9u;
 const uint ElectricityEmitter = 1u << 10u;
 const uint ElectricityReceiver = 1u << 11u;
 
@@ -65,6 +63,8 @@ struct RigidBody {
     vec2 Position;
     uvec2 Size;
 };
+
+
 
 bool bitsetHas(uint bitset, uint bits) {
     return (bitset & bits) == bits;

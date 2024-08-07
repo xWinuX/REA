@@ -42,12 +42,15 @@ namespace REA::System
 		auto&                      properties = _shaders.IdleSimulation->GetProperties();
 		Rendering::Vulkan::Device* device     = _shaders.IdleSimulation->GetPipeline().GetDevice();
 
-		vk::DeviceSize bufferSizes[]        = { sizeof(glm::vec2) * 100'000, sizeof(uint16_t) * 100'000 };
+
+		auto buffer = properties.GetBuffer(6);
+
+		LOG("buffer size {0}", buffer.GetSizeInBytes());
+
+
+		/*
+		vk::DeviceSize bufferSizes[]        = { sizeof(glm::vec2) * 600000, sizeof(uint16_t) * 600000 };
 		vk::DeviceSize bufferElementSizes[] = { sizeof(glm::vec2), sizeof(uint16_t) };
-
-		_indexes = std::ranges::iota_view(static_cast<size_t>(0), 200'000ull);
-
-		//vk::DeviceSize bufferSizes[] = {sizeof(glm::vec2) * MAX_VERTICES, sizeof(uint16_t) * MAX_VERTICES};
 
 		_vertexBuffer = Rendering::Vulkan::Buffer(device,
 		                                          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer,
@@ -64,12 +67,36 @@ namespace REA::System
 		                                          bufferSizes,
 		                                          bufferElementSizes);
 
+		*/
+
+		vk::DeviceSize bufferSize   = sizeof(Pixel::State) * (Constants::NUM_CHUNKS * Constants::NUM_ELEMENTS_IN_CHUNK);
+		vk::DeviceSize minAlignment = device->GetPhysicalDevice().GetProperties().limits.minStorageBufferOffsetAlignment;
+		vk::DeviceSize padding      = minAlignment - (bufferSize % minAlignment);
+		padding                     = padding == minAlignment ? 0 : padding;
+		bufferSize += padding;
+
+		_copyBuffer = Rendering::Vulkan::Buffer(device,
+		                                        vk::Flags<vk::BufferUsageFlagBits>(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer),
+		                                        vk::SharingMode::eExclusive,
+		                                        {
+			                                        Rendering::Vulkan::Allocator::Auto,
+			                                        vk::Flags<
+				                                        Rendering::Vulkan::Allocator::MemoryAllocationCreateFlagBits>(Rendering::Vulkan::Allocator::RandomAccess |
+				                                                                                                      Rendering::Vulkan::Allocator::PersistentMap),
+			                                        vk::Flags<Rendering::Vulkan::Allocator::MemoryPropertyFlagBits>(Rendering::Vulkan::Allocator::HostCached |
+			                                                                                                        Rendering::Vulkan::Allocator::HostCoherant |
+			                                                                                                        Rendering::Vulkan::Allocator::HostVisible)
+		                                        },
+		                                        1u,
+		                                        bufferSize);
+
+
 		_commandBuffer = std::move(device->GetQueueFamily(Rendering::Vulkan::QueueType::Compute).AllocateCommandBuffer(Rendering::Vulkan::QueueType::Compute));
 
 		_commandBuffer.GetVkCommandBufferRaw().SetFramePtr(&_fif);
 
+		// Remap buffers for swapping
 		Rendering::Vulkan::Buffer& writeBuffer = properties.GetBuffer(2);
-
 		for (int i = 0; i < device->MAX_FRAMES_IN_FLIGHT; ++i)
 		{
 			uint32_t fifIndex    = (i + 1) % device->MAX_FRAMES_IN_FLIGHT;
@@ -77,16 +104,18 @@ namespace REA::System
 			properties.SetBuffer(3, writeBuffer, bufferInfos.offset, bufferInfos.range, i);
 		}
 
+		_shaders.IdleSimulation->Update();
+
+		// Create Fences
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = _shaders.IdleSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
 
+		// Create static environment Collider
 		Component::Collider collider;
 		collider.InitialType     = b2_staticBody;
 		collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
 
 		_staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
-
-		_shaders.IdleSimulation->Update();
 	}
 
 	void PixelGridSimulation::SwapPixelBuffer() { std::swap(_readIndex, _writeIndex); }
@@ -138,6 +167,7 @@ namespace REA::System
 			ImGui::End();
 
 			ImGui::Begin("World Gen");
+			ImGui::SliderInt("ShownChunk", &_shownChunkIndex, 0, Constants::NUM_CHUNKS - 1);
 			if (ImGui::Button("Regenerate World")) { _generateWorld = true; }
 			ImGui::SliderFloat("Cave Noise Treshold", &_worldGenerationSettings.CaveNoiseTreshold, 0.0f, 1.0f);
 			ImGui::SliderFloat("Cave Noise Freqency", &_worldGenerationSettings.CaveNoiseFrequency, 0.0f, 1.0f);
@@ -184,6 +214,7 @@ namespace REA::System
 		{
 			SSBO_SimulationData* simulationData = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
 			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(4);
+			SSBO_Updates*        updates        = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_Updates>(6);
 
 			Component::PixelGrid& pixelGrid = pixelGrids[entityIndex];
 
@@ -193,6 +224,19 @@ namespace REA::System
 				device.GetVkDevice().resetFences(_computeFence);
 
 				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2, _fif)->Chunks;
+				BENCHMARK_BEGIN
+				memcpy(pixelGrid.ChunkRegenerate.data(), &updates->regenerateChunks[0], sizeof(uint32_t) * Constants::NUM_CHUNKS);
+				BENCHMARK_END("copy chunk regen")
+
+				uint32_t sum = 0;
+				BENCHMARK_BEGIN
+				for (int i = 0; i < Constants::NUM_CHUNKS; ++i)
+				{
+					sum += pixelGrid.ChunkRegenerate[i];
+				}
+				BENCHMARK_END("chunk read")
+
+				LOG("sum {0}", sum);
 				//pixelGrid.ChunkMapping = &simulationData->chunkMapping;
 			}
 
@@ -200,221 +244,82 @@ namespace REA::System
 			{
 				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(7);
 
-				size_t     vi = 0;
-				glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
-				for (vi = 0; vi< marchingCubes->numSolidSegments; ++vi)
-				{
-					v[vi * 2]     = { marchingCubes->solidSegments[vi * 2].x, marchingCubes->solidSegments[vi * 2].y };
-					v[vi * 2 + 1] = { marchingCubes->solidSegments[vi * 2 + 1].x, marchingCubes->solidSegments[vi * 2 + 1].y };
-				}
-
-				if (marchingCubes->numSolidSegments > 0)
-				{
-					_numLineSegements = vi;
-				}
-
-
-				// Pixelgrid follows camera
-				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
-				{
-					// This is inside of the pixelGrid variable
-					glm::vec2 offset = { -pixelGrid.SimulationWidth, -pixelGrid.SimulationHeight };
-
-					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position * 10.0f;
-
-					targetPosition += offset / 2.0f;
-
-					targetPosition = glm::clamp(targetPosition, { 0.0f, 0.0f }, glm::vec2(pixelGrid.WorldWidth, pixelGrid.WorldHeight) + offset);
-
-					glm::ivec2 previousOffset = pixelGrid.ChunkOffset;
-					pixelGrid.ChunkOffset     = glm::ivec2(static_cast<uint32_t>(targetPosition.x) / Constants::CHUNK_SIZE,
-					                                       static_cast<uint32_t>(targetPosition.y) / Constants::CHUNK_SIZE);
-
-					if (previousOffset != pixelGrid.ChunkOffset)
+				/*
+					size_t     vi = 0;
+					glm::vec2* v  = _vertexBuffer.GetMappedData<glm::vec2>();
+					for (MarchingSquareChunk& chunk: marchingCubes->worldChunks)
 					{
-						BENCHMARK_BEGIN
-						PixelChunks* copyPixels = &_shaders.FallingSimulation->GetProperties().GetBufferData<SSBO_CopyPixels>(6)->Chunks;
-
-						// Copy data from the world to the chunk
-						Rendering::Vulkan::Buffer& copyPixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(6);
-						Rendering::Vulkan::Buffer& pixelsBuffer     = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
-
-						pixelsBuffer.Copy(copyPixelsBuffer);
-
-						// Save old chunks
-						glm::ivec2 loadDirection = previousOffset - pixelGrid.ChunkOffset;
-						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+						for (vi = 0; vi < chunk.numSegments && vi < chunk.segments.size(); ++vi)
 						{
-							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
-							{
-								int oldWorldX = previousOffset.x + x;
-								int oldWorldY = previousOffset.y + y;
-
-								bool wasInOldBounds = x + loadDirection.x < 0 || x + loadDirection.x >= pixelGrid.SimulationChunksX || y  + loadDirection.y < 0 || y  + loadDirection.y >= pixelGrid.SimulationChunksY;
-
-								int chunkIndex = y * pixelGrid.SimulationChunksX + x;
-
-								if (wasInOldBounds)
-								{
-									int worldIndex = oldWorldY * pixelGrid.WorldChunksX + oldWorldX;
-									memcpy(pixelGrid.World[worldIndex].data(),
-									       (*copyPixels)[pixelGrid.ChunkMapping[chunkIndex]].data(),
-									       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
-								}
-							}
+							v[_numLineSegements + (vi * 2)]     = { chunk.segments[vi * 2].x * 0.1f, chunk.segments[vi * 2].y * 0.1f };
+							v[_numLineSegements + (vi * 2 + 1)] = { chunk.segments[vi * 2 + 1].x * 0.1f, chunk.segments[vi * 2 + 1].y * 0.1f };
 						}
 
-						// Remap mappings
-						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
-						{
-							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
-							{
-								int chunkIndex = y * pixelGrid.SimulationChunksX + x;
-
-								int wrappedX = mod(x - pixelGrid.ChunkOffset.x, pixelGrid.SimulationChunksX);
-								int wrappedY = mod(y - pixelGrid.ChunkOffset.y, pixelGrid.SimulationChunksY);
-
-								if (wrappedX < 0) { wrappedX += pixelGrid.SimulationChunksX; }
-								if (wrappedY < 0) { wrappedY += pixelGrid.SimulationChunksY; }
-
-								int newMappingIndex                     = wrappedY * pixelGrid.SimulationChunksX + wrappedX;
-								pixelGrid.ChunkMapping[newMappingIndex] = chunkIndex;
-							}
-						}
-
-						// Load new chunks
-						loadDirection = pixelGrid.ChunkOffset - previousOffset;
-						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
-						{
-							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
-							{
-								int chunkIndex = y * pixelGrid.SimulationChunksX + x;
-
-								int newWorldX = pixelGrid.ChunkOffset.x + x;
-								int newWorldY = pixelGrid.ChunkOffset.y + y;
-
-								bool isInNewBounds = x + loadDirection.x < 0 || x + loadDirection.x >= pixelGrid.SimulationChunksX || y  + loadDirection.y < 0 || y  + loadDirection.y >= pixelGrid.SimulationChunksY;
-
-								if (isInNewBounds)
-								{
-									int worldIndex = newWorldY * pixelGrid.WorldChunksX + newWorldX;
-
-									memcpy((*pixelGrid.Chunks)[pixelGrid.ChunkMapping[chunkIndex]].data(),
-									       pixelGrid.World[worldIndex].data(),
-									       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
-								}
-							}
-						}
-
-						BENCHMARK_END("Chunking")
+						_numLineSegements += vi * 2;
 					}
-				}
+					*/
 
-				// Delete Rigidbodies
-				if (simulationData->timer % 4 == 0)
-				{
-					for (uint32_t deleteRigidbody: _deleteRigidbody)
-					{
-						RigidbodyEntry& rigidbodyEntry = _rigidBodyEntities[deleteRigidbody];
-
-						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidbodyEntry.EntityID);
-
-						rigidBodyData->rigidBodies[pixelGridRigidBody.ShaderRigidBodyID].NeedsRecalculation = false;
-
-						_rigidBodyDataHeap.Deallocate(pixelGridRigidBody.AllocationID);
-
-						ecsRegistry.DestroyEntity(rigidbodyEntry.EntityID);
-
-						rigidbodyEntry.Enabled = false;
-
-						_availableRigidBodyIDs.Push(deleteRigidbody);
-					}
-
-					_deleteRigidbody.clear();
-				}
-
-				// Crate Rigidbodies
 				if (simulationData->timer % 4 == 2)
 				{
-					// Create edges for "static" environment
-					glm::vec2 xOffset  = { pixelGrid.SimulationWidth, 0.0f };
-					glm::vec2 yOffset  = { 0.0f, pixelGrid.SimulationHeight };
-					glm::vec2 xyOffset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
-					glm::vec2 chunkOffset = glm::vec2(pixelGrid.ChunkOffset.x, pixelGrid.ChunkOffset.y) * static_cast<float>(Constants::CHUNK_SIZE);
-
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2]     = chunkOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 1] = chunkOffset + yOffset;
-
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 2] = chunkOffset + yOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 3] = chunkOffset + xyOffset;
-
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 4] = chunkOffset + xyOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 5] = chunkOffset + xOffset;
-
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 6] = chunkOffset + xOffset;
-					marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 7] = chunkOffset;
-					marchingCubes->numSolidSegments += 4;
-
-					std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(marchingCubes->numSolidSegments, CDT::Edge(0, 0));
-					for (int i = 0; i < marchingCubes->numSolidSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
-
-					std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->solidSegments[0]),
-					                                                        marchingCubes->numSolidSegments * 2);
-
-					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
-
-					std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
-
-					for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
-					{
-						solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
-					}
-
-					if (solidPolylines.size() > 0) { _numLineSegements = 0; }
-
 					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
-					if (collider.Body != nullptr)
+					for (int chunkIndex = 0; chunkIndex < marchingCubes->worldChunks.size(); ++chunkIndex)
 					{
-						for (b2Fixture* fixture: collider.Fixtures) { collider.Body->DestroyFixture(fixture); }
+						uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+						MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
 
-						collider.Fixtures.clear();
+						if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
 
-						b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
-						for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
+						std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
+						for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+
+						std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
+
+						MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
+
+						std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines = MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
+
+						for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
 						{
-							for (int i = 0; i < solidPolyline.Vertices.size(); ++i)
+							solidPolyline = MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline, _lineSimplificationTolerance);
+						}
+
+						if (collider.Body != nullptr)
+						{
+							for (b2Fixture* fixture: pixelGrid.ChunkFixtures[chunkMapping]) { collider.Body->DestroyFixture(fixture); }
+
+							pixelGrid.ChunkFixtures[chunkMapping].clear();
+
+							b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
+							for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
 							{
-								// Draw
-								glm::vec2* v = _vertexBuffer.GetMappedData<glm::vec2>();
+								LOG("for polyline");
+								size_t size = solidPolyline.Closed ? solidPolyline.Vertices.size() : solidPolyline.Vertices.size() - 1;
+								for (int i = 0; i < size; ++i)
+								{
+									CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
+									CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
 
-								v[_numLineSegements * 2 + i * 2]     = { solidPolyline.Vertices[i].x, solidPolyline.Vertices[i].y };
-								v[_numLineSegements * 2 + i * 2 + 1] = {
-									solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()].x,
-									solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()].y
-								};
+									b2EdgeShape edgeShape{};
+									edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
 
+									fixtureDef.shape = &edgeShape;
 
-								CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
-								CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
+									pixelGrid.ChunkFixtures[chunkMapping].push_back(collider.Body->CreateFixture(&fixtureDef));
+								}
 
-								b2EdgeShape edgeShape{};
-								edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
-
-								fixtureDef.shape = &edgeShape;
-
-								collider.Fixtures.push_back(collider.Body->CreateFixture(&fixtureDef));
+								_numLineSegements += (solidPolyline.Vertices.size());
 							}
 
-							_numLineSegements += (solidPolyline.Vertices.size());
+							pixelGrid.ChunkRegenerate[chunkMapping] = false;
 						}
 					}
 
 					// Create rigidbodies and their colission meshes
-					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->numConnectedSegments, CDT::Edge(0, 0));
-					for (int i = 0; i < marchingCubes->numConnectedSegments; ++i) { connectedEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->connectedChunk.numSegments, CDT::Edge(0, 0));
+					for (int i = 0; i < marchingCubes->connectedChunk.numSegments; ++i) { connectedEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
-					std::span<CDT::V2d<float>> connectedSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->connectedSegments[0]),
-					                                                            marchingCubes->numConnectedSegments * 2);
+					std::span<CDT::V2d<float>> connectedSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&marchingCubes->connectedChunk.segments[0]),
+					                                                            marchingCubes->connectedChunk.numSegments * 2);
 
 					MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(connectedSegmentSpan, connectedEdges);
 
@@ -546,10 +451,175 @@ namespace REA::System
 
 						_rigidBodyEntities[shaderID] = { rigidBodyEntity, true, false };
 					}
-
-					marchingCubes->numConnectedSegments = 0;
-					marchingCubes->numSolidSegments     = 0;
 				}
+
+
+				// Pixelgrid follows camera
+				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
+				{
+					// This is inside of the pixelGrid variable
+					glm::vec2 offset = { -pixelGrid.SimulationWidth, -pixelGrid.SimulationHeight };
+
+					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position * 10.0f;
+
+					targetPosition += offset / 2.0f;
+
+					targetPosition = glm::clamp(targetPosition, { 0.0f, 0.0f }, glm::vec2(pixelGrid.WorldWidth, pixelGrid.WorldHeight) + offset);
+
+					pixelGrid.PreviousChunkOffset = pixelGrid.ChunkOffset;
+					pixelGrid.ChunkOffset         = glm::ivec2(static_cast<uint32_t>(targetPosition.x) / Constants::CHUNK_SIZE,
+					                                           static_cast<uint32_t>(targetPosition.y) / Constants::CHUNK_SIZE);
+
+					if (pixelGrid.PreviousChunkOffset != pixelGrid.ChunkOffset)
+					{
+						BENCHMARK_BEGIN
+							PixelChunks* copyPixels = &_copyBuffer.GetMappedData<SSBO_CopyPixels>()->Chunks;
+
+							// Copy data from the world to the chunk
+							Rendering::Vulkan::Buffer& pixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
+
+							vk::DeviceSize offset = _fif == 0 ? 0 : pixelsBuffer.GetSizeInBytes();
+							pixelsBuffer.Copy(_copyBuffer, offset, 0, pixelsBuffer.GetSizeInBytes());
+
+							// Save old chunks
+							glm::ivec2 loadDirection = pixelGrid.PreviousChunkOffset - pixelGrid.ChunkOffset;
+							for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+							{
+								for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+								{
+									int oldWorldX = pixelGrid.PreviousChunkOffset.x + x;
+									int oldWorldY = pixelGrid.PreviousChunkOffset.y + y;
+
+									bool wasInOldBounds = x + loadDirection.x < 0 || x + loadDirection.x >= pixelGrid.SimulationChunksX || y + loadDirection.y < 0 || y +
+									                      loadDirection.y >= pixelGrid.SimulationChunksY;
+
+									int chunkIndex = y * pixelGrid.SimulationChunksX + x;
+
+									if (wasInOldBounds)
+									{
+										int worldIndex = oldWorldY * pixelGrid.WorldChunksX + oldWorldX;
+										memcpy(pixelGrid.World[worldIndex].data(),
+										       (*copyPixels)[pixelGrid.ChunkMapping[chunkIndex]].data(),
+										       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
+									}
+								}
+							}
+
+							// Remap mappings
+							for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+							{
+								for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+								{
+									int chunkIndex = y * pixelGrid.SimulationChunksX + x;
+
+									int wrappedX = mod(x - pixelGrid.ChunkOffset.x, pixelGrid.SimulationChunksX);
+									int wrappedY = mod(y - pixelGrid.ChunkOffset.y, pixelGrid.SimulationChunksY);
+
+									if (wrappedX < 0) { wrappedX += pixelGrid.SimulationChunksX; }
+									if (wrappedY < 0) { wrappedY += pixelGrid.SimulationChunksY; }
+
+									int newMappingIndex                     = wrappedY * pixelGrid.SimulationChunksX + wrappedX;
+									pixelGrid.ChunkMapping[newMappingIndex] = chunkIndex;
+								}
+							}
+
+							// Load new chunks
+							loadDirection = pixelGrid.ChunkOffset - pixelGrid.PreviousChunkOffset;
+							for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+							{
+								for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+								{
+									int chunkIndex = y * pixelGrid.SimulationChunksX + x;
+
+									int newWorldX = pixelGrid.ChunkOffset.x + x;
+									int newWorldY = pixelGrid.ChunkOffset.y + y;
+
+									bool isInNewBounds = x + loadDirection.x < 0 || x + loadDirection.x >= pixelGrid.SimulationChunksX || y + loadDirection.y < 0 || y +
+									                     loadDirection.y >= pixelGrid.SimulationChunksY;
+
+									if (isInNewBounds)
+									{
+										int      worldIndex   = newWorldY * pixelGrid.WorldChunksX + newWorldX;
+										unsigned chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+
+										pixelGrid.ChunkRegenerate[chunkMapping] = true;
+
+										memcpy((*pixelGrid.Chunks)[chunkMapping].data(),
+										       pixelGrid.World[worldIndex].data(),
+										       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
+									}
+								}
+							}
+
+						BENCHMARK_END("Chunking")
+					}
+				}
+
+				// Delete Rigidbodies
+				if (simulationData->timer % 4 == 0)
+				{
+					for (uint32_t deleteRigidbody: _deleteRigidbody)
+					{
+						RigidbodyEntry& rigidbodyEntry = _rigidBodyEntities[deleteRigidbody];
+
+						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidbodyEntry.EntityID);
+
+						rigidBodyData->rigidBodies[pixelGridRigidBody.ShaderRigidBodyID].NeedsRecalculation = false;
+
+						_rigidBodyDataHeap.Deallocate(pixelGridRigidBody.AllocationID);
+
+						ecsRegistry.DestroyEntity(rigidbodyEntry.EntityID);
+
+						rigidbodyEntry.Enabled = false;
+
+						_availableRigidBodyIDs.Push(deleteRigidbody);
+					}
+
+					_deleteRigidbody.clear();
+				}
+
+
+				// Crate Rigidbodies
+				//if (simulationData->timer % 4 == 2)
+				//{
+				// Create edges for "static" environment
+				/*glm::vec2 xOffset  = { pixelGrid.SimulationWidth, 0.0f };
+				glm::vec2 yOffset  = { 0.0f, pixelGrid.SimulationHeight };
+				glm::vec2 xyOffset = { pixelGrid.SimulationWidth, pixelGrid.SimulationHeight };
+				glm::vec2 chunkOffset = glm::vec2(pixelGrid.ChunkOffset.x, pixelGrid.ChunkOffset.y) * static_cast<float>(Constants::CHUNK_SIZE);
+
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2]     = chunkOffset;
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 1] = chunkOffset + yOffset;
+
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 2] = chunkOffset + yOffset;
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 3] = chunkOffset + xyOffset;
+
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 4] = chunkOffset + xyOffset;
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 5] = chunkOffset + xOffset;
+
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 6] = chunkOffset + xOffset;
+				marchingCubes->solidSegments[marchingCubes->numSolidSegments * 2 + 7] = chunkOffset;
+				marchingCubes->numSolidSegments += 4;
+*/
+
+
+				//for (MarchingSquareChunk& chunk : marchingCubes->worldChunks)
+				//{
+
+				/*MarchingSquareChunk& chunk = marchingCubes->worldChunks[_shownChunkIndex];
+				for (vi = 0; vi < chunk.numSegments && vi < chunk.segments.size(); ++vi)
+				{
+					v[(_numLineSegements * 2) + (vi * 2)]     = { chunk.segments[vi * 2].x * 0.1f, chunk.segments[vi * 2].y * 0.1f };
+					v[(_numLineSegements * 2) + (vi * 2 + 1)] = { chunk.segments[vi * 2 + 1].x * 0.1f, chunk.segments[vi * 2 + 1].y * 0.1f };
+				}
+
+				_numLineSegements += vi;*/
+				//}
+
+
+				marchingCubes->connectedChunk.numSegments = 0;
+				for (MarchingSquareChunk& worldChunk: marchingCubes->worldChunks) { worldChunk.numSegments = 0; }
+				//}
 			}
 
 			if (stage == Stage::GridComputeBegin)
@@ -562,6 +632,7 @@ namespace REA::System
 
 				for (int i = 0; i < simulationData->chunkMapping.size(); ++i) { simulationData->chunkMapping[i] = pixelGrid.ChunkMapping[i]; }
 
+				memcpy(&updates->regenerateChunks[0], pixelGrid.ChunkRegenerate.data(), sizeof(uint32_t) * Constants::NUM_CHUNKS);
 
 				if (_firstUpdate)
 				{
@@ -635,6 +706,44 @@ namespace REA::System
 					vk::CommandBufferBeginInfo commandBufferBeginInfo = vk::CommandBufferBeginInfo({}, nullptr);
 
 					_commandBuffer.GetVkCommandBuffer().begin(commandBufferBeginInfo);
+
+					// Rigidbody
+					_shaders.RigidBodySimulation->Update();
+
+					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
+
+					for (int rigidBodyShaderID = 1; rigidBodyShaderID < _rigidBodyEntities.size(); ++rigidBodyShaderID)
+					{
+						RigidbodyEntry& rigidBodyEntry = _rigidBodyEntities[rigidBodyShaderID];
+
+						if (!rigidBodyEntry.Enabled) { continue; }
+
+						if (!rigidBodyEntry.Active)
+						{
+							rigidBodyEntry.Active = true;
+							continue;
+						}
+
+						if (simulationData->timer % 4 == 0 && rigidBodyData->rigidBodies[rigidBodyShaderID].NeedsRecalculation)
+						{
+							_deleteRigidbody.push_back(rigidBodyShaderID);
+							rigidBodyData->rigidBodies[rigidBodyShaderID].ID = 0;
+						}
+
+						Component::Transform&          transform          = ecsRegistry.GetComponent<Component::Transform>(rigidBodyEntry.EntityID);
+						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidBodyEntry.EntityID);
+
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Position = transform.Position * 10.0f;
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation = transform.Rotation;
+
+						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
+
+						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
+					}
+					CmdWaitForPreviousComputeShader();
+
 
 					// Fall and Flow
 					uint32_t   flowIteration         = 0;
@@ -785,44 +894,6 @@ namespace REA::System
 						_shaders.MarchingSquareAlgorithm->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
 
 						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(((pixelGrid.SimulationWidth + pixelGrid.SimulationHeight) * 3) - 2, 64), 1, 1);
-
-						CmdWaitForPreviousComputeShader();
-					}
-
-					// Rigidbody
-					_shaders.RigidBodySimulation->Update();
-
-					_shaders.RigidBodySimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
-
-					_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &_readIndex);
-
-					for (int rigidBodyShaderID = 1; rigidBodyShaderID < _rigidBodyEntities.size(); ++rigidBodyShaderID)
-					{
-						RigidbodyEntry& rigidBodyEntry = _rigidBodyEntities[rigidBodyShaderID];
-
-						if (!rigidBodyEntry.Enabled) { continue; }
-
-						if (!rigidBodyEntry.Active)
-						{
-							rigidBodyEntry.Active = true;
-							continue;
-						}
-
-						if (simulationData->timer % 4 == 0 && rigidBodyData->rigidBodies[rigidBodyShaderID].NeedsRecalculation)
-						{
-							_deleteRigidbody.push_back(rigidBodyShaderID);
-							rigidBodyData->rigidBodies[rigidBodyShaderID].ID = 0;
-						}
-
-						Component::Transform&          transform          = ecsRegistry.GetComponent<Component::Transform>(rigidBodyEntry.EntityID);
-						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidBodyEntry.EntityID);
-
-						rigidBodyData->rigidBodies[rigidBodyShaderID].Position = transform.Position * 10.0f;
-						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation = transform.Rotation;
-
-						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &pixelGridRigidBody.ShaderRigidBodyID);
-
-						_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(pixelGridRigidBody.Size.x * pixelGridRigidBody.Size.y, 64u), 1, 1);
 					}
 
 					_commandBuffer.GetVkCommandBuffer().end();
@@ -859,6 +930,7 @@ namespace REA::System
 
 			if (stage == Stage::Rendering)
 			{
+				/*
 				vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
 
 				DebugMaterial->GetShader()->BindGlobal(commandBuffer);
@@ -874,6 +946,7 @@ namespace REA::System
 				size_t offset = 0;
 				commandBuffer.bindVertexBuffers(0, _vertexBuffer.GetVkBuffer(), offset);
 				commandBuffer.draw(_numLineSegements * 2, 1, 0, 0);
+				*/
 			}
 		}
 	}

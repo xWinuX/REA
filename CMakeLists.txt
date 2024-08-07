@@ -96,11 +96,20 @@ target_link_libraries(REA PRIVATE CDT::CDT)
 
 target_link_libraries(REA PRIVATE FastNoise2)
 
-add_custom_command(TARGET REA POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:REA>/res)
+if(MSVC)
+    target_compile_options(REA PRIVATE "/MP")
+endif()
 
-add_custom_target(CopyResources ALL DEPENDS ${CMAKE_SOURCE_DIR}/res)
+add_custom_target(ClearResources ALL
+        COMMAND ${CMAKE_COMMAND} -E remove_directory $<TARGET_FILE_DIR:REA>/res
+        COMMENT "Clearing Resources"
+)
+
+add_custom_target(CopyResources ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:REA>/res
+        COMMENT "Copy Resources"
+)
+add_dependencies(CopyResources ClearResources)
 
 set(SHADER_FILES
         "res/shaders/Sprite/Sprite.vert"
@@ -124,10 +133,13 @@ set(SHADER_FILES
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)
 
+add_custom_target(CompileShaders ALL)
+add_dependencies(CompileShaders CopyResources)
+
 foreach (SHADER_FILE ${SHADER_FILES})
     set(SPIRV_OUTPUT $<TARGET_FILE_DIR:REA>/${SHADER_FILE}.spv)
 
-    add_custom_command(TARGET REA POST_BUILD
+    add_custom_command(TARGET CompileShaders PRE_BUILD
             COMMAND ${glslc_executable}
             -o ${SPIRV_OUTPUT}
             -g # Uncomment to enable debug infos
@@ -145,4 +157,11 @@ foreach (SHADER_FILE ${SHADER_FILES})
     list(APPEND SPIRV_OUTPUTS ${SPIRV_OUTPUT})
 endforeach ()
 
-add_custom_target(CompileShaders ALL DEPENDS ${SPIRV_OUTPUTS})
+
+
+
+
+add_dependencies(REA
+        CopyResources
+        CompileShaders
+)

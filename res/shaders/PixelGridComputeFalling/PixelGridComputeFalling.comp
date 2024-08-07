@@ -44,23 +44,20 @@ void main()
     PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
     PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
-    // Write pixels
-    GetReadPixel(topLeft) = topLeftPixel;
-    GetReadPixel(bottomLeft) = bottomLeftPixel;
-    GetReadPixel(topRight) = topRightPixel;
-    GetReadPixel(bottomRight) = bottomRightPixel;
-
     if (
-        topLeftPixel.PixelID16_Charge8_Flags8 == bottomLeftPixel.PixelID16_Charge8_Flags8 &&
-        bottomLeftPixel.PixelID16_Charge8_Flags8 == topRightPixel.PixelID16_Charge8_Flags8  &&
-        topRightPixel.PixelID16_Charge8_Flags8 == bottomRightPixel.PixelID16_Charge8_Flags8 &&
-        bottomRightPixel.PixelID16_Charge8_Flags8 == topLeftPixel.PixelID16_Charge8_Flags8
+    topLeftPixel.PixelID16_Charge8_Flags8 == bottomLeftPixel.PixelID16_Charge8_Flags8 &&
+    bottomLeftPixel.PixelID16_Charge8_Flags8 == topRightPixel.PixelID16_Charge8_Flags8 &&
+    topRightPixel.PixelID16_Charge8_Flags8 == bottomRightPixel.PixelID16_Charge8_Flags8 &&
+    bottomRightPixel.PixelID16_Charge8_Flags8 == topLeftPixel.PixelID16_Charge8_Flags8
     ) { return; }
 
     float topLeftTemperature = topLeftPixel.Temperature;
     float topRightTemperature = topRightPixel.Temperature;
     float bottomLeftTemperature = bottomLeftPixel.Temperature;
     float bottomRightTemperature = bottomRightPixel.Temperature;
+
+    bool atBottomEdge = y == 0;
+    bool atRightEdge = x == NUM_ELEMENTS_X - 1;
 
     bool topLeftPixelSolid = bitsetHas(topLeftPixelData.Flags, Solid);
     bool bottomLeftPixelSolid = bitsetHas(bottomLeftPixelData.Flags, Solid);
@@ -87,7 +84,7 @@ void main()
     bool leftRowSwapped = false;
     bool rightRowSwapped = false;
 
-    if (topLeftGravity && bottomLeftGravity && (topLeftCanFlow || !bottomLeftPixelSolid))
+    if (!atBottomEdge && topLeftGravity && bottomLeftGravity && (topLeftCanFlow || !bottomLeftPixelSolid))
     {
         if (topLeftDensity > bottomLeftDensity)
         {
@@ -113,7 +110,7 @@ void main()
         }
     }
 
-    if (topRightGravity && bottomRightGravity && (topRightCanFlow || !bottomRightPixelSolid))
+    if (!atRightEdge && !atBottomEdge && topRightGravity && bottomRightGravity && (topRightCanFlow || !bottomRightPixelSolid))
     {
         if (topRightDensity > bottomRightDensity)
         {
@@ -138,7 +135,7 @@ void main()
 
     if ((topLeftPixelSolid && bottomRightPixelSolid) || (topRightPixelSolid && bottomLeftPixelSolid)) { return; }
 
-    if (!leftRowSwapped && !rightRowSwapped)
+    if (!leftRowSwapped && !rightRowSwapped && !atRightEdge && !atBottomEdge)
     {
         if (topLeftGravity && bottomRightGravity && (topLeftCanFlow || !bottomRightPixelSolid) && topLeftDensity > bottomRightDensity)
         {
@@ -193,6 +190,7 @@ void main()
     //if (!topLeftPixelSolid && !topRightPixelSolid)
     //{
     if (
+    !atRightEdge &&
     (topLeftGravity && topRightGravity && (bottomLeftPixelSolid || bottomLeftDensity >= topLeftDensity) && (bottomRightPixelSolid || bottomRightDensity >= topRightDensity)) && (
     (simulationData.rng >= 0.5f && topLeftCanSpread && topLeftDensity > topRightDensity) ||
     (simulationData.rng < 0.5f && topRightCanSpread && topRightDensity > topLeftDensity)
@@ -216,6 +214,7 @@ void main()
     //if (!bottomLeftPixelSolid && !bottomRightPixelSolid)
     //{
     if (
+    !atRightEdge && !atBottomEdge &&
     (bottomLeftGravity && bottomRightGravity && (topLeftPixelSolid || topLeftDensity >= bottomLeftDensity) && (topRightPixelSolid || topRightDensity >= bottomRightDensity)) && (
     (simulationData.rng >= 0.5f && bottomLeftCanSpread && bottomLeftDensity > bottomRightDensity) ||
     (simulationData.rng < 0.5f && bottomRightCanSpread && bottomRightDensity > bottomLeftDensity)

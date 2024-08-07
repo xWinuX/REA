@@ -50,7 +50,7 @@ namespace REA::System
 			gridInfo->width           = pixelGrid.SimulationWidth;
 			gridInfo->height          = pixelGrid.SimulationHeight;
 			gridInfo->zoom            = pixelGridRenderer.Zoom;
-			gridInfo->offset          = pixelGrid.ChunkOffset;
+			gridInfo->offset          = pixelGrid.PreviousChunkOffset;
 			gridInfo->pointerPosition = pixelGridRenderer.PointerPosition;
 			gridInfo->renderMode      = pixelGridRenderer.RenderMode;
 			size_t size               = std::min(pixelGrid.PixelColorLookup.size(), std::size(gridInfo->colorLookup));
