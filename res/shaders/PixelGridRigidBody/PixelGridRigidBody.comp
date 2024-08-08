@@ -43,15 +43,16 @@ void main()
 
         SetupPixelVarsByPosition(middleCenter, x, y);
 
+        if (bitsetHas(getFlags(middleCenterPixel.PixelID16_Charge8_Flags8), Solid)) {
+            return;
+        }
+
         uint dataIndex = getRigidBodyIndex(pixel.RigidBodyID12_RigidBodyIndex20);
         if (rigidBody.ID == 0)
         {
             pixel.RigidBodyID12_RigidBodyIndex20 = 0;
             rigidBodyData[rigidBody.DataIndex + gl_GlobalInvocationID.x].RigidBodyID12_RigidBodyIndex20 = 0;
         }
-
-        // TODO: Check for overlap with other pixels
-        //Pixel targetPixel = pixels[globalIndex + readIndex];
 
         if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
         {
