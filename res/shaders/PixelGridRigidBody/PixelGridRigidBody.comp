@@ -3,7 +3,6 @@
 #include "../PixelGridComputeGlobals.glsl"
 
 layout(push_constant) uniform PushConstant {
-    uint readIndex;
     uint rigidBodyIndex;
 };
 

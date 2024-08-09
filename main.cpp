@@ -215,7 +215,7 @@ int main()
 			.Name = "Grass",
 			.Color = Color(0x509229FF),
 			.Data = Pixel::Data{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected),
+				.Flags = BitSet<uint32_t>(Pixel::Solid),
 				.Density = 100,
 				.TemperatureResistance = 1.0f,
 				.BaseTemperature = airTemperature,

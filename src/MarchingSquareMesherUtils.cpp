@@ -120,7 +120,10 @@ namespace REA
 
 			// Find endpoints
 			std::vector<uint32_t> endpoints;
-			for (uint32_t vertexID: polylineIndices) { if (adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); } }
+			for (uint32_t vertexID: polylineIndices)
+			{
+				if (adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); }
+			}
 
 			// Start from an endpoint if available, otherwise start from any vertex
 			uint32_t startVertex = !endpoints.empty() ? endpoints[0] : polylineIndices[0];
@@ -157,7 +160,7 @@ namespace REA
 			for (CDT::V2d<float>& polylineVert: sortedPolyline)
 			{
 				polylineVert = { polylineVert.x - originalCenter.x, polylineVert.y - originalCenter.y };
-				polylineVert = { polylineVert.x * 0.099f, polylineVert.y * 0.099f };
+				polylineVert = { polylineVert.x * 0.1f, polylineVert.y * 0.1f };
 				polylineVert = { polylineVert.x + newCenter.x, polylineVert.y + newCenter.y };
 			}
 

@@ -4,7 +4,6 @@
 #include "../CCLShared.glsl"
 
 layout(push_constant) uniform PushConstant {
-    uint ReadIndex;
     uvec2 Offset;
     uvec2 Size;
 };

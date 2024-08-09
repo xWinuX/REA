@@ -54,10 +54,7 @@ namespace REA
 
 		// Setup world chunks
 		pixelGrid.World.reserve(pixelGrid.WorldChunksX * pixelGrid.WorldChunksY);
-		for (int i = 0; i < pixelGrid.WorldChunksX * pixelGrid.WorldChunksY; ++i)
-		{
-			pixelGrid.World.push_back(std::vector<Pixel::State>(Constants::NUM_ELEMENTS_IN_CHUNK, {}));
-		}
+		for (int i = 0; i < pixelGrid.WorldChunksX * pixelGrid.WorldChunksY; ++i) { pixelGrid.World.push_back(std::vector<Pixel::State>(Constants::NUM_ELEMENTS_IN_CHUNK, {})); }
 
 		// Setup chunk mapping and regenerate
 		pixelGrid.ChunkMapping.reserve(pixelGrid.SimulationChunksX * pixelGrid.SimulationChunksY);
@@ -66,6 +63,12 @@ namespace REA
 			pixelGrid.ChunkMapping.push_back(i);
 			pixelGrid.ChunkRegenerate.push_back(true);
 		}
+
+
+		pixelGrid.AvailableRigidBodyIDs = AvailableStack<uint32_t>();
+		pixelGrid.RigidBodyEntities     = std::vector<Component::PixelGrid::RigidbodyEntry>();
+		pixelGrid.NewRigidBodies        = std::vector<Component::PixelGrid::NewRigidBody>();
+		pixelGrid.DeleteRigidbody       = std::vector<uint32_t>();
 
 
 		_pixelCreateInfos.clear();

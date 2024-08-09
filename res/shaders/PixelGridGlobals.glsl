@@ -64,8 +64,6 @@ struct RigidBody {
     uvec2 Size;
 };
 
-
-
 bool bitsetHas(uint bitset, uint bits) {
     return (bitset & bits) == bits;
 }

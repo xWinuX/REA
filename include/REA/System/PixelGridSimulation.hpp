@@ -94,21 +94,6 @@ namespace REA::System
 				uint32_t regenerateChunks[Constants::NUM_CHUNKS];
 			};
 
-			struct NewRigidBody
-			{
-				glm::uvec2 Offset;
-				glm::uvec2 Size;
-				glm::uvec2 SeedPoint;
-				uint32_t   RigidBodyID;
-			};
-
-			struct RigidbodyEntry
-			{
-				uint64_t EntityID = -1u;
-				bool     Enabled  = false;
-				bool     Active   = false;
-			};
-
 			struct WorldGenerationSettings
 			{
 				float CaveNoiseTreshold       = 0.5f;
@@ -116,17 +101,7 @@ namespace REA::System
 				float OverworldNoiseFrequency = 0.0005f;
 			};
 
-			std::vector<RigidbodyEntry> _rigidBodyEntities{};
-			std::vector<NewRigidBody>   _newRigidBodies{};
-			std::vector<uint32_t>       _deleteRigidbody{};
-
-			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1048576);
-
-			AvailableStack<uint32_t> _availableRigidBodyIDs = AvailableStack<uint32_t>();
-
 			uint64_t _staticEnvironmentEntityID;
-
-			uint32_t _rigidBodyIDCounter = 1;
 
 			uint32_t _fif = 1;
 
@@ -139,17 +114,13 @@ namespace REA::System
 
 			std::ranges::iota_view<size_t, size_t> _indexes;
 
+			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1048576);
+
 			bool _paused        = true;
 			bool _doStep        = false;
 			bool _generateWorld = true;
 
-
 			WorldGenerator::GenerationSettings _worldGenerationSettings{};
-
-			uint32_t _readIndex  = 0;
-			uint32_t _writeIndex = 8388608;
-
-			int32_t _shownChunkIndex = 0;
 
 			bool _firstUpdate = true;
 
@@ -162,8 +133,6 @@ namespace REA::System
 			b2AABB _cclRange = { { 10'000'000, 10'000'000 }, { 0, 0 } };
 
 			size_t _numLineSegements = 0;
-
-			void SwapPixelBuffer();
 
 			void CmdWaitForPreviousComputeShader();
 

@@ -2,10 +2,6 @@
 
 #include "../PixelGridComputeGlobals.glsl"
 
-layout (push_constant) uniform PushConstant {
-    uint ReadIndex;
-};
-
 const uint MAX_CHUNK_SEGMENTS = 32768;
 const uint MAX_WORLD_SEGMENTS = 32768;
 

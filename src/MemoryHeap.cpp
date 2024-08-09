@@ -1,7 +1,7 @@
 #include "REA/MemoryHeap.hpp"
 
 #include <SplitEngine/ErrorHandler.hpp>
-#include <iterator> // for std::next
+#include <iterator>
 
 namespace REA
 {
@@ -19,7 +19,7 @@ namespace REA
 			if (it->second >= size)
 			{
 				size_t offset = it->first;
-				size_t blockSize = it->second; // Store the value before erasing the iterator
+				size_t blockSize = it->second;
 				_freeBlocks.erase(it);
 				if (blockSize > size) {
 					_freeBlocks.insert({ offset + size, blockSize - size });

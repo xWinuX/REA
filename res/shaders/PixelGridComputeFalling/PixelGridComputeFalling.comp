@@ -7,8 +7,6 @@
 //const Pixel solidPixel = { 0xFF01F000 };
 
 layout (push_constant) uniform PushConstant {
-    uint readIndex;
-    uint writeIndex;
     uint flowIteration;
     uvec2 margolusOffset;
 };

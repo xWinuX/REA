@@ -59,7 +59,8 @@ void main() {
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
         int label = labels[index];
-        pixelColor = vec4(label/1048576.0f, 0.0f, 0.0f, 1.0f);
+        label = label == 0 ? 1 : 0;
+        pixelColor = vec4(label, 0.0f, 0.0f, 1.0f);
 
     //pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
     }

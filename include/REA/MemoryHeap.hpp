@@ -30,8 +30,8 @@ namespace REA
 		private:
 			size_t                                 _totalSize;
 			size_t                                 _nextId;
-			std::unordered_map<size_t, Allocation> _allocations;
-			std::set<std::pair<size_t, size_t>>    _freeBlocks;
+			std::unordered_map<size_t, Allocation> _allocations {};
+			std::set<std::pair<size_t, size_t>>    _freeBlocks {};
 
 			void CoalesceFreeBlocks();
 	};
