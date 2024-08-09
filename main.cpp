@@ -83,7 +83,7 @@ int main()
 			.Color = Color(0x775937FF),
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive | Pixel::ElectricityReceiver),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
@@ -123,10 +123,8 @@ int main()
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
 				.Density = 20,
 				.SpreadingFactor = 2,
-				.TemperatureResistance = 0.01f,
+				.TemperatureResistance = 0.00f,
 				.BaseTemperature = 1600,
-				.LowerTemperatureLimit = 80,
-				.LowerTemperatureLimitPixelID = PixelType::Stone,
 			}
 		},
 		{ .ID = PixelType::Stone, .Name = "Stone", .Color = Color(0x465466FF), .Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, } },

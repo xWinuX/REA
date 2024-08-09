@@ -39,7 +39,7 @@ namespace REA::System
 			void RunExecute(ECS::ContextProvider& context, uint8_t stage) override;
 
 		private:
-			const uint64_t MAX_VERTICES = 10'000;
+			const uint64_t MAX_VERTICES = 100'000;
 
 			size_t _numWireFrameVertices = 0;
 			size_t _numWireFrameIndices  = 0;

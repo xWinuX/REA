@@ -101,11 +101,11 @@ namespace REA::System
 				float OverworldNoiseFrequency = 0.0005f;
 			};
 
-			uint64_t _staticEnvironmentEntityID;
+			std::vector<uint64_t> _staticEnvironmentEntityIDs = std::vector<uint64_t>(Constants::NUM_CHUNKS, -1ull);
 
 			uint32_t _fif = 1;
 
-			float _lineSimplificationTolerance = 1.0f;
+			float _lineSimplificationTolerance = 0.5f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;

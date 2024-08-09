@@ -8,6 +8,7 @@
 #include <vector>
 #include <box2d/b2_edge_shape.h>
 #include <box2d/b2_polygon_shape.h>
+#include <box2d/b2_chain_shape.h>
 #include <glm/gtc/random.hpp>
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
@@ -85,11 +86,13 @@ namespace REA::System
 		_computeFence                       = _shaders.IdleSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
 
 		// Create static environment Collider
-		Component::Collider collider;
-		collider.InitialType     = b2_staticBody;
-		collider.PhysicsMaterial = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
-
-		_staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
+		for (uint64_t& staticEnvironmentEntityID: _staticEnvironmentEntityIDs)
+		{
+			Component::Collider collider;
+			collider.InitialType      = b2_staticBody;
+			collider.PhysicsMaterial  = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
+			staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
+		}
 	}
 
 	void PixelGridSimulation::CmdWaitForPreviousComputeShader()
@@ -204,75 +207,80 @@ namespace REA::System
 
 				if (simulationData->timer % 4 == 2)
 				{
-					Component::Collider& collider = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityID);
-
 					_indexes = std::ranges::iota_view(0ull, static_cast<size_t>(Constants::NUM_CHUNKS));
 
 					std::vector<std::vector<MarchingSquareMesherUtils::Polyline>> solidPolylineCollection = std::vector<std::vector<
 						MarchingSquareMesherUtils::Polyline>>(Constants::NUM_CHUNKS, {});
 
-					std::for_each(std::execution::par_unseq,
-					              _indexes.begin(),
-					              _indexes.end(),
-					              [&](size_t chunkIndex)
-					              {
-						              uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
-						              MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
 
-						              if (!pixelGrid.ChunkRegenerate[chunkMapping]) { return; }
-
-						              std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
-						              for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
-
-						              std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
-
-						              MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
-
-						              std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines =
-								              MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
-
-						              for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
+					BENCHMARK_BEGIN
+						std::for_each(std::execution::par_unseq,
+						              _indexes.begin(),
+						              _indexes.end(),
+						              [&](size_t chunkIndex)
 						              {
-							              solidPolylineCollection[chunkMapping].push_back(std::move(MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline,
-								                                                                        _lineSimplificationTolerance)));
-						              }
-					              });
+							              uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+							              MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
 
-					for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
-					{
-						uint32_t chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+							              if (!pixelGrid.ChunkRegenerate[chunkMapping]) { return; }
 
-						if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
+							              std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
+							              for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
 
-						std::vector<MarchingSquareMesherUtils::Polyline>& solidPolylines = solidPolylineCollection[chunkMapping];
+							              std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
 
-						if (collider.Body != nullptr)
+							              MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
+
+							              std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines =
+									              MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
+
+							              for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
+							              {
+								              solidPolylineCollection[chunkMapping].push_back(std::move(MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline,
+									                                                                        _lineSimplificationTolerance)));
+							              }
+						              });
+					BENCHMARK_END("Environment Collisions Calculate")
+
+
+					BENCHMARK_BEGIN
+						for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
 						{
-							for (b2Fixture* fixture: pixelGrid.ChunkFixtures[chunkMapping]) { collider.Body->DestroyFixture(fixture); }
+							uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+							Component::Collider& collider     = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityIDs[chunkMapping]);
 
-							pixelGrid.ChunkFixtures[chunkMapping].clear();
+							if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
 
-							b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
-							for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
+							std::vector<MarchingSquareMesherUtils::Polyline>& solidPolylines = solidPolylineCollection[chunkMapping];
+
+							if (collider.Body != nullptr)
 							{
-								size_t size = solidPolyline.Closed ? solidPolyline.Vertices.size() : solidPolyline.Vertices.size() - 1;
-								for (int i = 0; i < size; ++i)
+								for (b2Fixture* fixture: pixelGrid.ChunkFixtures[chunkMapping]) { collider.Body->DestroyFixture(fixture); }
+
+								pixelGrid.ChunkFixtures[chunkMapping].clear();
+
+								b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
+								for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
 								{
-									CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
-									CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
+									size_t size = solidPolyline.Closed ? solidPolyline.Vertices.size() : solidPolyline.Vertices.size() - 1;
+									for (int i = 0; i < size; ++i)
+									{
+										CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
+										CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
 
-									b2EdgeShape edgeShape{};
-									edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
+										b2EdgeShape edgeShape{};
+										edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
 
-									fixtureDef.shape = &edgeShape;
+										fixtureDef.shape = &edgeShape;
 
-									pixelGrid.ChunkFixtures[chunkMapping].push_back(collider.Body->CreateFixture(&fixtureDef));
+										pixelGrid.ChunkFixtures[chunkMapping].push_back(collider.Body->CreateFixture(&fixtureDef));
+									}
 								}
-							}
 
-							pixelGrid.ChunkRegenerate[chunkMapping] = false;
+								pixelGrid.ChunkRegenerate[chunkMapping] = false;
+							}
 						}
-					}
+					BENCHMARK_END("Environment Collision Apply")
 
 					// Create rigidbodies and their colission meshes
 					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->connectedChunk.numSegments, CDT::Edge(0, 0));

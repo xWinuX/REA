@@ -189,6 +189,11 @@ void main()
         bool bottomLeftPixelConnected = bitsetHas(bottomLeftPixelFlags, Connected);
         bool bottomRightPixelConnected = bitsetHas(bottomRightPixelFlags, Connected);
 
+        bool notInValidChunks = !regenerateChunks[topLeftChunkMapping] &&
+                                !regenerateChunks[topRightChunkMapping] &&
+                                !regenerateChunks[bottomLeftChunkMapping] &&
+                                !regenerateChunks[bottomRightChunkMapping];
+
         for (int segmentsTypeIndex = 0; segmentsTypeIndex < 2; segmentsTypeIndex++)
         {
             uint caseNumber = 16;
@@ -207,6 +212,10 @@ void main()
                 (uint(topRightPixelSolid && !topRightPixelConnected) << 2u) |
                 (uint(bottomRightPixelSolid && !bottomRightPixelConnected) << 1u) |
                 uint(bottomLeftPixelSolid && !bottomLeftPixelConnected);
+
+                if (notInValidChunks) {
+                    continue;
+                }
 
                 if (previousChunkMapping != -1u && previousChunkMapping != topLeftChunkMapping)
                 {
