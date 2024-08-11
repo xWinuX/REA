@@ -11,13 +11,14 @@ const uint NUM_ELEMENTS_Y = CHUNKS_Y * CHUNK_SIZE;
 
 const vec2 GRID_SIZE_VEC = vec2(NUM_ELEMENTS_X, NUM_ELEMENTS_Y);
 
-const uint NumSimulatedPixels = MAX_ELEMENTS; // 1024 * 1024
+const uint MAX_PIXEL_PARTICLES = 32768;
 
-const uint NumRigidbodies = 1024;
+const uint MAX_RIGIDBODIES = 1024;
 const uint NumMarchingSquareSegments = 100000;
 
 const int MaxCharge = 255;
 
+// Flag Enum
 const uint Solid = 1u << 0u;
 const uint Connected = 1u << 1u;
 const uint Gravity = 1u << 8u;
@@ -25,13 +26,10 @@ const uint Conductive = 1u << 9u;
 const uint ElectricityEmitter = 1u << 10u;
 const uint ElectricityReceiver = 1u << 11u;
 
-const uint Right = 1u << 0u;
-const uint Up = 1u << 1u;
-const uint Left = 1u << 2u;
-const uint Down = 1u << 3u;
-
+// RenderMode Enum
 const uint RenderMode_Normal = 0;
 const uint RenderMode_Temperature = 1;
+
 
 struct PixelData {
     uint Flags;
@@ -61,15 +59,19 @@ struct RigidBody {
     bool NeedsRecalculation;
     float Rotation;
     vec2 Position;
+    vec2 Velocity;
+    ivec2 CounterVelocity;
     uvec2 Size;
+};
+
+struct PixelParticle {
+    vec2 Position;
+    vec2 Velocity;
+    Pixel Pixel;
 };
 
 bool bitsetHas(uint bitset, uint bits) {
     return (bitset & bits) == bits;
-}
-
-bool bitsetIs(uint bitset, uint bits) {
-    return bitset == bits;
 }
 
 uint getPixelID(uint packedData) {

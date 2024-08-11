@@ -1,0 +1,57 @@
+#version 450
+
+#include "../PixelGridComputeGlobals.glsl"
+#include "../SharedBuffers.glsl"
+
+SSBO_PixelParticles(1,5)
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index >= MAX_PIXEL_PARTICLES || !enabled[index]) {
+        return;
+    }
+
+    PixelParticle particle = pixelParticles[index];
+
+    vec2 oldPosition = particle.Position;
+    vec2 newPosition = oldPosition + particle.Velocity;
+
+    ivec2 start = ivec2(floor(oldPosition));
+    ivec2 end = ivec2(floor(newPosition));
+
+    ivec2 diff = abs(end - start);
+    ivec2 stepValue = ivec2(sign(end - start));
+
+    int err = diff.x - diff.y;
+
+    ivec2 current = start;
+
+    for (int stepIndex = 0; stepIndex < floor(particle.Velocity.length()); stepIndex++)
+    {
+        SetupWritePixelVarsByPosition(check, current.x, current.y);
+
+        if (getPixelID(checkPixel.PixelID16_Charge8_Flags8) == 0) {
+            availableIndices[atomicAdd(numAvailableIndices, 1)] = index;
+            enabled[index] = false;
+            GetWritePixel(check) = particle.Pixel;
+            break;
+        }
+
+        int err2 = err * 2;
+        if (err2 > -diff.y) {
+            err -= diff.y;
+            current.x += stepValue.x;
+        }
+        if (err2 < diff.x) {
+            err += diff.x;
+            current.y += stepValue.y;
+        }
+    }
+
+    // After this, you can update the particle position, etc.
+    particle.Position = current;
+    pixelParticles[index] = particle;
+}

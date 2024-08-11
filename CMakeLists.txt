@@ -123,6 +123,7 @@ set(SHADER_FILES
         "res/shaders/PixelGridComputeFalling/PixelGridComputeFalling.comp"
         "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp"
         "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp"
+        "res/shaders/PixelGridComputeParticle/PixelGridComputeParticle.comp"
         "res/shaders/MarchingSquare/MarchingSquare.comp"
         "res/shaders/CCLInitialize/CCLInitialize.comp"
         "res/shaders/CCLColumn/CCLColumn.comp"

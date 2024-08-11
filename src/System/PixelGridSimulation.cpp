@@ -71,12 +71,12 @@ namespace REA::System
 		_commandBuffer.GetVkCommandBufferRaw().SetFramePtr(&_fif);
 
 		// Remap buffers for swapping
-		Rendering::Vulkan::Buffer& writeBuffer = properties.GetBuffer(2);
+		Rendering::Vulkan::Buffer& writeBuffer = properties.GetBuffer(3);
 		for (int i = 0; i < device->MAX_FRAMES_IN_FLIGHT; ++i)
 		{
 			uint32_t fifIndex    = (i + 1) % device->MAX_FRAMES_IN_FLIGHT;
-			auto&    bufferInfos = properties.GetBufferInfo(2, fifIndex);
-			properties.SetBuffer(3, writeBuffer, bufferInfos.offset, bufferInfos.range, i);
+			auto&    bufferInfos = properties.GetBufferInfo(3, fifIndex);
+			properties.SetBuffer(4, writeBuffer, bufferInfos.offset, bufferInfos.range, i);
 		}
 
 		_shaders.IdleSimulation->Update();
@@ -187,8 +187,8 @@ namespace REA::System
 		for (int entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
 		{
 			SSBO_SimulationData* simulationData = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
-			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(4);
-			SSBO_Updates*        updates        = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_Updates>(6);
+			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(2);
+			SSBO_Updates*        updates        = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Updates>(1);
 
 			Component::PixelGrid& pixelGrid = pixelGrids[entityIndex];
 
@@ -197,90 +197,92 @@ namespace REA::System
 				device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 				device.GetVkDevice().resetFences(_computeFence);
 
-				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(2, _fif)->Chunks;
+				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(3, _fif)->Chunks;
 				memcpy(pixelGrid.ChunkRegenerate.data(), &updates->regenerateChunks[0], sizeof(uint32_t) * Constants::NUM_CHUNKS);
 			}
 
 			if (stage == Stage::GridComputeHalted)
 			{
-				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(7);
+				SSBO_MarchingCubes* marchingCubes = _shaders.MarchingSquareAlgorithm->GetProperties().GetBufferData<SSBO_MarchingCubes>(5);
 
 				if (simulationData->timer % 4 == 2)
 				{
-					_indexes = std::ranges::iota_view(0ull, static_cast<size_t>(Constants::NUM_CHUNKS));
-
 					std::vector<std::vector<MarchingSquareMesherUtils::Polyline>> solidPolylineCollection = std::vector<std::vector<
 						MarchingSquareMesherUtils::Polyline>>(Constants::NUM_CHUNKS, {});
 
 
-					BENCHMARK_BEGIN
-						std::for_each(std::execution::par_unseq,
-						              _indexes.begin(),
-						              _indexes.end(),
-						              [&](size_t chunkIndex)
+					//BENCHMARK_BEGIN
+					_indexes = std::ranges::iota_view(0ull, static_cast<size_t>(Constants::NUM_CHUNKS));
+					std::for_each(std::execution::par_unseq,
+					              _indexes.begin(),
+					              _indexes.end(),
+					              [&](size_t chunkIndex)
+					              {
+						              uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+						              MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
+
+						              if (!pixelGrid.ChunkRegenerate[chunkMapping]) { return; }
+
+						              std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
+						              for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
+
+						              std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
+
+						              MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
+
+						              std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines =
+								              MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
+
+						              for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
 						              {
-							              uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
-							              MarchingSquareChunk& chunk        = marchingCubes->worldChunks[chunkMapping];
+							              solidPolylineCollection[chunkMapping].push_back(std::move(MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline,
+								                                                                        _lineSimplificationTolerance)));
+						              }
+					              });
 
-							              if (!pixelGrid.ChunkRegenerate[chunkMapping]) { return; }
-
-							              std::vector<CDT::Edge> solidEdges = std::vector<CDT::Edge>(chunk.numSegments, CDT::Edge(0, 0));
-							              for (int i = 0; i < chunk.numSegments; ++i) { solidEdges[i] = CDT::Edge(i * 2, (i * 2) + 1); }
-
-							              std::span<CDT::V2d<float>> solidSegmentSpan = std::span(reinterpret_cast<CDT::V2d<float>*>(&chunk.segments[0]), chunk.numSegments * 2);
-
-							              MarchingSquareMesherUtils::RemoveDuplicatesAndRemapEdges(solidSegmentSpan, solidEdges);
-
-							              std::vector<MarchingSquareMesherUtils::Polyline> solidPolylines =
-									              MarchingSquareMesherUtils::SeperateAndSortPolylines(solidSegmentSpan, solidEdges);
-
-							              for (MarchingSquareMesherUtils::Polyline& solidPolyline: solidPolylines)
-							              {
-								              solidPolylineCollection[chunkMapping].push_back(std::move(MarchingSquareMesherUtils::SimplifyPolylines(solidPolyline,
-									                                                                        _lineSimplificationTolerance)));
-							              }
-						              });
-					BENCHMARK_END("Environment Collisions Calculate")
+					//					BENCHMARK_END("Environment Collisions Calculate")
 
 
-					BENCHMARK_BEGIN
-						for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
+					//	BENCHMARK_BEGIN
+
+					for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
+					{
+						uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+						Component::Collider& collider     = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityIDs[chunkMapping]);
+
+						if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
+
+						std::vector<MarchingSquareMesherUtils::Polyline>& solidPolylines = solidPolylineCollection[chunkMapping];
+
+						if (collider.Body != nullptr)
 						{
-							uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
-							Component::Collider& collider     = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityIDs[chunkMapping]);
+							for (b2Fixture* fixture: pixelGrid.ChunkFixtures[chunkMapping]) { collider.Body->DestroyFixture(fixture); }
 
-							if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
+							pixelGrid.ChunkFixtures[chunkMapping].clear();
 
-							std::vector<MarchingSquareMesherUtils::Polyline>& solidPolylines = solidPolylineCollection[chunkMapping];
-
-							if (collider.Body != nullptr)
+							b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
+							for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
 							{
-								for (b2Fixture* fixture: pixelGrid.ChunkFixtures[chunkMapping]) { collider.Body->DestroyFixture(fixture); }
-
-								pixelGrid.ChunkFixtures[chunkMapping].clear();
-
-								b2FixtureDef fixtureDef = collider.PhysicsMaterial->GetFixtureDefCopy();
-								for (MarchingSquareMesherUtils::Polyline solidPolyline: solidPolylines)
+								size_t size = solidPolyline.Closed ? solidPolyline.Vertices.size() : solidPolyline.Vertices.size() - 1;
+								for (int i = 0; i < size; ++i)
 								{
-									size_t size = solidPolyline.Closed ? solidPolyline.Vertices.size() : solidPolyline.Vertices.size() - 1;
-									for (int i = 0; i < size; ++i)
-									{
-										CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
-										CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
+									CDT::V2d<float>& v1 = solidPolyline.Vertices[i];
+									CDT::V2d<float>& v2 = solidPolyline.Vertices[(i + 1) % solidPolyline.Vertices.size()];
 
-										b2EdgeShape edgeShape{};
-										edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
+									b2EdgeShape edgeShape{};
+									edgeShape.SetTwoSided({ v1.x, v1.y }, { v2.x, v2.y });
 
-										fixtureDef.shape = &edgeShape;
+									fixtureDef.shape = &edgeShape;
 
-										pixelGrid.ChunkFixtures[chunkMapping].push_back(collider.Body->CreateFixture(&fixtureDef));
-									}
+									pixelGrid.ChunkFixtures[chunkMapping].push_back(collider.Body->CreateFixture(&fixtureDef));
 								}
-
-								pixelGrid.ChunkRegenerate[chunkMapping] = false;
 							}
+
+							pixelGrid.ChunkRegenerate[chunkMapping] = false;
 						}
-					BENCHMARK_END("Environment Collision Apply")
+					}
+
+					//BENCHMARK_END("Environment Collision Apply")
 
 					// Create rigidbodies and their colission meshes
 					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->connectedChunk.numSegments, CDT::Edge(0, 0));
@@ -444,7 +446,7 @@ namespace REA::System
 							PixelChunks* copyPixels = &_copyBuffer.GetMappedData<SSBO_CopyPixels>()->Chunks;
 
 							// Copy data from the world to the chunk
-							Rendering::Vulkan::Buffer& pixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(2);
+							Rendering::Vulkan::Buffer& pixelsBuffer = _shaders.FallingSimulation->GetProperties().GetBuffer(3);
 
 							vk::DeviceSize offset = _fif == 0 ? 0 : pixelsBuffer.GetSizeInBytes();
 							pixelsBuffer.Copy(_copyBuffer, offset, 0, pixelsBuffer.GetSizeInBytes());
@@ -674,8 +676,14 @@ namespace REA::System
 							rigidBodyData->rigidBodies[rigidBodyShaderID].ID = 0;
 						}
 
-						rigidBodyData->rigidBodies[rigidBodyShaderID].Position = transform.Position * 10.0f;
-						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation = transform.Rotation;
+						float counterForce = rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x * 5.0f;
+						collider.Body->SetLinearDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x*5.0f);
+						collider.Body->SetAngularDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x*5.0f);
+
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Position        = transform.Position * 10.0f;
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Velocity        = collider.Body->GetLinearVelocity();
+						rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity = { 0, 0 };
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation        = transform.Rotation;
 
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &pixelGridRigidBody.ShaderRigidBodyID);
 
@@ -695,7 +703,6 @@ namespace REA::System
 					{
 						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
-
 						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &flowIteration);
 						_shaders.FallingSimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 1, &margolusOffset);
 
@@ -714,6 +721,7 @@ namespace REA::System
 
 					_commandBuffer.GetVkCommandBuffer().dispatch(numWorkgroups, 1, 1);
 
+					CmdWaitForPreviousComputeShader();
 
 					// Do CCL if there are rigidbodies to discover
 					if (!pixelGrid.NewRigidBodies.empty())
@@ -722,11 +730,9 @@ namespace REA::System
 						b2Vec2 b2BottomLeftCorner = _cclRange.GetCenter() - extends;
 
 						glm::uvec2 offset = { 0, 0 };
-						glm::uvec2 size   = { 1024, 1024 };
+						glm::uvec2 size   = { Constants::NUM_ELEMENTS_X, Constants::NUM_ELEMENTS_Y };
 
 						uint32_t numWorkGroupsForSinglePixelOps = CeilDivide(size.x * size.y, 64u);
-
-						CmdWaitForPreviousComputeShader();
 
 						_shaders.CCLInitialize->Update();
 
@@ -800,6 +806,13 @@ namespace REA::System
 						pixelGrid.NewRigidBodies.clear();
 						_cclRange = { { 10'000'000, 10'000'000 }, { 0, 0 } };
 					}
+
+					// Particles
+					_shaders.PixelParticle->Update();
+
+					_shaders.PixelParticle->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
+
+					_commandBuffer.GetVkCommandBuffer().dispatch(CeilDivide(Constants::MAX_PIXEL_PARTICLES, 64u), 1, 1);
 
 					CmdWaitForPreviousComputeShader();
 

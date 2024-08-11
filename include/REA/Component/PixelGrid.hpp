@@ -46,6 +46,7 @@ namespace REA::Component
 		uint64_t                    _staticEnvironmentEntityID = -1;
 		uint32_t                    RigidBodyIDCounter         = 1;
 		AvailableStack<uint32_t>    AvailableRigidBodyIDs{};
+		AvailableStack<uint32_t>    AvailableParticleIndices{};
 		std::vector<RigidbodyEntry> RigidBodyEntities{};
 		std::vector<NewRigidBody>   NewRigidBodies{};
 		std::vector<uint32_t>       DeleteRigidbody{};

@@ -13,14 +13,17 @@ namespace REA
 		public:
 			struct GenerationSettings
 			{
-				float TerrainBaseline          = 2000.0f;
-				float TerrainRange             = 500.0f;
-				int   GrassHeight              = 5;
-				float CaveRange                = 100.0f;
-				float CaveNoiseTreshold        = 0.5f;
-				float CaveNoiseTresholdTerrain = 0.75f;
-				float CaveNoiseFrequency       = 0.1f;
-				float OverworldNoiseFrequency  = 0.05f;
+				float TerrainBaselineRelativeToWorldHeight  = 0.8f;
+				float TerrainRange                          = 500.0f;
+				int   GrassHeight                           = 5;
+				float CaveRange                             = 100.0f;
+				float CaveNoiseTreshold                     = 0.5f;
+				float CaveNoiseTresholdTerrain              = 0.75f;
+				float CaveNoiseFrequency                    = 0.1f;
+				float IronLayerEndRelativeToCaveLayerHeight = 0.5f;
+				float LavaLayerEndRelativeToCaveLayerHeight = 0.1f;
+				float OverworldNoiseFrequency               = 0.05f;
+				float WaterLevelRelativeToTerrainRange      = 0.4f;
 			};
 
 			struct TreeGenerationSettings

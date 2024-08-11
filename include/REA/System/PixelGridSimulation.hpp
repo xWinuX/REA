@@ -21,6 +21,7 @@ namespace REA::System
 				AssetHandle<Rendering::Shader> RigidBodyRemove;
 				AssetHandle<Rendering::Shader> FallingSimulation;
 				AssetHandle<Rendering::Shader> AccumulateSimulation;
+				AssetHandle<Rendering::Shader> PixelParticle;
 				AssetHandle<Rendering::Shader> MarchingSquareAlgorithm;
 				AssetHandle<Rendering::Shader> CCLInitialize;
 				AssetHandle<Rendering::Shader> CCLColumn;
@@ -50,6 +51,8 @@ namespace REA::System
 				bool       NeedsRecalculation = false;
 				float      Rotation           = 0;
 				glm::vec2  Position           = { 0, 0 };
+				b2Vec2     Velocity           = { 0, 0 };
+				glm::ivec2 CounterVelocity    = { 0, 0 };
 				glm::uvec2 Size               = { 0, 0 };
 			};
 

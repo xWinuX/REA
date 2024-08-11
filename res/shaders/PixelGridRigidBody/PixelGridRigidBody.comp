@@ -1,8 +1,13 @@
 #version 450
 
 #include "../PixelGridComputeGlobals.glsl"
+#include "../SharedBuffers.glsl"
 
-layout(push_constant) uniform PushConstant {
+SSBO_RigidBodyPixelData(1, 5)
+
+SSBO_PixelParticles(1,6)
+
+layout (push_constant) uniform PushConstant {
     uint rigidBodyIndex;
 };
 
@@ -22,7 +27,7 @@ void main()
 
     if (getRigidBodyID(pixel.RigidBodyID12_RigidBodyIndex20) == rigidBodyIndex)
     {
-        vec2 center = vec2(rigidBody.Size/2.0f);
+        vec2 center = vec2(rigidBody.Size / 2.0f);
         vec2 rigidBodyBottomLeftCorner = vec2(rigidBody.Position - center);
 
         float angle = radians(rigidBody.Rotation);
@@ -55,6 +60,19 @@ void main()
 
         if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) == 0)
         {
+            if (getPixelID(middleCenterPixel.PixelID16_Charge8_Flags8) != 0) {
+                uint index = atomicAdd(numAvailableIndices, 0) > 0
+                            ? availableIndices[atomicAdd(numAvailableIndices, -1) - 1]
+                            : atomicAdd(numPixelParticles, 1);
+
+                enabled[index] = true;
+                pixelParticles[index].Pixel = middleCenterPixel;
+                pixelParticles[index].Position = vec2(x, y);
+                pixelParticles[index].Velocity = vec2(0.0f, 1.0f) ;
+
+                atomicAdd(rigidBodies[rigidBodyIndex].CounterVelocity.x, 1);
+            }
+
             GetReadPixel(middleCenter) = pixel;
         }
 

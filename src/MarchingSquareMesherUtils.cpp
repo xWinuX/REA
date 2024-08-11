@@ -98,7 +98,10 @@ namespace REA
 					visited.insert(currentNode);
 					component.push_back(currentNode);
 
-					for (const uint32_t neighborIndex: adjacencyList[currentNode]) { if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); } }
+					for (const uint32_t neighborIndex: adjacencyList[currentNode])
+					{
+						if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); }
+					}
 				}
 
 				separatePolylineIndices.push_back(std::move(component));
@@ -128,7 +131,8 @@ namespace REA
 			// Start from an endpoint if available, otherwise start from any vertex
 			uint32_t startVertex = !endpoints.empty() ? endpoints[0] : polylineIndices[0];
 			uint32_t currentIndex = startVertex;
-			b2AABB   aabb = { { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() }, { std::numeric_limits<float>::min(), std::numeric_limits<float>::min() } };
+			b2AABB   aabb = { { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() },
+                            { std::numeric_limits<float>::min(),std::numeric_limits<float>::min() } };
 			visited.insert(currentIndex);
 
 			sortedPolyline.push_back(vertices[currentIndex]);
@@ -213,5 +217,6 @@ namespace REA
 		cdt.insertEdges(edges);
 		cdt.eraseOuterTriangles();
 		return cdt;
+
 	}
 }

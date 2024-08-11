@@ -9,28 +9,20 @@ layout (std430, set = 1, binding = 0) buffer s_si_SimulationData {
     PixelData pixelLookup[1024];
 } simulationData;
 
-layout (std430, set = 1, binding = 1) buffer s_dl_ViewportPixels {
-    Pixel viewportPixels[NumSimulatedPixels];
+layout (std430, set = 1, binding = 1) buffer s_si_Updates  {
+    bool regenerateChunks[NUM_CHUNKS];
 };
 
-layout (std430, set = 1, binding = 2) buffer s_ts_ReadWorldPixels {
+layout (std430, set = 1, binding = 2) buffer s_si_RigidBodies {
+    RigidBody rigidBodies[MAX_RIGIDBODIES];
+};
+
+layout (std430, set = 1, binding = 3) buffer s_ts_ReadWorldPixels {
     Pixel readPixels[NUM_CHUNKS][NUM_ELEMENTS_IN_CHUNK];
 };
 
-layout (std430, set = 1, binding = 3) buffer s_na_ts_WriteWorldPixels {
+layout (std430, set = 1, binding = 4) buffer s_na_ts_WriteWorldPixels {
     Pixel writePixels[NUM_CHUNKS][NUM_ELEMENTS_IN_CHUNK];
-};
-
-layout (std430, set = 1, binding = 4) buffer s_si_RigidBodyData {
-    RigidBody rigidBodies[NumRigidbodies];
-};
-
-layout (std430, set = 1, binding = 5) buffer s_si_dl_RigidBodyPixelData {
-    Pixel rigidBodyData[NumSimulatedPixels];
-};
-
-layout (std430, set = 1, binding = 6) buffer s_si_Updates  {
-    bool regenerateChunks[NUM_CHUNKS];
 };
 
 #define SetupPixelVars(name, index) \
@@ -45,7 +37,7 @@ uint name##PixelIndex = index % NUM_ELEMENTS_IN_CHUNK; \
 uint name##ChunkMapping = simulationData.chunkMapping[name##ChunkIndex]; \
 Pixel name##Pixel = readPixels[name##ChunkMapping][name##PixelIndex];
 
-#define GetPixelPosition(name) uvec2(\
+#define GetPixelPosition(name) uvec2( \
     (name##ChunkIndex % CHUNKS_X) * CHUNK_SIZE + (name##PixelIndex % CHUNK_SIZE), \
     (name##ChunkIndex / CHUNKS_X) * CHUNK_SIZE + (name##PixelIndex / CHUNK_SIZE) \
 )

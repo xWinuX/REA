@@ -22,6 +22,7 @@ namespace REA
 			Comp_PixelGrid_RigidBodyRemove,
 			Comp_PixelGrid_Fall,
 			Comp_PixelGrid_Accumulate,
+			Comp_PixelGrid_Particle,
 			Comp_MarchingSquare,
 			Comp_CCLInitialize,
 			Comp_CCLColumn,

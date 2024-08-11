@@ -17,7 +17,7 @@ struct MarchingSquareChunk {
     vec2 segments[MAX_CHUNK_SEGMENTS * 2];
 };
 
-layout (std430, set = 1, binding = 7) writeonly buffer s_c_si_MarchingSquares {
+layout (std430, set = 1, binding = 5) writeonly buffer s_c_si_MarchingSquares {
     MarchingSquareWorld connectedChunk;
     MarchingSquareChunk worldChunks[NUM_CHUNKS];
 };
@@ -202,20 +202,16 @@ void main()
             if (segmentsTypeIndex == 0)
             {
                 caseNumber = (uint(topLeftPixelSolid && topLeftPixelConnected) << 3u) |
-                (uint(topRightPixelSolid && topRightPixelConnected) << 2u) |
-                (uint(bottomRightPixelSolid && bottomRightPixelConnected) << 1u) |
-                uint(bottomLeftPixelSolid && bottomLeftPixelConnected);
+                             (uint(topRightPixelSolid && topRightPixelConnected) << 2u) |
+                             (uint(bottomRightPixelSolid && bottomRightPixelConnected) << 1u) |
+                             uint(bottomLeftPixelSolid && bottomLeftPixelConnected);
             }
             else
             {
                 caseNumber = (uint(topLeftPixelSolid && !topLeftPixelConnected) << 3u) |
-                (uint(topRightPixelSolid && !topRightPixelConnected) << 2u) |
-                (uint(bottomRightPixelSolid && !bottomRightPixelConnected) << 1u) |
-                uint(bottomLeftPixelSolid && !bottomLeftPixelConnected);
-
-                if (notInValidChunks) {
-                    continue;
-                }
+                             (uint(topRightPixelSolid && !topRightPixelConnected) << 2u) |
+                             (uint(bottomRightPixelSolid && !bottomRightPixelConnected) << 1u) |
+                             uint(bottomLeftPixelSolid && !bottomLeftPixelConnected);
 
                 if (previousChunkMapping != -1u && previousChunkMapping != topLeftChunkMapping)
                 {

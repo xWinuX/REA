@@ -1,6 +1,7 @@
 #version 450
 
 #include "../PixelGridGlobals.glsl"
+#include "../SharedBuffers.glsl"
 
 layout (location = 0) in vec2 v_PixelPosition;
 
@@ -18,14 +19,7 @@ layout (std430, set = 1, binding = 0) readonly buffer c_GridInfo {
 
 layout (set = 1, binding = 1) uniform sampler2D texSampler;
 
-layout (std430, set = 2, binding = 0) buffer s_dl_ViewportPixels {
-    Pixel viewportPixels[NumSimulatedPixels];
-};
-
-layout(set = 2, binding = 1) buffer s_si_dl_Labels {
-    int labels[NumSimulatedPixels];
-};
-
+SSBO_ViewportPixels(2, 0)
 
 void main() {
     ivec2 position = ivec2(floor(v_PixelPosition));
@@ -45,24 +39,9 @@ void main() {
     if (gridInfo.renderMode == RenderMode_Normal) {
         pixelColor *= 1 + vec4(temperature / 100.0f, temperatureScaled, temperatureScaled, 1.0f);
         pixelColor += vec4((charge / 255.0f) * 2.0f, (charge / 255.0f) * 0.2, 0.0f, 0.0f);
-
-        /*if (pixelID == 0) {
-            pixelColor.xyz =  mix(pixelColor.xyz, vec3(), 1.0f - (v_PixelPosition.y / float(gridInfo.height)));
-        }*/
-
-    /*
-        //            pixelColor = vec4(dirColor.xyz, 1.0f);
-
-
-        pixelColor = vec4(0.0f, label/1048576.0f, pixelColor.z, 1.0f);*/
-
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
-        int label = labels[index];
-        label = label == 0 ? 1 : 0;
-        pixelColor = vec4(label, 0.0f, 0.0f, 1.0f);
-
-    //pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
+        pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
     }
 
     uvec2 offset = uvec2(gridInfo.offset);

@@ -83,7 +83,7 @@ int main()
 			.Color = Color(0x775937FF),
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
@@ -118,16 +118,9 @@ int main()
 			.ID = PixelType::Lava,
 			.Name = "Lava",
 			.Color = Color(0xFF8619FF),
-			.Data =
-			{
-				.Flags = BitSet<uint32_t>(Pixel::Gravity),
-				.Density = 20,
-				.SpreadingFactor = 2,
-				.TemperatureResistance = 0.00f,
-				.BaseTemperature = 1600,
-			}
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 20, .SpreadingFactor = 2, .TemperatureResistance = 0.00f, .BaseTemperature = 1600, }
 		},
-		{ .ID = PixelType::Stone, .Name = "Stone", .Color = Color(0x465466FF), .Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, } },
+		{ .ID = PixelType::Stone, .Name = "Stone", .Color = Color(0x465466FF), .Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, .TemperatureResistance = 0.01f, } },
 		{
 			.ID = PixelType::Gravel,
 			.Name = "Gravel",
@@ -190,7 +183,7 @@ int main()
 		{
 			.ID = PixelType::Iron,
 			.Name = "Iron",
-			.Color = Color(0x313642FF),
+			.Color = Color(0x918B87FF),
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive), .Density = 100, .TemperatureResistance = 1.0f, .BaseCharge = 0 }
 		},
 		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100, } },
@@ -316,6 +309,9 @@ int main()
 	auto pixelGridComputeAccumulate = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Accumulate,
 	                                                                               { { "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp" } });
 
+	auto pixelGridComputeParticle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Particle,
+																				   { { "res/shaders/PixelGridComputeParticle/PixelGridComputeParticle.comp" } });
+
 	auto marchingSquareShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_MarchingSquare, { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
 
 	// CCL
@@ -361,6 +357,7 @@ int main()
 		.RigidBodyRemove = pixelGridRigidBodyRemove,
 		.FallingSimulation = pixelGridComputeFall,
 		.AccumulateSimulation = pixelGridComputeAccumulate,
+		.PixelParticle = pixelGridComputeParticle,
 		.MarchingSquareAlgorithm = marchingSquareShader,
 		.CCLInitialize = cclInitialize,
 		.CCLColumn = cclColumn,
@@ -415,7 +412,7 @@ int main()
 	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
 
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 128, 24 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(std::move(pixelLookup)).Build();
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 24 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(std::move(pixelLookup)).Build();
 	pixelGrid.CameraEntityID       = camera;
 
 	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
