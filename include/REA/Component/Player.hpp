@@ -8,5 +8,6 @@ namespace REA::Component
 		glm::vec2 Position{ 0.0f, 0.0f };
 		glm::vec2 Velocity{ 0.0f, 0.0f };
 		bool CanJump = true;
+		float ColliderRadius = 8.0f;
 	};
 }

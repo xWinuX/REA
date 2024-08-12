@@ -378,7 +378,7 @@ int main()
 	// Rendering
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
 	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
-	//ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
+	ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
 	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
 
 	// Pre Rendering End
@@ -387,7 +387,7 @@ int main()
 	// Create entities
 	b2PolygonShape boxShape{};
 	boxShape.SetAsBox(1.0f, 1.0f);
-	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 0.0f, -10.0f } },
+	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 20.0f, 20.0f, -10.0f } },
 		{ defaultPhysicsMaterial, b2BodyType::b2_kinematicBody, { boxShape } },
 		{},
 		{ reaIdleRSprite, 1.0f, 0 });
