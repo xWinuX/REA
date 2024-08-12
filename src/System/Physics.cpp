@@ -84,13 +84,17 @@ namespace REA::System
 
 				// Interpolate
 				const b2Vec2& position = collider.Body->GetPosition();
-				if (collider.Body->GetType() != b2BodyType::b2_staticBody)
+				if (collider.Body->GetType() == b2BodyType::b2_dynamicBody)
 				{
 					float a              = _frameAccumulator / _timeStep;
 					transform.Position.x = position.x * a + collider.PreviousPosition.x * (1.0f - a);
 					transform.Position.y = position.y * a + collider.PreviousPosition.y * (1.0f - a);
 
 					transform.Rotation = glm::degrees(-collider.Body->GetAngle());
+				}
+				else if (collider.Body->GetType() == b2BodyType::b2_kinematicBody)
+				{
+					collider.Body->SetTransform(b2Vec2(transform.Position.x, transform.Position.y), 0);
 				}
 			}
 		}

@@ -699,7 +699,7 @@ namespace REA::System
 
 					_shaders.FallingSimulation->Update();
 
-					for (int i = 0; i < 8; ++i)
+					for (int i = 0; i < 16; ++i)
 					{
 						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 

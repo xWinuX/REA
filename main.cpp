@@ -69,7 +69,7 @@ int main()
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Conductive),
 				.Density = 12,
-				.SpreadingFactor = 8,
+				.SpreadingFactor = 16,
 				.TemperatureResistance = 0.6f,
 				.BaseTemperature = airTemperature,
 				.HighTemperatureLimit = 100,
@@ -83,7 +83,7 @@ int main()
 			.Color = Color(0x775937FF),
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive | Pixel::ElectricityReceiver),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
@@ -120,7 +120,12 @@ int main()
 			.Color = Color(0xFF8619FF),
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 20, .SpreadingFactor = 2, .TemperatureResistance = 0.00f, .BaseTemperature = 1600, }
 		},
-		{ .ID = PixelType::Stone, .Name = "Stone", .Color = Color(0x465466FF), .Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, .TemperatureResistance = 0.01f, } },
+		{
+			.ID = PixelType::Stone,
+			.Name = "Stone",
+			.Color = Color(0x465466FF),
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, .TemperatureResistance = 0.01f, }
+		},
 		{
 			.ID = PixelType::Gravel,
 			.Name = "Gravel",
@@ -191,8 +196,7 @@ int main()
 			.ID = PixelType::Grass,
 			.Name = "Grass",
 			.Color = Color(0x2E922EFF),
-			.Data = Pixel::Data
-			{
+			.Data = Pixel::Data{
 				.Flags = BitSet<uint32_t>(Pixel::Solid),
 				.Density = 100,
 				.TemperatureResistance = 1.0f,
@@ -214,11 +218,7 @@ int main()
 				.HighTemperatureLimitPixelID = PixelType::Fire,
 			}
 		},
-		{ .ID = PixelType::Marker_Red, .Name = "Red Marker", .Color = Color(0xFF0000FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid) } },
-		{ .ID = PixelType::Marker_Lime, .Name = "Lime Marker", .Color = Color(0x00FF00FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid) } },
-		{ .ID = PixelType::Marker_Yellow, .Name = "Yellow Marker", .Color = Color(0xFFFF00FF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid) } },
 	};
-
 
 	Application application = Application({
 		                                      {},
@@ -229,15 +229,15 @@ int main()
 
 	application.GetWindow().SetSize(1024, 1024);
 
-	Input::RegisterAxis2D(InputAction::Move, { KeyCode::A, KeyCode::D }, { KeyCode::S, KeyCode::W });
+	Input::RegisterAxis2D(InputAction::Fly, { KeyCode::A, KeyCode::D }, { KeyCode::S, KeyCode::W });
+	Input::RegisterAxis(InputAction::Move, { KeyCode::A, KeyCode::D });
 	Input::RegisterButtonAction(InputAction::Fire, KeyCode::MOUSE_LEFT);
+	Input::RegisterButtonAction(InputAction::Jump, KeyCode::SPACE);
 
 	AssetDatabase& assetDatabase = application.GetAssetDatabase();
 
-
 	AssetHandle<Rendering::Shader> spriteShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Sprite,
 	                                                                                           { { "res/shaders/Sprite/Sprite.vert", "res/shaders/Sprite/Sprite.frag" } });
-
 
 	AssetHandle<Rendering::Material> spriteMaterial = assetDatabase.CreateAsset<Rendering::Material>(Asset::Material::Sprite, { spriteShader });
 
@@ -265,7 +265,6 @@ int main()
 		                                                                                                                 },
 		                                                                                                                 pipelineCreateInfo
 	                                                                                                                 });
-
 
 	AssetHandle<Rendering::Material> physicsDebugMaterial = assetDatabase.CreateAsset<Rendering::Material>(Asset::Material::PhysicsDebug, { physicsDebugShader });
 
@@ -310,7 +309,7 @@ int main()
 	                                                                               { { "res/shaders/PixelGridComputeAccumulate/PixelGridComputeAccumulate.comp" } });
 
 	auto pixelGridComputeParticle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Particle,
-																				   { { "res/shaders/PixelGridComputeParticle/PixelGridComputeParticle.comp" } });
+	                                                                             { { "res/shaders/PixelGridComputeParticle/PixelGridComputeParticle.comp" } });
 
 	auto marchingSquareShader = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_MarchingSquare, { { "res/shaders/MarchingSquare/MarchingSquare.comp" } });
 
@@ -343,7 +342,7 @@ int main()
 	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>({ { Stage::PrePhysicsStep, 0 }, { Stage::PhysicsManagement, 0 } }, true);
 
 	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
-	ecs.AddSystem<System::PlayerController>(Stage::Physics, 0);
+	ecs.AddSystem<System::PlayerController>(Stage::GridComputeHalted, 0);
 
 	ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
 
@@ -375,12 +374,11 @@ int main()
 	                                                                                                                 simulationShaders);
 
 	simulation.System->DebugMaterial = marchingSqaureDebugMaterial;
-	//ecs.AddSystem<System::GameOfLifeSimulation>(ECS::Stage::Gameplay, 999);
 
 	// Rendering
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
 	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
-	ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
+	//ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
 	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
 
 	// Pre Rendering End
@@ -388,34 +386,23 @@ int main()
 
 	// Create entities
 	b2PolygonShape boxShape{};
-	boxShape.SetAsBox(1000.0f, 1.0f);
-
-	/*uint64_t floor = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 100.0f, -10.0f } },
-	                                                                                                        { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
-	                                                                                                        { floppaSprite, 1.0f, 0 });
-*/
-	/*	boxShape.SetAsBox(0.5f, 0.5f);
-		uint64_t floor2 = ecs.CreateEntity<Component::Transform, Component::Collider, Component::SpriteRenderer>({ { 0.0f, 10.0f, -10.0f } },
-		                                                                                                         { defaultPhysicsMaterial, b2BodyType::b2_staticBody, { boxShape } },
-		                                                                                                         { carstenSprite, 1.0f, 0 });
-	*/
-
 	boxShape.SetAsBox(1.0f, 1.0f);
 	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 0.0f, 0.0f, -10.0f } },
-		{ defaultPhysicsMaterial, b2BodyType::b2_dynamicBody, { boxShape } },
+		{ defaultPhysicsMaterial, b2BodyType::b2_kinematicBody, { boxShape } },
 		{},
 		{ reaIdleRSprite, 1.0f, 0 });
 
+
 	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { playerEntity });
 
-
-	//for (int i = 0; i < 100'000; ++i) { ecs.CreateEntity<Component::Transform, Component::SpriteRenderer>({ glm::ballRand(100.0f), 0.0f }, { floppaSprite, 1.0f, 0 }); }
-
 	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 24 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(std::move(pixelLookup)).Build();
+	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 32 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(std::move(pixelLookup)).Build();
 	pixelGrid.CameraEntityID       = camera;
 
-	ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
+	uint64_t pixelGridID = ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
+
+
+	ecs.GetComponent<Component::Player>(playerEntity).PixelGridEntityID = pixelGridID;
 
 	// Run Game
 	application.Run();

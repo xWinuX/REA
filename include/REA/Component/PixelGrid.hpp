@@ -38,6 +38,20 @@ namespace REA::Component
 			bool     Active   = false;
 		};
 
+		bool TryGetPixelAtPosition(int32_t x, int32_t y, Pixel::State*& pixel) const
+		{
+			uint32_t chunkIndex   = (y / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (x / Constants::CHUNK_SIZE);
+			uint32_t pixelIndex   = (y % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (x % Constants::CHUNK_SIZE);
+
+			if (chunkIndex >= ChunkMapping.size()) { return false; }
+
+			uint32_t chunkMapping = ChunkMapping[chunkIndex];
+
+			pixel = (*Chunks)[chunkMapping].data() + pixelIndex;
+
+			return true;
+		}
+
 		std::array<PixelChunk, Constants::NUM_CHUNKS>* Chunks        = nullptr;
 		std::vector<std::vector<b2Fixture*>>           ChunkFixtures = std::vector<std::vector<b2Fixture*>>(Constants::NUM_CHUNKS);
 		std::vector<uint32_t>                          ChunkMapping{};

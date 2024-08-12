@@ -13,7 +13,7 @@ namespace REA
 		public:
 			struct GenerationSettings
 			{
-				float TerrainBaselineRelativeToWorldHeight  = 0.8f;
+				float TerrainBaselineRelativeToWorldHeight  = 0.7f;
 				float TerrainRange                          = 500.0f;
 				int   GrassHeight                           = 5;
 				float CaveRange                             = 100.0f;

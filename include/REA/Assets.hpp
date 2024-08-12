@@ -7,6 +7,8 @@ namespace REA
 		Move,
 		Rotate,
 		Fire,
+		Fly,
+		Jump,
 	};
 
 	namespace Asset

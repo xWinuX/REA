@@ -147,29 +147,38 @@ namespace REA::System
 			glm::vec2 mousePosition = Input::GetMousePosition();
 			mousePosition           = { mousePosition.x, windowSize.y - mousePosition.y };
 
-			// Calculate normalized mouse position
-			//LOG("mouse {0} {1}", mousePosition.x, mousePosition.y);
-			//LOG("viewtarget {0} {1}", pixelGrid.ViewTargetPosition.x, pixelGrid.ViewTargetPosition.y);
 
-			// Normalize mouse position within the window dimensions
-			glm::vec2 normalizedMousePos = mousePosition / glm::vec2(windowSize);
-
-			int gridX = static_cast<int>(mousePosition.x) / 2;
-			int gridY = static_cast<int>(mousePosition.y) / 2;
+			int gridX = 0;
+			int gridY = 0;
 
 			// Map normalized mouse position to grid position
 			if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 			{
 				Component::Transform& transform = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID);
 
-				gridX += static_cast<int>(transform.Position.x);
-				gridY += static_cast<int>(transform.Position.y);
+				// Precompute common terms
+				int halfChunkSize = Constants::CHUNK_SIZE / 2;
+				int gridCenterX = (Constants::CHUNKS_X / 2) * Constants::CHUNK_SIZE + halfChunkSize;
+				int gridCenterY = (Constants::CHUNKS_Y / 2) * Constants::CHUNK_SIZE + halfChunkSize;
+
+				// Compute gridX and gridY
+				int32_t offsetX = static_cast<int32_t>((transform.Position.x * 10.0f) - halfChunkSize) % Constants::CHUNK_SIZE;
+				int32_t offsetY = static_cast<int32_t>((transform.Position.y * 10.0f) - halfChunkSize) % Constants::CHUNK_SIZE;
+
+				gridX = gridCenterX + offsetX;
+				gridY = gridCenterY + offsetY;
+
+				// Adjust with mouse position
+				mousePosition += glm::vec2(transform.Position);
+
+				gridX += static_cast<int>(mousePosition.x) - static_cast<int>(transform.Position.x + (static_cast<float>(windowSize.x) / 2.0f));
+				gridY += static_cast<int>(mousePosition.y) - static_cast<int>(transform.Position.y + (static_cast<float>(windowSize.y) / 2.0f));
 			}
 
 
 			// Ensure the grid position is within the bounds
-			gridX = std::clamp(gridX, 0, pixelGrid.WorldWidth - 1);
-			gridY = std::clamp(gridY, 0, pixelGrid.WorldHeight - 1);
+			gridX = std::clamp(gridX, 0, pixelGrid.SimulationWidth - 1);
+			gridY = std::clamp(gridY, 0, pixelGrid.SimulationHeight - 1);
 
 			// Set the pointer position for rendering
 			pixelGridRenderer.PointerPosition = { gridX, gridY };

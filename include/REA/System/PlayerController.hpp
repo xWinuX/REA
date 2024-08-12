@@ -22,5 +22,9 @@ namespace REA::System
 			             std::vector<uint64_t>& entities,
 			             ECS::ContextProvider&  contextProvider,
 			             uint8_t                stage) override;
+
+
+		private:
+			float _counter = 0.0f;
 	};
 }
