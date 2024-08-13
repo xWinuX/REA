@@ -2,6 +2,7 @@
 #include <glm/vec2.hpp>
 #include <SplitEngine/ECS/System.hpp>
 
+#include "ReaSystem.hpp"
 #include "REA/Component/PixelGrid.hpp"
 #include "REA/Component/PixelGridRenderer.hpp"
 
@@ -9,7 +10,7 @@ using namespace SplitEngine;
 
 namespace REA::System
 {
-	class PixelGridDrawing final : public ECS::System<Component::PixelGrid, Component::PixelGridRenderer>
+	class PixelGridDrawing final : public ReaSystem<Component::PixelGrid, Component::PixelGridRenderer>
 	{
 		public:
 			PixelGridDrawing(int radius, Pixel::ID clearPixelID);

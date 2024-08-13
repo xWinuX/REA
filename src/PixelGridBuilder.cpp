@@ -11,7 +11,7 @@ namespace REA
 		return *this;
 	}
 
-	PixelGridBuilder& PixelGridBuilder::WithPixelData(std::vector<PixelCreateInfo>&& pixelData)
+	PixelGridBuilder& PixelGridBuilder::WithPixelData(std::vector<PixelCreateInfo> pixelData)
 	{
 		_pixelCreateInfos = std::move(pixelData);
 		return *this;

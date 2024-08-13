@@ -1,5 +1,4 @@
 #pragma once
-#include "Component/AudioSource.hpp"
 #include "Component/PixelGrid.hpp"
 
 namespace REA
@@ -18,7 +17,7 @@ namespace REA
 			};
 
 			PixelGridBuilder&    WithSize(glm::ivec2 worldChunkSize, glm::ivec2 simulationChunkSize);
-			PixelGridBuilder&    WithPixelData(std::vector<PixelCreateInfo>&& pixelData);
+			PixelGridBuilder&    WithPixelData(std::vector<PixelCreateInfo> pixelData);
 			Component::PixelGrid Build();
 
 		private:

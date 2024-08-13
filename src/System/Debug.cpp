@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
+#include <SplitEngine/Input.hpp>
 
 #include "REA/Stage.hpp"
 #include "REA/Context/ImGui.hpp"
@@ -17,6 +18,7 @@ namespace REA::System
 		_ecsStageLookup[EngineStage::BeginRendering] = "Begin Rendering";
 		_ecsStageLookup[EngineStage::EndRendering]   = "End Rendering";
 		_ecsStageLookup[Stage::Gameplay]             = "Gameplay";
+		_ecsStageLookup[Stage::PrePhysicsStep]       = "Pre Physics";
 		_ecsStageLookup[Stage::Physics]              = "Physics";
 		_ecsStageLookup[Stage::Rendering]            = "Rendering";
 		_ecsStageLookup[Stage::PhysicsManagement]    = "Physics Management";
@@ -25,12 +27,15 @@ namespace REA::System
 		_ecsStageLookup[Stage::GridComputeEnd]       = "Grid Compute End";
 	}
 
-	void Debug::ExecuteArchetypes(std::vector<SplitEngine::ECS::Archetype*>& archetypes, SplitEngine::ECS::ContextProvider& contextProvider, uint8_t stage)
+	void Debug::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
+		if (Input::GetPressed(KeyCode::F3)) { _toggled = !_toggled; }
+
+		if (!_toggled) { return; }
+
 		Context::ImGui* imGuiContext  = contextProvider.GetContext<Context::ImGui>();
 		EngineContext*  engineContext = contextProvider.GetContext<EngineContext>();
 
-		ImGui::SetNextWindowDockID(imGuiContext->TopLeftDockingID, ImGuiCond_Always);
 		ImGui::Begin("Debug");
 
 		if (ImGui::Button("Fullscreen Toggle")) { engineContext->Application->GetWindow().ToggleFullscreen(); }
@@ -39,7 +44,6 @@ namespace REA::System
 		ImGui::Text(std::format("{0}: %f", "DeltaTime").c_str(), statistics.AverageDeltaTime);
 		ImGui::Text(std::format("{0}: %i", "FPS").c_str(), statistics.AverageFPS);
 		ImGui::Text("Frame Time (ms): %f", statistics.AverageDeltaTime / 0.001f);
-
 
 		std::vector<uint8_t>& activeStages = engineContext->Application->GetECSRegistry().GetActiveStages();
 

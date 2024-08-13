@@ -4,6 +4,7 @@
 #include <SplitEngine/Rendering/Shader.hpp>
 #include <SplitEngine/Rendering/Vulkan/CommandBuffer.hpp>
 
+#include "ReaSystem.hpp"
 #include "REA/MemoryHeap.hpp"
 #include "REA/WorldGenerator.hpp"
 #include "REA/Component/Collider.hpp"
@@ -11,7 +12,7 @@
 
 namespace REA::System
 {
-	class PixelGridSimulation final : public ECS::System<Component::PixelGrid, Component::Collider>
+	class PixelGridSimulation final : public ReaSystem<Component::PixelGrid>
 	{
 		public:
 			struct SimulationShaders
@@ -37,11 +38,10 @@ namespace REA::System
 
 		protected:
 			void ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage) override;
-			void Execute(Component::PixelGrid*  pixelGrids,
-			             Component::Collider*   colliders,
-			             std::vector<uint64_t>& entities,
-			             ECS::ContextProvider&  contextProvider,
-			             uint8_t                stage) override;
+			void Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage) override;
+
+
+			void Destroy(ECS::ContextProvider& contextProvider) override;
 
 		private:
 			struct RigidBody

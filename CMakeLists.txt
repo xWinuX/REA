@@ -77,6 +77,12 @@ add_executable(
         src/WorldGenerator.cpp
         include/REA/WorldGenerator.hpp
         include/REA/Constants.hpp
+        src/System/ReaSystem.cpp
+        include/REA/System/ReaSystem.hpp
+        src/System/MainMenu.cpp
+        include/REA/System/MainMenu.hpp
+        include/REA/ImGuiHelper.hpp
+        src/ImGuiHelper.cpp
 )
 
 target_include_directories(REA PRIVATE include)

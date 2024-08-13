@@ -55,7 +55,6 @@ namespace REA
 				              caveThreshold = glm::mix(generationSettings.CaveNoiseTreshold, generationSettings.CaveNoiseTresholdTerrain, a);
 			              }
 
-
 			              float caveHeight = caveBaseLine + (caveTerrainTransitionNoise[x] * generationSettings.CaveRange);
 			              if (caveNoise[i] < caveThreshold)
 			              {

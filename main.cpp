@@ -12,6 +12,7 @@
 #include <SplitEngine/Rendering/Texture2D.hpp>
 
 #include <glm/gtc/random.hpp>
+#include <REA/System/MainMenu.hpp>
 
 #include "REA/Assets.hpp"
 #include "REA/Component/AudioSource.hpp"
@@ -37,6 +38,7 @@
 #include "REA/Component/PixelGridRenderer.hpp"
 #include "REA/Component/PixelGridRigidBody.hpp"
 #include "REA/Context/ImGui.hpp"
+#include "REA/Context/Global.hpp"
 #include "REA/System/ImGuiManager.hpp"
 #include "REA/System/PhysicsDebugRenderer.hpp"
 
@@ -224,7 +226,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::PrePhysicsStep, Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
+		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
 	                                      });
 
 	application.GetWindow().SetSize(1024, 1024);
@@ -338,6 +340,7 @@ int main()
 	ecs.RegisterComponent<Component::PixelGridRigidBody>();
 
 	ecs.RegisterContext<Context::ImGui>({});
+	ecs.RegisterContext<Context::Global>({});
 
 	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>({ { Stage::PrePhysicsStep, 0 }, { Stage::PhysicsManagement, 0 } }, true);
 
@@ -347,6 +350,7 @@ int main()
 	ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
 
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
+	ecs.AddSystem<System::MainMenu>(Stage::Gameplay, 1, pixelLookup);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 
 	// Simulation
@@ -387,22 +391,18 @@ int main()
 	// Create entities
 	b2PolygonShape boxShape{};
 	boxShape.SetAsBox(1.0f, 1.0f);
-	uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 20.0f, 20.0f, -10.0f } },
+	/*uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 20.0f, 20.0f, -10.0f } },
 		{ defaultPhysicsMaterial, b2BodyType::b2_kinematicBody, { boxShape } },
 		{},
 		{ reaIdleRSprite, 1.0f, 0 });
+*/
 
+	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { -1ull });
+	ecs.GetContextProvider().GetContext<Context::Global>()->CameraEntityID = camera;
 
-	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { playerEntity });
+	//uint64_t pixelGridID = ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
 
-	PixelGridBuilder     pixelGridBuilder{};
-	Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 64, 32 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(std::move(pixelLookup)).Build();
-	pixelGrid.CameraEntityID       = camera;
-
-	uint64_t pixelGridID = ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
-
-
-	ecs.GetComponent<Component::Player>(playerEntity).PixelGridEntityID = pixelGridID;
+	//ecs.GetComponent<Component::Player>(playerEntity).PixelGridEntityID = pixelGridID;
 
 	// Run Game
 	application.Run();

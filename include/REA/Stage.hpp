@@ -27,4 +27,11 @@ namespace REA
 
 		// EndRendering =  200
 	};
+
+	enum Level
+	{
+		Global   = 0,
+		Sandbox  = 1,
+		Explorer = 2
+	};
 }

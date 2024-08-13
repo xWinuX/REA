@@ -17,6 +17,7 @@
 #include <SplitEngine/Rendering/Material.hpp>
 #include <SplitEngine/Rendering/Renderer.hpp>
 #include <SplitEngine/Rendering/Vulkan/Device.hpp>
+#include <SplitEngine/Rendering/Vulkan/Utility.hpp>
 
 #include <glm/ext/matrix_transform.hpp>
 
@@ -83,7 +84,7 @@ namespace REA::System
 
 		// Create Fences
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
-		_computeFence                       = _shaders.IdleSimulation->GetPipeline().GetDevice()->GetVkDevice().createFence(fenceCreateInfo);
+		_computeFence                       = device->GetVkDevice().createFence(fenceCreateInfo);
 
 		// Create static environment Collider
 		for (uint64_t& staticEnvironmentEntityID: _staticEnvironmentEntityIDs)
@@ -149,7 +150,7 @@ namespace REA::System
 			ImGui::End();
 		}
 
-		System<Component::PixelGrid, Component::Collider>::ExecuteArchetypes(archetypes, contextProvider, stage);
+		ReaSystem<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
 	}
 
 	glm::uvec2 PixelGridSimulation::GetMargolusOffset(uint32_t frame)
@@ -169,13 +170,7 @@ namespace REA::System
 		}
 	}
 
-	int mod(int a, int b) { return (a % b + b) % b; }
-
-	void PixelGridSimulation::Execute(Component::PixelGrid*  pixelGrids,
-	                                  Component::Collider*   colliders,
-	                                  std::vector<uint64_t>& entities,
-	                                  ECS::ContextProvider&  contextProvider,
-	                                  uint8_t                stage)
+	void PixelGridSimulation::Execute(Component::PixelGrid* pixelGrids, std::vector<uint64_t>& entities, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 		EngineContext*       engineContext = contextProvider.GetContext<EngineContext>();
 		ECS::Registry&       ecsRegistry   = engineContext->Application->GetECSRegistry();
@@ -184,8 +179,12 @@ namespace REA::System
 		Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
 		Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
 
+		LOG("num entities stage {0} - {1}", stage, entities.size());
+
 		for (int entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
 		{
+			LOG("entity id {0}", entities[entityIndex]);
+
 			SSBO_SimulationData* simulationData = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
 			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(2);
 			SSBO_Updates*        updates        = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Updates>(1);
@@ -210,8 +209,6 @@ namespace REA::System
 					std::vector<std::vector<MarchingSquareMesherUtils::Polyline>> solidPolylineCollection = std::vector<std::vector<
 						MarchingSquareMesherUtils::Polyline>>(Constants::NUM_CHUNKS, {});
 
-
-					//BENCHMARK_BEGIN
 					_indexes = std::ranges::iota_view(0ull, static_cast<size_t>(Constants::NUM_CHUNKS));
 					std::for_each(std::execution::par_unseq,
 					              _indexes.begin(),
@@ -240,10 +237,6 @@ namespace REA::System
 						              }
 					              });
 
-					//					BENCHMARK_END("Environment Collisions Calculate")
-
-
-					//	BENCHMARK_BEGIN
 
 					for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
 					{
@@ -281,8 +274,6 @@ namespace REA::System
 							pixelGrid.ChunkRegenerate[chunkMapping] = false;
 						}
 					}
-
-					//BENCHMARK_END("Environment Collision Apply")
 
 					// Create rigidbodies and their colission meshes
 					std::vector<CDT::Edge> connectedEdges = std::vector<CDT::Edge>(marchingCubes->connectedChunk.numSegments, CDT::Edge(0, 0));
@@ -399,7 +390,6 @@ namespace REA::System
 								vertices[1] = { vertices[1].x - b2Center.x, vertices[1].y - b2Center.y };
 								vertices[2] = { vertices[2].x - b2Center.x, vertices[2].y - b2Center.y };
 
-
 								// Skip weird ass small polygons cdt sometime generates
 								float area = 0.5f * std::abs(vertices[0].x * (vertices[1].y - vertices[2].y) + vertices[1].x * (vertices[2].y - vertices[0].y) + vertices[2].x * (
 									                             vertices[0].y - vertices[1].y));
@@ -482,8 +472,8 @@ namespace REA::System
 								{
 									int chunkIndex = y * pixelGrid.SimulationChunksX + x;
 
-									int wrappedX = mod(x - pixelGrid.ChunkOffset.x, pixelGrid.SimulationChunksX);
-									int wrappedY = mod(y - pixelGrid.ChunkOffset.y, pixelGrid.SimulationChunksY);
+									int wrappedX = Math::Mod(x - pixelGrid.ChunkOffset.x, pixelGrid.SimulationChunksX);
+									int wrappedY = Math::Mod(y - pixelGrid.ChunkOffset.y, pixelGrid.SimulationChunksY);
 
 									if (wrappedX < 0) { wrappedX += pixelGrid.SimulationChunksX; }
 									if (wrappedY < 0) { wrappedY += pixelGrid.SimulationChunksY; }
@@ -677,8 +667,8 @@ namespace REA::System
 						}
 
 						float counterForce = rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x * 5.0f;
-						collider.Body->SetLinearDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x*5.0f);
-						collider.Body->SetAngularDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x*5.0f);
+						collider.Body->SetLinearDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x * 5.0f);
+						collider.Body->SetAngularDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x * 5.0f);
 
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Position        = transform.Position * 10.0f;
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Velocity        = collider.Body->GetLinearVelocity();
@@ -867,5 +857,12 @@ namespace REA::System
 				_fif = (fif + 1) % Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT;
 			}
 		}
+	}
+
+	void PixelGridSimulation::Destroy(ECS::ContextProvider& contextProvider)
+	{
+		Rendering::Vulkan::Device& device = contextProvider.GetContext<RenderingContext>()->Renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
+		device.GetVkDevice().destroy(_computeFence);
+		_copyBuffer.Destroy();
 	}
 }

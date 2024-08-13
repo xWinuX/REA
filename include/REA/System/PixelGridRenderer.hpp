@@ -6,6 +6,7 @@
 #include <SplitEngine/Rendering/Model.hpp>
 #include <SplitEngine/DataStructures.hpp>
 
+#include "ReaSystem.hpp"
 #include "REA/Component/PixelGrid.hpp"
 #include "REA/Component/PixelGridRenderer.hpp"
 
@@ -13,7 +14,7 @@ using namespace SplitEngine;
 
 namespace REA::System
 {
-	class PixelGridRenderer final : public ECS::System<Component::PixelGrid, Component::PixelGridRenderer>
+	class PixelGridRenderer final : public ReaSystem<Component::PixelGrid, Component::PixelGridRenderer>
 	{
 		public:
 			explicit PixelGridRenderer(AssetHandle<Rendering::Material> material);

@@ -42,7 +42,7 @@ namespace REA::System
 		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
 		ImGui::SetNextWindowDockID(imGuiContext->RightDockingID, ImGuiCond_Always);
 		ImGui::Begin("Drawing");
-		System<Component::PixelGrid, Component::PixelGridRenderer>::ExecuteArchetypes(archetypes, contextProvider, stage);
+		ReaSystem<Component::PixelGrid, Component::PixelGridRenderer>::ExecuteArchetypes(archetypes, contextProvider, stage);
 		ImGui::End();
 		_mouseWheel = { 0, 0 };
 	}

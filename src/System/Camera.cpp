@@ -47,7 +47,7 @@ namespace REA::System
 			Component::Transform& transformComponent = transformComponents[i];
 			Component::Camera&    cameraComponent    = cameraComponents[i];
 
-			if (contextProvider.Registry->IsEntityValid(cameraComponent.TargetEntity))
+			if (cameraComponent.TargetEntity != -1ull)
 			{
 				Component::Transform& targetTransform = contextProvider.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity);
 				glm::vec3             newPosition     = glm::mix(transformComponent.Position,
@@ -64,14 +64,6 @@ namespace REA::System
 
 			Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
 
-			//cameraUBO->proj = glm::ortho(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 0.1f, 1000.0f);
-			//cameraUBO->identity = glm::identity<glm::mat4>();
-			//cameraUBO->view = glm::lookAt(transformComponent.Position, transformComponent.Position + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			//cameraUBO->proj = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / -static_cast<float>(height), 0.1f, 1000.0f) * cameraUBO->view;
-
-			ImGui::SliderFloat("pixelsPerUnit", &_pixelsPerUnit, 0.1f, 100.0f);
-			ImGui::SliderFloat("pixelSize", &_pixelSize, 0.1f, 50.0f);
-
 			const uint32_t width  = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().width;
 			const uint32_t height = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
 
@@ -86,8 +78,6 @@ namespace REA::System
 
 			cameraUBO->pixelSize     = _pixelSize;
 			cameraUBO->pixelsPerUnit = _pixelsPerUnit;
-
-			//cameraUBO->proj = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / -static_cast<float>(height), 0.1f, 1000.0f);
 		}
 	}
 }
