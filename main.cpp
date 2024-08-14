@@ -13,6 +13,7 @@
 
 #include <glm/gtc/random.hpp>
 #include <REA/System/MainMenu.hpp>
+#include <REA/System/PauseMenu.hpp>
 
 #include "REA/Assets.hpp"
 #include "REA/Component/AudioSource.hpp"
@@ -226,7 +227,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::PrePhysicsStep, Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = true, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
+		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
 	                                      });
 
 	application.GetWindow().SetSize(1024, 1024);
@@ -291,9 +292,9 @@ int main()
 
 	Tools::ImagePacker::PackingData packingData = texturePacker.Pack(2048);
 
-	AssetHandle<SpriteTexture> floppaSprite     = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::Floppa, { floppaPackerID, packingData });
-	AssetHandle<SpriteTexture> blueBulletSprite = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::BlueBullet, { blueBulletPackerID, packingData });
-	AssetHandle<SpriteTexture> reaIdleRSprite   = assetDatabase.CreateAsset<SpriteTexture>(Asset::Sprite::Rea_Idle_R, { reaIdleRPackerID, packingData });
+	AssetHandle<Sprite> floppaSprite     = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Floppa, { floppaPackerID, packingData });
+	AssetHandle<Sprite> blueBulletSprite = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::BlueBullet, { blueBulletPackerID, packingData });
+	AssetHandle<Sprite> reaIdleRSprite   = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Rea_Idle_R, { reaIdleRPackerID, packingData });
 
 	auto pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Idle,
 	                                                                         { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
@@ -351,6 +352,7 @@ int main()
 
 	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::MainMenu>(Stage::Gameplay, 1, pixelLookup);
+	ecs.AddSystem<System::PauseMenu>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
 
 	// Simulation
@@ -389,20 +391,10 @@ int main()
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
 
 	// Create entities
-	b2PolygonShape boxShape{};
-	boxShape.SetAsBox(1.0f, 1.0f);
-	/*uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 20.0f, 20.0f, -10.0f } },
-		{ defaultPhysicsMaterial, b2BodyType::b2_kinematicBody, { boxShape } },
-		{},
-		{ reaIdleRSprite, 1.0f, 0 });
-*/
-
-	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { -1ull });
+	uint64_t camera                                                        = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { 10.0f  });
 	ecs.GetContextProvider().GetContext<Context::Global>()->CameraEntityID = camera;
 
-	//uint64_t pixelGridID = ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::Collider, Component::PixelGridRenderer>({}, std::move(pixelGrid), { defaultPhysicsMaterial }, {});
-
-	//ecs.GetComponent<Component::Player>(playerEntity).PixelGridEntityID = pixelGridID;
+	ecs.SetPrimaryGroup(Level::MainMenu);
 
 	// Run Game
 	application.Run();

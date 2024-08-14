@@ -38,8 +38,8 @@ add_executable(
         src/System/AudioSourcePlayer.cpp
         include/REA/System/AudioSourcePlayer.hpp
         include/REA/Assets.hpp
-        src/SpriteTexture.cpp
-        include/REA/SpriteTexture.hpp
+        src/Sprite.cpp
+        include/REA/Sprite.hpp
         src/System/Debug.cpp
         include/REA/System/Debug.hpp
         include/REA/System/PixelGridRenderer.hpp
@@ -83,6 +83,8 @@ add_executable(
         include/REA/System/MainMenu.hpp
         include/REA/ImGuiHelper.hpp
         src/ImGuiHelper.cpp
+        src/System/PauseMenu.cpp
+        include/REA/System/PauseMenu.hpp
 )
 
 target_include_directories(REA PRIVATE include)

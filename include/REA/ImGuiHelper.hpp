@@ -8,5 +8,7 @@ namespace REA
 	{
 		public:
 			static bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f);
+
+			static void CenterNextWindow();
 	};
 }

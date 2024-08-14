@@ -12,24 +12,25 @@
 
 namespace REA::System
 {
-	glm::mat4 PrepareOrthographicProjectionMatrix(float left_plane, float right_plane, float bottom_plane, float top_plane, float near_plane, float far_plane)
+	// Source: https://github.com/PacktPublishing/Vulkan-Cookbook/blob/master/Library/Source%20Files/10%20Helper%20Recipes/05%20Preparing%20an%20orthographic%20projection%20matrix.cpp
+	glm::mat4 Camera::PrepareOrthographicProjectionMatrix(float leftPlane, float rightPlane, float bottomPlane, float topPlane, float nearPlane, float farPlane)
 	{
 		glm::mat4 orthographic_projection_matrix = {
-			2.0f / (right_plane - left_plane),
+			2.0f / (rightPlane - leftPlane),
 			0.0f,
 			0.0f,
 			0.0f,
 			0.0f,
-			2.0f / (bottom_plane - top_plane),
+			2.0f / (bottomPlane - topPlane),
 			0.0f,
 			0.0f,
 			0.0f,
 			0.0f,
-			1.0f / (near_plane - far_plane),
+			1.0f / (nearPlane - farPlane),
 			0.0f,
-			-(right_plane + left_plane) / (right_plane - left_plane),
-			-(bottom_plane + top_plane) / (bottom_plane - top_plane),
-			near_plane / (near_plane - far_plane),
+			-(rightPlane + leftPlane) / (rightPlane - leftPlane),
+			-(bottomPlane + topPlane) / (bottomPlane - topPlane),
+			nearPlane / (nearPlane - farPlane),
 			1.0f
 		};
 		return orthographic_projection_matrix;
@@ -41,26 +42,22 @@ namespace REA::System
 	                     ECS::ContextProvider&  contextProvider,
 	                     uint8_t                stage)
 	{
+		ECS::Registry& ecs = contextProvider.GetContext<EngineContext>()->Application->GetECSRegistry();
 		CameraUBO* cameraUBO = Rendering::Shader::GetGlobalProperties().GetBufferData<CameraUBO>(0);
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::Transform& transformComponent = transformComponents[i];
 			Component::Camera&    cameraComponent    = cameraComponents[i];
 
-			if (cameraComponent.TargetEntity != -1ull)
+			if (cameraComponent.TargetEntity != -1ull && ecs.IsEntityValid(cameraComponent.TargetEntity))
 			{
 				Component::Transform& targetTransform = contextProvider.Registry->GetComponent<Component::Transform>(cameraComponent.TargetEntity);
-				glm::vec3             newPosition     = glm::mix(transformComponent.Position,
-				                                                 glm::vec3(targetTransform.Position.x, targetTransform.Position.y, transformComponent.Position.z),
-				                                                 0.125f);
+				glm::vec2             newPosition     = glm::mix(glm::vec2(transformComponent.Position), glm::vec2(targetTransform.Position.x, targetTransform.Position.y), 0.125f);
 
-				//float offset                = 102.4f / (2.0f * _pixelSize);
-				//newPosition.x = glm::clamp(newPosition.x, offset, 409.6f-offset);
-				//newPosition.y = glm::clamp(newPosition.y, offset, 204.8f-offset);
-
-				transformComponent.Position = newPosition;
+				cameraComponent.TargetPosition = glm::vec3(newPosition, cameraComponent.Layer);
 			}
-			else { transformComponent.Position = glm::mix(transformComponent.Position, glm::vec3(cameraComponent.TargetPosition, 0.0f), 0.25f); }
+
+			transformComponent.Position = glm::vec3(glm::mix(glm::vec2(transformComponent.Position), glm::vec2(cameraComponent.TargetPosition), 0.25f), cameraComponent.Layer);
 
 			Rendering::Renderer* renderer = contextProvider.GetContext<RenderingContext>()->Renderer;
 

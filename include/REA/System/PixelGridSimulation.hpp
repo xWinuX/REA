@@ -104,8 +104,6 @@ namespace REA::System
 				float OverworldNoiseFrequency = 0.0005f;
 			};
 
-			std::vector<uint64_t> _staticEnvironmentEntityIDs = std::vector<uint64_t>(Constants::NUM_CHUNKS, -1ull);
-
 			uint32_t _fif = 1;
 
 			float _lineSimplificationTolerance = 0.5f;
@@ -121,9 +119,6 @@ namespace REA::System
 
 			bool _paused        = true;
 			bool _doStep        = false;
-			bool _generateWorld = true;
-
-			WorldGenerator::GenerationSettings _worldGenerationSettings{};
 
 			bool _firstUpdate = true;
 

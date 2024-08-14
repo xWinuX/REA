@@ -2,7 +2,8 @@
 
 #include <REA/Constants.hpp>
 #include <REA/PixelType.hpp>
-#include <REA/Component/PixelGrid.hpp>
+#include <SplitEngine/Application.hpp>
+#include <SplitEngine/Application.hpp>
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
@@ -15,30 +16,27 @@
 
 namespace REA::System
 {
-	bool checkCollisionForCircle(const glm::ivec2 center, float radius, Component::PixelGrid& pixelGrid)
+	bool PlayerController::CheckCollisionForCircle(glm::vec2 center, int radius, Component::PixelGrid& pixelGrid)
 	{
+		glm::ivec2 flooredCenter = glm::ivec2(glm::floor(center));
+
 		for (int y = -radius; y <= radius; ++y)
 		{
 			for (int x = -radius; x <= radius; ++x)
 			{
-				if (x * x + y * y <= radius * radius) // Only check within the circle
+				if (x * x + y * y <= radius * radius)
 				{
-					glm::ivec2    checkPos = (center + glm::ivec2(x, y)) - glm::ivec2(pixelGrid.ChunkOffset.x  * Constants::CHUNK_SIZE, pixelGrid.ChunkOffset.y * Constants::CHUNK_SIZE);
+					glm::ivec2 checkPos = (flooredCenter + glm::ivec2(x, y)) - glm::ivec2(pixelGrid.ChunkOffset.x * Constants::CHUNK_SIZE,
+					                                                                      pixelGrid.ChunkOffset.y * Constants::CHUNK_SIZE);
 					Pixel::State* currentPixel;
 
 
-					if (pixelGrid.TryGetPixelAtPosition(checkPos.x, checkPos.y, currentPixel))
-					{
-						if (currentPixel->Flags.Has(Pixel::Flags::Solid))
-						{
-							return true; // Collision detected
-						}
-					}
+					if (pixelGrid.TryGetPixelAtPosition(checkPos.x, checkPos.y, currentPixel)) { if (currentPixel->Flags.Has(Pixel::Flags::Solid)) { return true; } }
 					else { return true; }
 				}
 			}
 		}
-		return false; // No collision
+		return false;
 	}
 
 	void PlayerController::Execute(Component::Transform*  transformComponents,
@@ -52,112 +50,121 @@ namespace REA::System
 		float          deltaTime = contextProvider.GetContext<TimeContext>()->DeltaTime;
 
 
-		BENCHMARK_BEGIN
-		// Brute force ahh movement, inefficent asf but works
-		for (int i = 0; i < entities.size(); ++i)
-		{
-			Component::Transform& transform = transformComponents[i];
-			Component::Player&    player    = playerComponents[i];
-
-			if (Input::GetPressed(KeyCode::F)) { player.Position = { 20.0f, 20.0f }; }
-
-			glm::vec2 speed = glm::vec2(Input::GetAxisActionDown(InputAction::Move) * 100.0f * deltaTime, 0.0f) + player.Velocity;
-
-			Component::PixelGrid& pixelGrid = ecs.GetComponent<Component::PixelGrid>(player.PixelGridEntityID);
-
-			glm::ivec2 playerPosition = glm::ivec2(glm::floor(player.Position));
-			glm::ivec2 roundedSpeed   = glm::ivec2(glm::floor(speed));
-			glm::ivec2 targetPosition = glm::ivec2(glm::floor(player.Position + speed));
-
-			Pixel::State* currentPixel;
-			if (checkCollisionForCircle({ targetPosition.x, playerPosition.y }, player.ColliderRadius, pixelGrid))
+		//BENCHMARK_BEGIN
+			// Brute force ahh movement, inefficent asf but works
+			for (int i = 0; i < entities.size(); ++i)
 			{
-				// Slope handling logic: Try to move up or down if there's a solid block in front
-				int  maxSlopeHeight = 5; // Maximum height the player can "step" onto
-				bool foundSlope     = false;
+				Component::Transform& transform = transformComponents[i];
+				Component::Player&    player    = playerComponents[i];
 
-				for (int yOffset = 1; yOffset <= maxSlopeHeight; ++yOffset)
+
+				glm::vec2 playerPosition = glm::vec2(transform.Position);
+
+				if (player.PixelGridEntityID == -1ull) { continue; }
+
+				Component::PixelGrid& pixelGrid = ecs.GetComponent<Component::PixelGrid>(player.PixelGridEntityID);
+
+				if (!player.NoClip)
 				{
-					if (!checkCollisionForCircle({ targetPosition.x, playerPosition.y + yOffset }, player.ColliderRadius, pixelGrid))
+					bool grounded = CheckCollisionForCircle({ playerPosition.x, playerPosition.y - 1 }, player.ColliderRadius, pixelGrid);
+					if (!grounded)
 					{
-						player.Position.y += yOffset; // Step up onto the slope
-						foundSlope = true;
-						break;
+						player.Velocity.y += -700.0f * deltaTime;
 					}
-				}
-
-				if (!foundSlope)
-				{
-					// Check for stepping down
-					for (int yOffset = -1; yOffset >= -maxSlopeHeight; --yOffset)
+					else if (player.Velocity.y < 0)
 					{
-						if (!checkCollisionForCircle({ targetPosition.x, playerPosition.y + yOffset }, player.ColliderRadius, pixelGrid))
+						player.Velocity.y = 0;
+					}
+
+
+					float moveDirection   = Input::GetAxisActionDown(InputAction::Move);
+					float acceleration    = 20.0f;
+					float maxSpeed        = 200.0f;
+					float gravity = 100.0f;
+					float horizontalSpeed = acceleration * moveDirection * deltaTime;
+
+					player.Velocity.x = moveDirection * maxSpeed;
+
+					//if (moveDirection != 0.0f)
+					//{
+					//	if (abs(player.Velocity.x + horizontalSpeed) < maxSpeed) { player.Velocity.x += horizontalSpeed; }
+					//	else { player.Velocity.x = maxSpeed; }
+					//}
+
+					if (grounded && Input::GetButtonActionPressed(InputAction::Jump)) { player.Velocity.y = 400.0f; }
+
+
+
+					if (CheckCollisionForCircle({ playerPosition.x + (player.Velocity.x * deltaTime), playerPosition.y }, player.ColliderRadius, pixelGrid))
+					{
+						// Slope handling logic: Try to move up or down if there's a solid block in front
+						int  maxSlopeHeight = 5; // Maximum height the player can "step" onto
+						bool foundSlope     = false;
+
+						for (int yOffset = 1; yOffset <= maxSlopeHeight; ++yOffset)
 						{
-							player.Position.y += yOffset; // Step down onto the slope
-							foundSlope = true;
-							break;
+							float offset = static_cast<float>(yOffset);
+							if (!CheckCollisionForCircle({ playerPosition.x + (player.Velocity.x * deltaTime), playerPosition.y + offset }, player.ColliderRadius, pixelGrid))
+							{
+								playerPosition.y += offset; // Step up onto the slope
+								foundSlope = true;
+								break;
+							}
+						}
+
+						if (!foundSlope)
+						{
+							// Check for stepping down
+							for (int yOffset = -1; yOffset >= -maxSlopeHeight; --yOffset)
+							{
+								float offset = static_cast<float>(yOffset);
+								if (!CheckCollisionForCircle({ playerPosition.x + (player.Velocity.x * deltaTime), playerPosition.y + offset }, player.ColliderRadius, pixelGrid))
+								{
+									playerPosition.y += offset;
+									foundSlope = true;
+									break;
+								}
+							}
+						}
+
+						if (!foundSlope)
+						{
+							uint32_t checks = 0;
+							float    offset = glm::sign(player.Velocity.x * deltaTime);
+							while (!CheckCollisionForCircle({ playerPosition.x + offset, playerPosition.y }, player.ColliderRadius, pixelGrid))
+							{
+								playerPosition.x += offset;
+								checks++;
+							}
+
+							player.Velocity.x = 0;
 						}
 					}
-				}
 
-				if (!foundSlope)
-				{
-					uint32_t checks = 0;
-					while (!checkCollisionForCircle({ static_cast<int32_t>(glm::floor(player.Position.x + glm::sign(speed.x))), playerPosition.y }, player.ColliderRadius, pixelGrid))
+					if (CheckCollisionForCircle({ playerPosition.x, playerPosition.y + (player.Velocity.y * deltaTime) }, player.ColliderRadius, pixelGrid))
 					{
-						player.Position.x += glm::sign(speed.x);
-						checks++;
+						uint32_t checks = 0;
+						float    offset = glm::sign(player.Velocity.y * deltaTime);
+						while (!CheckCollisionForCircle({ playerPosition.x, playerPosition.y + offset }, player.ColliderRadius, pixelGrid) && checks < 10)
+						{
+							playerPosition.y += offset;
+							checks++;
+						}
+
+						player.Velocity.y = 0;
 					}
-
-					speed.x           = 0;
-					player.Velocity.x = 0;
 				}
-				else { player.Position.x += speed.x; }
-			}
-			else { player.Position.x += speed.x; }
-
-			targetPosition = glm::ivec2(glm::floor(player.Position + speed));
-			playerPosition = glm::ivec2(glm::floor(player.Position));
-
-			if (checkCollisionForCircle({ playerPosition.x, targetPosition.y }, player.ColliderRadius, pixelGrid))
-			{
-				uint32_t checks = 0;
-				while (!checkCollisionForCircle({ playerPosition.x, static_cast<int32_t>(glm::floor(player.Position.y + glm::sign(speed.y))) }, player.ColliderRadius, pixelGrid) && checks
-				       < 10)
+				else
 				{
-					player.Position.y += glm::sign(speed.y);
-					checks++;
+					player.Velocity = Input::GetAxis2DActionDown(InputAction::Fly) * 1000.0f;
 				}
 
-				speed.y           = 0;
-				player.Velocity.y = 0;
+				playerPosition += player.Velocity * deltaTime;
 
-				//
+				LOG("player postion x {0} y {1}", playerPosition.x, playerPosition.y);
+
+				transform.Position = glm::vec3(playerPosition, 0.0f);
 			}
-			else { player.Position.y += speed.y; }
-
-			glm::ivec2    floorCheck = glm::ivec2(glm::floor(player.Position)) + glm::ivec2(0, -1);
-			Pixel::State* floorPixel;
-			if (!checkCollisionForCircle({ floorCheck.x, floorCheck.y }, player.ColliderRadius, pixelGrid)) { player.Velocity.y += -2.0f * deltaTime; }
-			else if (player.Velocity.y <= 0.0f)
-			{
-				player.Velocity.y = 0;
-				player.CanJump    = true;
-			}
-
-			if (player.CanJump && Input::GetButtonActionPressed(InputAction::Jump))
-			{
-				LOG("Jump");
-				player.Velocity.y = 0.6f;
-				player.CanJump    = false;
-			}
-
-			playerPosition = glm::ivec2(glm::floor(player.Position))- glm::ivec2(pixelGrid.ChunkOffset.x  * Constants::CHUNK_SIZE, pixelGrid.ChunkOffset.y * Constants::CHUNK_SIZE);
-
-			if (pixelGrid.TryGetPixelAtPosition(playerPosition.x, playerPosition.y, currentPixel)) { currentPixel->PixelID = PixelType::Lava; }
-
-			transform.Position = glm::vec3(glm::vec2(player.Position) * 0.1f, 0.0f);
-		}
-		BENCHMARK_END("Player collisions")
+//		BENCHMARK_END("Player collisions")
 	}
 }

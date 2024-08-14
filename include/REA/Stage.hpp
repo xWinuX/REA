@@ -31,7 +31,8 @@ namespace REA
 	enum Level
 	{
 		Global   = 0,
-		Sandbox  = 1,
-		Explorer = 2
+		MainMenu = 1,
+		Sandbox  = 2,
+		Explorer = 3
 	};
 }

@@ -159,12 +159,12 @@ namespace REA
 			}
 
 			auto originalCenter = aabb.GetCenter();
-			aabb                = { { aabb.lowerBound.x * 0.1f, aabb.lowerBound.y * 0.1f }, { aabb.upperBound.x * 0.1f, aabb.upperBound.y * 0.1f } };
+			aabb                = { { aabb.lowerBound.x, aabb.lowerBound.y }, { aabb.upperBound.x, aabb.upperBound.y } };
 			auto newCenter      = aabb.GetCenter();
 			for (CDT::V2d<float>& polylineVert: sortedPolyline)
 			{
 				polylineVert = { polylineVert.x - originalCenter.x, polylineVert.y - originalCenter.y };
-				polylineVert = { polylineVert.x * 0.1f, polylineVert.y * 0.1f };
+				polylineVert = { polylineVert.x, polylineVert.y };
 				polylineVert = { polylineVert.x + newCenter.x, polylineVert.y + newCenter.y };
 			}
 

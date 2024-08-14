@@ -3,6 +3,7 @@
 #include <execution>
 #include <imgui.h>
 #include <bitset>
+#include <REA/Stage.hpp>
 
 #include <SplitEngine/Application.hpp>
 #include <SplitEngine/Contexts.hpp>
@@ -32,19 +33,21 @@ namespace REA::System
 
 			for (Pixel::State& state: chunk) { state = pixelState; }
 		}
-
-		//	Pixel::State pixelState = pixelGrid.PixelLookup[_clearPixelID].PixelState;
-		//	std::for_each(std::execution::par_unseq, inputPixels, inputPixels + (pixelGrid.Width * pixelGrid.Height), [this, pixelState](Pixel::State& pixel) { pixel = pixelState; });
 	}
 
 	void PixelGridDrawing::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
 		Context::ImGui* imGuiContext = contextProvider.GetContext<Context::ImGui>();
-		ImGui::SetNextWindowDockID(imGuiContext->RightDockingID, ImGuiCond_Always);
-		ImGui::Begin("Drawing");
-		ReaSystem<Component::PixelGrid, Component::PixelGridRenderer>::ExecuteArchetypes(archetypes, contextProvider, stage);
-		ImGui::End();
-		_mouseWheel = { 0, 0 };
+		ECS::Registry&  ecs          = contextProvider.GetContext<EngineContext>()->Application->GetECSRegistry();
+
+		if (ecs.GetPrimaryGroup() == Level::Sandbox || ecs.GetPrimaryGroup() == Level::Explorer)
+		{
+			ImGui::SetNextWindowDockID(imGuiContext->RightDockingID, ImGuiCond_Always);
+			ImGui::Begin("Drawing", nullptr, ImGuiWindowFlags_NoMove);
+			ReaSystem<Component::PixelGrid, Component::PixelGridRenderer>::ExecuteArchetypes(archetypes, contextProvider, stage);
+			ImGui::End();
+			_mouseWheel = { 0, 0 };
+		}
 	}
 
 	void PixelGridDrawing::Execute(Component::PixelGrid*         pixelGrids,
@@ -66,10 +69,10 @@ namespace REA::System
 
 			if (pixelState == nullptr) { continue; }
 
-			if (_firstRender)
+			if (pixelGrid.InitialClear)
 			{
 				ClearGrid(pixelGrid);
-				_firstRender = false;
+				pixelGrid.InitialClear = false;
 			}
 
 			ImGui::Text("Actions");
@@ -158,12 +161,12 @@ namespace REA::System
 
 				// Precompute common terms
 				int halfChunkSize = Constants::CHUNK_SIZE / 2;
-				int gridCenterX = (Constants::CHUNKS_X / 2) * Constants::CHUNK_SIZE + halfChunkSize;
-				int gridCenterY = (Constants::CHUNKS_Y / 2) * Constants::CHUNK_SIZE + halfChunkSize;
+				int gridCenterX   = (Constants::CHUNKS_X / 2) * Constants::CHUNK_SIZE;
+				int gridCenterY   = (Constants::CHUNKS_Y / 2) * Constants::CHUNK_SIZE;
 
 				// Compute gridX and gridY
-				int32_t offsetX = static_cast<int32_t>((transform.Position.x * 10.0f) - halfChunkSize) % Constants::CHUNK_SIZE;
-				int32_t offsetY = static_cast<int32_t>((transform.Position.y * 10.0f) - halfChunkSize) % Constants::CHUNK_SIZE;
+				int32_t offsetX = static_cast<int32_t>((transform.Position.x)) % Constants::CHUNK_SIZE;
+				int32_t offsetY = static_cast<int32_t>((transform.Position.y)) % Constants::CHUNK_SIZE;
 
 				gridX = gridCenterX + offsetX;
 				gridY = gridCenterY + offsetY;
@@ -211,11 +214,8 @@ namespace REA::System
 					Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
 					if (_radius == 1)
 					{
-						//const int index   = gridY * pixelGrid.Width + gridX;
 						(*pixelState)[chunkMapping][pixelIndex] = drawState;
 						pixelGrid.ChunkRegenerate[chunkMapping] = true;
-
-						//pixelGrid.ReadOnlyPixels[index] = 1;
 					}
 					else
 					{

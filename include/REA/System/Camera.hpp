@@ -22,8 +22,8 @@ namespace REA::System
 			             uint8_t                stage) override;
 
 		private:
-			float _pixelsPerUnit = 10.0f;
-			float _pixelSize = 1.0f;
+			float _pixelsPerUnit = 1.0f;
+			float _pixelSize     = 1.0f;
 
 			struct CameraUBO
 			{
@@ -33,5 +33,7 @@ namespace REA::System
 				float     pixelSize;
 				float     pixelsPerUnit;
 			};
+
+			static glm::mat4 PrepareOrthographicProjectionMatrix(float leftPlane, float rightPlane, float bottomPlane, float topPlane, float nearPlane, float farPlane);
 	};
 }

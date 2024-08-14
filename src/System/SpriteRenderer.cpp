@@ -91,7 +91,7 @@ namespace REA::System
 			              [this, spriteComponents, deltaTime, objectBuffer, numEntities](const size_t i)
 			              {
 				              Component::SpriteRenderer& spriteAnimatorComponent = spriteComponents[i];
-				              SpriteTexture*             sprite                  = spriteAnimatorComponent.SpriteTexture.Get();
+				              Sprite*             sprite                  = spriteAnimatorComponent.SpriteTexture.Get();
 
 				              const float animationAdvance = spriteAnimatorComponent.AnimationSpeed * deltaTime;
 				              const float newCurrentFrame  = spriteAnimatorComponent.CurrentFrame + animationAdvance;

@@ -1,12 +1,13 @@
 #pragma once
 
-#include <vector>
+#include <glm/vec2.hpp>
 
 namespace REA::Component
 {
 	struct Camera
 	{
-		uint64_t  TargetEntity   = -1u;
+		float     Layer          = 0.0f;
+		uint64_t  TargetEntity   = -1ull;
 		glm::vec2 TargetPosition = { 0.0f, 0.0f };
 	};
 }

@@ -8,7 +8,7 @@ using namespace SplitEngine;
 
 namespace REA
 {
-	class SpriteTexture
+	class Sprite
 	{
 		public:
 			struct CreateInfo
@@ -17,7 +17,7 @@ namespace REA
 				Tools::ImagePacker::PackingData& PackingData;
 			};
 
-			explicit SpriteTexture(const CreateInfo& createInfo);
+			explicit Sprite(const CreateInfo& createInfo);
 
 			[[nodiscard]] size_t GetNumSubSprites() const;
 

@@ -85,15 +85,6 @@ namespace REA::System
 		// Create Fences
 		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 		_computeFence                       = device->GetVkDevice().createFence(fenceCreateInfo);
-
-		// Create static environment Collider
-		for (uint64_t& staticEnvironmentEntityID: _staticEnvironmentEntityIDs)
-		{
-			Component::Collider collider;
-			collider.InitialType      = b2_staticBody;
-			collider.PhysicsMaterial  = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
-			staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
-		}
 	}
 
 	void PixelGridSimulation::CmdWaitForPreviousComputeShader()
@@ -141,13 +132,6 @@ namespace REA::System
 			}
 
 			ImGui::End();
-
-			ImGui::Begin("World Gen");
-			if (ImGui::Button("Regenerate World")) { _generateWorld = true; }
-			ImGui::SliderFloat("Cave Noise Treshold", &_worldGenerationSettings.CaveNoiseTreshold, 0.0f, 1.0f);
-			ImGui::SliderFloat("Cave Noise Freqency", &_worldGenerationSettings.CaveNoiseFrequency, 0.0f, 1.0f);
-			ImGui::SliderFloat("Overworld Noise Freqency", &_worldGenerationSettings.OverworldNoiseFrequency, 0.0f, 1.0f);
-			ImGui::End();
 		}
 
 		ReaSystem<Component::PixelGrid>::ExecuteArchetypes(archetypes, contextProvider, stage);
@@ -179,12 +163,8 @@ namespace REA::System
 		Rendering::Vulkan::Device&     device       = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice();
 		Rendering::Vulkan::QueueFamily computeQueue = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetQueueFamily(Rendering::Vulkan::QueueType::Compute);
 
-		LOG("num entities stage {0} - {1}", stage, entities.size());
-
 		for (int entityIndex = 0; entityIndex < entities.size(); ++entityIndex)
 		{
-			LOG("entity id {0}", entities[entityIndex]);
-
 			SSBO_SimulationData* simulationData = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_SimulationData>(0);
 			SSBO_RigidBodyData*  rigidBodyData  = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_RigidBodyData>(2);
 			SSBO_Updates*        updates        = _shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Updates>(1);
@@ -196,8 +176,39 @@ namespace REA::System
 				device.GetVkDevice().waitForFences(_computeFence, vk::True, UINT64_MAX);
 				device.GetVkDevice().resetFences(_computeFence);
 
+				if (pixelGrid.FirstFrame) { _fif = *device.GetCurrentFramePtr() == 0 ? 1 : 0; }
+
 				pixelGrid.Chunks = &_shaders.IdleSimulation->GetProperties().GetBufferData<SSBO_Pixels>(3, _fif)->Chunks;
 				memcpy(pixelGrid.ChunkRegenerate.data(), &updates->regenerateChunks[0], sizeof(uint32_t) * Constants::NUM_CHUNKS);
+
+				if (pixelGrid.FirstFrame)
+				{
+					_fif = *device.GetCurrentFramePtr() == 0 ? 1 : 0;
+
+					// Create static environment Collider
+					for (uint64_t& staticEnvironmentEntityID: pixelGrid.StaticEnvironmentEntityIDs)
+					{
+						Component::Collider collider;
+						collider.InitialType      = b2_staticBody;
+						collider.PhysicsMaterial  = engineContext->Application->GetAssetDatabase().GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut);
+						staticEnvironmentEntityID = ecsRegistry.CreateEntity<Component::Transform, Component::Collider>({}, std::move(collider));
+					}
+
+					// Copy current world area into chunks
+					for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
+					{
+						for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
+						{
+							// Calculate the corresponding world coordinates
+							int worldX = x + pixelGrid.ChunkOffset.x;
+							int worldY = y + pixelGrid.ChunkOffset.y;
+
+							memcpy((*pixelGrid.Chunks)[pixelGrid.ChunkMapping[y * pixelGrid.SimulationChunksX + x]].data(),
+							       pixelGrid.World[worldY * pixelGrid.WorldChunksX + worldX].data(),
+							       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
+						}
+					}
+				}
 			}
 
 			if (stage == Stage::GridComputeHalted)
@@ -241,7 +252,7 @@ namespace REA::System
 					for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
 					{
 						uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
-						Component::Collider& collider     = ecsRegistry.GetComponent<Component::Collider>(_staticEnvironmentEntityIDs[chunkMapping]);
+						Component::Collider& collider     = ecsRegistry.GetComponent<Component::Collider>(pixelGrid.StaticEnvironmentEntityIDs[chunkMapping]);
 
 						if (!pixelGrid.ChunkRegenerate[chunkMapping]) { continue; }
 
@@ -330,7 +341,7 @@ namespace REA::System
 
 						// Calculate size needed
 						b2Vec2     extends  = b2Aabb.GetExtents();
-						glm::uvec2 aabbSize = { glm::round(extends.x * 2 * 10.0f), glm::round(extends.y * 2 * 10.0f) };
+						glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
 						size_t     dataSize = aabbSize.x * aabbSize.y;
 
 						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
@@ -373,7 +384,7 @@ namespace REA::System
 
 						b2Vec2     b2Center           = polyline.AABB.GetCenter();
 						b2Vec2     b2BottomLeftCorner = b2Center - extends;
-						glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x * 10.0f, b2BottomLeftCorner.y * 10.0f };
+						glm::uvec2 bottomLeftCorner   = { b2BottomLeftCorner.x, b2BottomLeftCorner.y };
 
 						// Create collider
 						if (!cdt.vertices.empty())
@@ -414,13 +425,36 @@ namespace REA::System
 					}
 				}
 
+				// Delete Rigidbodies
+				if (simulationData->timer % 4 == 0)
+				{
+					for (uint32_t deleteRigidbody: pixelGrid.DeleteRigidbody)
+					{
+						Component::PixelGrid::RigidbodyEntry& rigidbodyEntry = pixelGrid.RigidBodyEntities[deleteRigidbody];
+
+						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidbodyEntry.EntityID);
+
+						rigidBodyData->rigidBodies[pixelGridRigidBody.ShaderRigidBodyID].NeedsRecalculation = false;
+
+						_rigidBodyDataHeap.Deallocate(pixelGridRigidBody.AllocationID);
+
+						ecsRegistry.DestroyEntity(rigidbodyEntry.EntityID);
+
+						rigidbodyEntry.Enabled = false;
+
+						pixelGrid.AvailableRigidBodyIDs.Push(deleteRigidbody);
+					}
+
+					pixelGrid.DeleteRigidbody.clear();
+				}
+
 				// Pixelgrid follows camera
 				if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 				{
 					// This is inside of the pixelGrid variable
 					glm::vec2 offset = { -pixelGrid.SimulationWidth, -pixelGrid.SimulationHeight };
 
-					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position * 10.0f;
+					glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position;
 
 					targetPosition += offset / 2.0f;
 
@@ -515,28 +549,6 @@ namespace REA::System
 					}
 				}
 
-				// Delete Rigidbodies
-				if (simulationData->timer % 4 == 0)
-				{
-					for (uint32_t deleteRigidbody: pixelGrid.DeleteRigidbody)
-					{
-						Component::PixelGrid::RigidbodyEntry& rigidbodyEntry = pixelGrid.RigidBodyEntities[deleteRigidbody];
-
-						Component::PixelGridRigidBody& pixelGridRigidBody = ecsRegistry.GetComponent<Component::PixelGridRigidBody>(rigidbodyEntry.EntityID);
-
-						rigidBodyData->rigidBodies[pixelGridRigidBody.ShaderRigidBodyID].NeedsRecalculation = false;
-
-						_rigidBodyDataHeap.Deallocate(pixelGridRigidBody.AllocationID);
-
-						ecsRegistry.DestroyEntity(rigidbodyEntry.EntityID);
-
-						rigidbodyEntry.Enabled = false;
-
-						pixelGrid.AvailableRigidBodyIDs.Push(deleteRigidbody);
-					}
-
-					pixelGrid.DeleteRigidbody.clear();
-				}
 
 				marchingCubes->connectedChunk.numSegments = 0;
 				for (MarchingSquareChunk& worldChunk: marchingCubes->worldChunks) { worldChunk.numSegments = 0; }
@@ -559,59 +571,6 @@ namespace REA::System
 					memcpy(simulationData->pixelLookup, pixelGrid.PixelDataLookup.data(), pixelGrid.PixelDataLookup.size() * sizeof(Pixel::Data));
 
 					_firstUpdate = false;
-				}
-
-				if (_generateWorld)
-				{
-					std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.WorldWidth * pixelGrid.WorldHeight, pixelGrid.PixelLookup[PixelType::Air].PixelState);
-
-					BENCHMARK_BEGIN
-						WorldGenerator::GenerateWorld(world, pixelGrid, _worldGenerationSettings);
-
-						// Split up world into chunks
-						for (int chunkY = 0; chunkY < pixelGrid.WorldChunksY; ++chunkY)
-						{
-							for (int chunkX = 0; chunkX < pixelGrid.WorldChunksX; ++chunkX)
-							{
-								std::vector<Pixel::State>& chunk = pixelGrid.World[chunkY * pixelGrid.WorldChunksX + chunkX];
-
-								for (int y = 0; y < Constants::CHUNK_SIZE; ++y)
-								{
-									for (int x = 0; x < Constants::CHUNK_SIZE; ++x)
-									{
-										int worldX = chunkX * Constants::CHUNK_SIZE + x;
-										int worldY = chunkY * Constants::CHUNK_SIZE + y;
-
-										if (worldX < pixelGrid.WorldWidth && worldY < pixelGrid.WorldHeight)
-										{
-											int worldIndex    = worldY * pixelGrid.WorldWidth + worldX;
-											int chunkIndex    = y * Constants::CHUNK_SIZE + x;
-											chunk[chunkIndex] = world[worldIndex];
-										}
-									}
-								}
-							}
-						}
-					BENCHMARK_END("World Generation")
-
-
-					BENCHMARK_BEGIN
-						for (int y = 0; y < pixelGrid.SimulationChunksY; ++y)
-						{
-							for (int x = 0; x < pixelGrid.SimulationChunksX; ++x)
-							{
-								// Calculate the corresponding world coordinates
-								int worldX = x + pixelGrid.ChunkOffset.x;
-								int worldY = y + pixelGrid.ChunkOffset.y;
-
-								memcpy((*pixelGrid.Chunks)[pixelGrid.ChunkMapping[y * pixelGrid.SimulationChunksX + x]].data(),
-								       pixelGrid.World[worldY * pixelGrid.WorldChunksX + worldX].data(),
-								       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
-							}
-						}
-					BENCHMARK_END("Copy CPU to GPU")
-
-					_generateWorld = false;
 				}
 
 				if (!_paused || _doStep)
@@ -653,7 +612,7 @@ namespace REA::System
 						{
 							glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position;
 
-							bool range = glm::distance(targetPosition, glm::vec2(transform.Position.x, transform.Position.y)) * 10.0f > 512.0f;
+							bool range = glm::distance(targetPosition, glm::vec2(transform.Position.x, transform.Position.y)) > 512.0f;
 
 							if (range) { collider.Body->SetEnabled(false); }
 							else { collider.Body->SetEnabled(true); }
@@ -670,7 +629,7 @@ namespace REA::System
 						collider.Body->SetLinearDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x * 5.0f);
 						collider.Body->SetAngularDamping(rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity.x * 5.0f);
 
-						rigidBodyData->rigidBodies[rigidBodyShaderID].Position        = transform.Position * 10.0f;
+						rigidBodyData->rigidBodies[rigidBodyShaderID].Position        = transform.Position;
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Velocity        = collider.Body->GetLinearVelocity();
 						rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity = { 0, 0 };
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation        = transform.Rotation;
@@ -689,7 +648,7 @@ namespace REA::System
 
 					_shaders.FallingSimulation->Update();
 
-					for (int i = 0; i < 16; ++i)
+					for (int i = 0; i < 8; ++i)
 					{
 						_shaders.FallingSimulation->Bind(_commandBuffer.GetVkCommandBuffer(), fif);
 
@@ -855,6 +814,8 @@ namespace REA::System
 				computeQueue.GetVkQueue().submit(submitInfo, _computeFence);
 
 				_fif = (fif + 1) % Rendering::Vulkan::Device::MAX_FRAMES_IN_FLIGHT;
+
+				pixelGrid.FirstFrame = false;
 			}
 		}
 	}

@@ -40,8 +40,8 @@ namespace REA::Component
 
 		bool TryGetPixelAtPosition(int32_t x, int32_t y, Pixel::State*& pixel) const
 		{
-			uint32_t chunkIndex   = (y / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (x / Constants::CHUNK_SIZE);
-			uint32_t pixelIndex   = (y % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (x % Constants::CHUNK_SIZE);
+			uint32_t chunkIndex = (y / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (x / Constants::CHUNK_SIZE);
+			uint32_t pixelIndex = (y % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (x % Constants::CHUNK_SIZE);
 
 			if (chunkIndex >= ChunkMapping.size()) { return false; }
 
@@ -57,7 +57,7 @@ namespace REA::Component
 		std::vector<uint32_t>                          ChunkMapping{};
 		std::vector<uint32_t>                          ChunkRegenerate{};
 
-		uint64_t                    _staticEnvironmentEntityID = -1;
+		std::vector<uint64_t>       StaticEnvironmentEntityIDs = std::vector<uint64_t>(Constants::NUM_CHUNKS, -1ull);
 		uint32_t                    RigidBodyIDCounter         = 1;
 		AvailableStack<uint32_t>    AvailableRigidBodyIDs{};
 		AvailableStack<uint32_t>    AvailableParticleIndices{};
@@ -69,7 +69,7 @@ namespace REA::Component
 
 		glm::ivec2 ChunkOffset = { 0, 0 };
 
-		glm::ivec2 PreviousChunkOffset = { 0, 0 };
+		glm::ivec2 PreviousChunkOffset = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 
 		int32_t WorldChunksX = 16;
 		int32_t WorldChunksY = 16;
@@ -84,6 +84,10 @@ namespace REA::Component
 		int32_t SimulationHeight = 1024;
 
 		uint64_t CameraEntityID = -1u;
+
+		bool FirstFrame = true;
+
+		bool InitialClear = false;
 
 		std::vector<Pixel>       PixelLookup{};
 		std::vector<Pixel::Data> PixelDataLookup{};

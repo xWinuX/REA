@@ -2,9 +2,9 @@
 #include <SplitEngine/AssetDatabase.hpp>
 #include <SplitEngine/ECS/System.hpp>
 
-#include "REA/SpriteTexture.hpp"
+#include "REA/Sprite.hpp"
 #include "REA/Component/Collider.hpp"
-#include "REA/Component/Physics.hpp"
+#include <REA/Component/PixelGrid.hpp>
 #include "REA/Component/Player.hpp"
 #include "REA/Component/Transform.hpp"
 
@@ -23,8 +23,9 @@ namespace REA::System
 			             ECS::ContextProvider&  contextProvider,
 			             uint8_t                stage) override;
 
-
 		private:
 			float _counter = 0.0f;
+
+			static bool CheckCollisionForCircle(glm::vec2 center, int radius, Component::PixelGrid& pixelGrid);
 	};
 }

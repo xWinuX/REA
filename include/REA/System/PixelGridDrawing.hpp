@@ -25,10 +25,9 @@ namespace REA::System
 			             uint8_t                       stage) override;
 
 		private:
-			int        _radius       = 1;
-			Pixel::ID  _clearPixelID = 0;
-			Pixel::ID  _drawPixelID  = 0;
-			glm::ivec2 _mouseWheel   = { 0, 0 };
-			bool       _firstRender  = true;
+			int        _radius          = 1;
+			Pixel::ID  _clearPixelID    = 0;
+			Pixel::ID  _drawPixelID     = 0;
+			glm::ivec2 _mouseWheel      = { 0, 0 };
 	};
 }
