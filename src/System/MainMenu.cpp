@@ -44,19 +44,18 @@ namespace REA::System
 				ecs.SetPrimaryGroup(Level::Sandbox);
 
 				PixelGridBuilder     pixelGridBuilder{};
-				Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ 8, 8 }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(_pixelCreateInfos).Build();
+				Component::PixelGrid pixelGrid = pixelGridBuilder.WithSize({ Constants::CHUNKS_X, Constants::CHUNKS_Y  }, { Constants::CHUNKS_X, Constants::CHUNKS_Y }).WithPixelData(_pixelCreateInfos).Build();
 				pixelGrid.CameraEntityID       = contextProvider.GetContext<Context::Global>()->CameraEntityID;
 				pixelGrid.InitialClear         = true;
 
 				Component::Camera& camera = ecs.GetComponent<Component::Camera>(pixelGrid.CameraEntityID);
-
-				ecs.AddComponent<Component::SandboxController>(pixelGrid.CameraEntityID, {});
 
 				camera.TargetPosition = glm::vec2(static_cast<float>(pixelGrid.WorldWidth) * 0.5f), (static_cast<float>(pixelGrid.WorldHeight) * 0.5f);
 
 				ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::PixelGridRenderer>({}, std::move(pixelGrid), {});
 			}
 
+			ImGui::InputInt("Seed", &_seed, 1, 100);
 			if (ImGuiHelper::ButtonCenteredOnLine("Start Explorer"))
 			{
 				ecs.SetPrimaryGroup(Level::Explorer);
@@ -72,7 +71,7 @@ namespace REA::System
 
 				std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.WorldWidth * pixelGrid.WorldHeight, pixelGrid.PixelLookup[PixelType::Air].PixelState);
 				WorldGenerator::GenerationSettings generationSettings{};
-				WorldGenerator::GenerateWorld(world, pixelGrid, generationSettings);
+				WorldGenerator::GenerateWorld(world, pixelGrid, generationSettings, _seed);
 
 				// Split up world into chunks
 				for (int chunkY = 0; chunkY < pixelGrid.WorldChunksY; ++chunkY)

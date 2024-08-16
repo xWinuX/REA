@@ -1,5 +1,5 @@
-const uint CHUNKS_X = 8;
-const uint CHUNKS_Y = 8;
+const uint CHUNKS_X = 4;
+const uint CHUNKS_Y = 4;
 const uint CHUNK_SIZE = 128;
 
 const uint NUM_CHUNKS = CHUNKS_X * CHUNKS_Y;

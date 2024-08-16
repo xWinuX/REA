@@ -1,5 +1,8 @@
 #include "REA/System/SandboxController.hpp"
 
+#include <REA/Stage.hpp>
+#include <SplitEngine/Application.hpp>
+#include <SplitEngine/Contexts.hpp>
 #include <SplitEngine/Input.hpp>
 
 
@@ -11,6 +14,8 @@ namespace REA::System
 	                                ECS::ContextProvider&         context,
 	                                uint8_t                       stage)
 	{
+		ECS::Registry& ecs = context.GetContext<EngineContext>()->Application->GetECSRegistry();
+
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::Camera&            camera            = cameras[i];

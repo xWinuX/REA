@@ -522,13 +522,13 @@ int main()
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
 	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
 	ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
-	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
+	//ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
 
 	// Pre Rendering End
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
 
 	// Create entities
-	uint64_t camera                                                        = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { 10.0f });
+	uint64_t camera = ecs.CreateEntity<Component::Transform, Component::Camera, Component::SandboxController>({ { 0.0f, 0.0f, 10.0f } }, { 10.0f }, {});
 	ecs.GetContextProvider().GetContext<Context::Global>()->CameraEntityID = camera;
 
 	ecs.SetPrimaryGroup(Level::MainMenu);

@@ -14,10 +14,8 @@
 
 namespace REA
 {
-	void WorldGenerator::GenerateWorld(std::vector<Pixel::State>& world, Component::PixelGrid& pixelGrid, GenerationSettings& generationSettings)
+	void WorldGenerator::GenerateWorld(std::vector<Pixel::State>& world, Component::PixelGrid& pixelGrid, GenerationSettings& generationSettings, int seed)
 	{
-		int seed = 23082000;
-
 		auto caveNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IgAAAAA/j8J1Pg0AAwAAAB+FE0EQAM3MDEATAJqZGT8LAAAAAAAAAAAAAQAAAAQAAAAA9iicPwAfhes+AArXoz0ArkeNQQ==");
 		std::vector<float> caveNoise = std::vector<float>(world.size());
 		caveNoiseGenerator->GenUniformGrid2D(caveNoise.data(), 0, 0, pixelGrid.WorldWidth, pixelGrid.WorldHeight, 0.01f * generationSettings.CaveNoiseFrequency, seed);

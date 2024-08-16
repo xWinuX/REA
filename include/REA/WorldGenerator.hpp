@@ -43,7 +43,7 @@ namespace REA
 			};
 
 		public:
-			static void GenerateWorld(std::vector<Pixel::State>& world, Component::PixelGrid& pixelGrid, GenerationSettings& generationSettings);
+			static void GenerateWorld(std::vector<Pixel::State>& world, Component::PixelGrid& pixelGrid, GenerationSettings& generationSettings, int seed=23082000);
 
 		private:
 			static glm::vec2 GenerateBranch(float                                   startX,

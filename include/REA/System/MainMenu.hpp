@@ -25,6 +25,8 @@ namespace REA
 
 				std::vector<PixelGridBuilder::PixelCreateInfo>& _pixelCreateInfos;
 
+				int _seed = 2308;
+
 				std::string _startSandboxText  = "Start Sandbox";
 				std::string _startExplorerText = "Start Explorer";
 				std::string _quitText          = "Quit";
