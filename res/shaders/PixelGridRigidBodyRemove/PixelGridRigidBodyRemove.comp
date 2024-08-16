@@ -15,8 +15,10 @@ void main()
 
     SetupWritePixelVarsByPosition(middleCenter, x, y);
 
-    if (getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20) != 0)
+    uint rigidBodyID = getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20);
+    if (rigidBodyID != 0)
     {
+        atomicAdd(rigidBodies[rigidBodyID].NumPixels, 1);
         rigidBodyData[getRigidBodyIndex(middleCenterPixel.RigidBodyID12_RigidBodyIndex20)] = middleCenterPixel;
         GetWritePixel(middleCenter).PixelID16_Charge8_Flags8 = 0;
         GetWritePixel(middleCenter).RigidBodyID12_RigidBodyIndex20 = 0;

@@ -58,6 +58,7 @@ struct RigidBody {
     uint DataIndex;
     bool NeedsRecalculation;
     float Rotation;
+    uint NumPixels;
     vec2 Position;
     vec2 Velocity;
     ivec2 CounterVelocity;

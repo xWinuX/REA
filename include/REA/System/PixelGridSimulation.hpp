@@ -50,6 +50,8 @@ namespace REA::System
 				uint32_t   DataIndex          = -1u;
 				bool       NeedsRecalculation = false;
 				float      Rotation           = 0;
+				uint32_t   NumPixels          = 0;
+				uint32_t   _pad               = 0;
 				glm::vec2  Position           = { 0, 0 };
 				b2Vec2     Velocity           = { 0, 0 };
 				glm::ivec2 CounterVelocity    = { 0, 0 };
@@ -106,7 +108,7 @@ namespace REA::System
 
 			uint32_t _fif = 1;
 
-			float _lineSimplificationTolerance = 0.5f;
+			float _lineSimplificationTolerance = 5.0f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;
@@ -117,8 +119,8 @@ namespace REA::System
 
 			MemoryHeap _rigidBodyDataHeap = MemoryHeap(Constants::NUM_ELEMENTS_X * Constants::NUM_ELEMENTS_Y);
 
-			bool _paused        = true;
-			bool _doStep        = false;
+			bool _paused = true;
+			bool _doStep = false;
 
 			bool _firstUpdate = true;
 

@@ -1,9 +1,11 @@
 #include "REA/MarchingSquareMesherUtils.hpp"
 
+#include <execution>
 #include <glm/common.hpp>
 #include <glm/exponential.hpp>
 #include <SplitEngine/ErrorHandler.hpp>
 #include <SplitEngine/Debug/Log.hpp>
+#include <SplitEngine/Debug/Performance.hpp>
 
 namespace REA
 {
@@ -98,10 +100,7 @@ namespace REA
 					visited.insert(currentNode);
 					component.push_back(currentNode);
 
-					for (const uint32_t neighborIndex: adjacencyList[currentNode])
-					{
-						if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); }
-					}
+					for (const uint32_t neighborIndex: adjacencyList[currentNode]) { if (!visited.contains(neighborIndex)) { stack.push(neighborIndex); } }
 				}
 
 				separatePolylineIndices.push_back(std::move(component));
@@ -109,70 +108,58 @@ namespace REA
 		}
 
 		// Build polylines
-		for (const auto& polylineIndices: separatePolylineIndices)
-		{
-			visited.clear();
-
-			std::vector<CDT::V2d<float>> sortedPolyline;
-
-			if (polylineIndices.empty())
+		BENCHMARK_BEGIN
+			for (const auto& polylineIndices: separatePolylineIndices)
 			{
-				polylines.push_back({ {}, false, sortedPolyline });
-				continue;
-			}
+				visited.clear();
 
-			// Find endpoints
-			std::vector<uint32_t> endpoints;
-			for (uint32_t vertexID: polylineIndices)
-			{
-				if (adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); }
-			}
+				std::vector<CDT::V2d<float>> sortedPolyline;
 
-			// Start from an endpoint if available, otherwise start from any vertex
-			uint32_t startVertex = !endpoints.empty() ? endpoints[0] : polylineIndices[0];
-			uint32_t currentIndex = startVertex;
-			b2AABB   aabb = { { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() },
-                            { std::numeric_limits<float>::min(),std::numeric_limits<float>::min() } };
-			visited.insert(currentIndex);
-
-			sortedPolyline.push_back(vertices[currentIndex]);
-			while (sortedPolyline.size() < polylineIndices.size())
-			{
-				bool found = false;
-				for (uint32_t neighbor: adjacencyList[currentIndex])
+				if (polylineIndices.empty())
 				{
-					if (visited.contains(neighbor)) { continue; }
-
-					CDT::V2d<float> vert = vertices[neighbor];
-
-					aabb = b2AABB({ glm::min(aabb.lowerBound.x, vert.x), glm::min(aabb.lowerBound.y, vert.y) },
-					              { glm::max(aabb.upperBound.x, vert.x), glm::max(aabb.upperBound.y, vert.y) });
-
-					sortedPolyline.push_back(vert);
-					visited.insert(neighbor);
-					currentIndex = neighbor;
-					found        = true;
-					break;
+					polylines.push_back({ {}, false, sortedPolyline });
+					continue;
 				}
 
-				if (!found) { break; }
+				// Find endpoints
+				std::vector<uint32_t> endpoints;
+				for (uint32_t vertexID: polylineIndices) { if (adjacencyList[vertexID].size() == 1) { endpoints.push_back(vertexID); } }
+
+				// Start from an endpoint if available, otherwise start from any vertex
+				uint32_t startVertex  = !endpoints.empty() ? endpoints[0] : polylineIndices[0];
+				uint32_t currentIndex = startVertex;
+				b2AABB   aabb         = {
+					{ std::numeric_limits<float>::max(), std::numeric_limits<float>::max() },
+					{ std::numeric_limits<float>::min(), std::numeric_limits<float>::min() }
+				};
+				visited.insert(currentIndex);
+
+				sortedPolyline.push_back(vertices[currentIndex]);
+				while (sortedPolyline.size() < polylineIndices.size())
+				{
+					bool found = false;
+					for (uint32_t neighbor: adjacencyList[currentIndex])
+					{
+						if (visited.contains(neighbor)) { continue; }
+
+						CDT::V2d<float> vert = vertices[neighbor];
+
+						aabb = b2AABB({ glm::min(aabb.lowerBound.x, vert.x), glm::min(aabb.lowerBound.y, vert.y) },
+						              { glm::max(aabb.upperBound.x, vert.x), glm::max(aabb.upperBound.y, vert.y) });
+
+						sortedPolyline.push_back(vert);
+						visited.insert(neighbor);
+						currentIndex = neighbor;
+						found        = true;
+						break;
+					}
+
+					if (!found) { break; }
+				}
+
+				polylines.push_back({ aabb, endpoints.empty(), std::move(sortedPolyline) });
 			}
-
-			auto originalCenter = aabb.GetCenter();
-			aabb                = { { aabb.lowerBound.x, aabb.lowerBound.y }, { aabb.upperBound.x, aabb.upperBound.y } };
-			auto newCenter      = aabb.GetCenter();
-			for (CDT::V2d<float>& polylineVert: sortedPolyline)
-			{
-				polylineVert = { polylineVert.x - originalCenter.x, polylineVert.y - originalCenter.y };
-				polylineVert = { polylineVert.x, polylineVert.y };
-				polylineVert = { polylineVert.x + newCenter.x, polylineVert.y + newCenter.y };
-			}
-
-			polylines.push_back({ aabb, endpoints.empty(), std::move(sortedPolyline) });
-		}
-
-		// Clear adjecency list
-		for (std::vector<uint32_t>& adjacencyList: adjacencyList) { adjacencyList.clear(); }
+		BENCHMARK_END("sort lines");
 
 		return polylines;
 	}
@@ -217,6 +204,5 @@ namespace REA
 		cdt.insertEdges(edges);
 		cdt.eraseOuterTriangles();
 		return cdt;
-
 	}
 }

@@ -331,9 +331,31 @@ namespace REA::System
 
 					for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 					{
-						// TODO: Find reliable way to get seed point
-						// Convert to integer grid coordinates
-						glm::ivec2 seedPoint = glm::ivec2(glm::floor(polyline.Vertices[0].x), glm::floor(polyline.Vertices[0].y));
+
+						glm::ivec2 seedPoint      = { 0, 0 };
+						bool       foundSeedPoint = false;
+						uint32_t   numIterations  = 0;
+						for (CDT::V2d<float> vertex: polyline.Vertices)
+						{
+							glm::ivec2 position = glm::ivec2(glm::round(vertex.x), glm::round(vertex.y));
+							for (int x = -1; x < 2; ++x)
+							{
+								for (int y = -1; y < 2; ++y)
+								{
+									numIterations++;
+									Pixel::State* pixel;
+									if (pixelGrid.TryGetPixelAtPosition(position.x + x, position.y + y, pixel) && pixel->Flags.Has(Pixel::Flags::Connected) && pixel->Flags.
+									    Has(Pixel::Flags::Solid))
+									{
+										seedPoint      = { position.x + x, position.y + y };
+										foundSeedPoint = true;
+										break;
+									}
+								}
+								if (foundSeedPoint) { break; }
+							}
+							if (foundSeedPoint) { break; }
+						}
 
 						// Simplify line
 						polyline = MarchingSquareMesherUtils::SimplifyPolylines(polyline, _lineSimplificationTolerance);
@@ -434,6 +456,10 @@ namespace REA::System
 				// Delete Rigidbodies
 				if (simulationData->timer % 4 == 0)
 				{
+					std::ranges::sort(pixelGrid.DeleteRigidbody);
+					pixelGrid.DeleteRigidbody.erase( std::ranges::unique(pixelGrid.DeleteRigidbody).begin(), pixelGrid.DeleteRigidbody.end() );
+
+
 					for (uint32_t deleteRigidbody: pixelGrid.DeleteRigidbody)
 					{
 						Component::PixelGrid::RigidbodyEntry& rigidbodyEntry = pixelGrid.RigidBodyEntities[deleteRigidbody];
@@ -625,7 +651,7 @@ namespace REA::System
 						}
 
 						if (simulationData->timer % 4 == 0 && (rigidBodyData->rigidBodies[rigidBodyShaderID].NeedsRecalculation || pixelGridRigidBody.Size.x < 3 ||
-						                                       pixelGridRigidBody.Size.y < 3))
+						                                       pixelGridRigidBody.Size.y < 3) || rigidBodyData->rigidBodies[rigidBodyShaderID].NumPixels == 0)
 						{
 							pixelGrid.DeleteRigidbody.push_back(rigidBodyShaderID);
 							rigidBodyData->rigidBodies[rigidBodyShaderID].ID = 0;
@@ -639,6 +665,7 @@ namespace REA::System
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Velocity        = collider.Body->GetLinearVelocity();
 						rigidBodyData->rigidBodies[rigidBodyShaderID].CounterVelocity = { 0, 0 };
 						rigidBodyData->rigidBodies[rigidBodyShaderID].Rotation        = transform.Rotation;
+						rigidBodyData->rigidBodies[rigidBodyShaderID].NumPixels       = 0;
 
 						_shaders.RigidBodySimulation->PushConstant(_commandBuffer.GetVkCommandBuffer(), Rendering::ShaderType::Compute, 0, &pixelGridRigidBody.ShaderRigidBodyID);
 

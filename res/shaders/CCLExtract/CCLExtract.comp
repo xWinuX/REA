@@ -3,7 +3,7 @@
 #include "../PixelGridComputeGlobals.glsl"
 #include "../CCLShared.glsl"
 
-layout(push_constant) uniform PushConstant {
+layout (push_constant) uniform PushConstant {
     uvec2 Offset;
     uvec2 Size;
     uvec2 SeedPoint;
@@ -17,14 +17,21 @@ void main()
         return;
     }
 
-    uvec2 offset = Offset-(simulationData.chunkOffset * CHUNK_SIZE);
+    uvec2 offset = Offset - (simulationData.chunkOffset * CHUNK_SIZE);
+    uvec2 seedPoint = SeedPoint - (simulationData.chunkOffset * CHUNK_SIZE);
+
+    uint correctLabel = labels[seedPoint.y * NUM_ELEMENTS_X + seedPoint.x];
+
+    if (correctLabel == -1) {
+        return;
+    }
 
     uint x = offset.x + (gl_GlobalInvocationID.x % Size.x);
     uint y = offset.y + (gl_GlobalInvocationID.x / Size.x);
 
     uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, NUM_ELEMENTS_X, Size, offset);
 
-    if (labels[labelIndex] != -1)
+    if (labels[labelIndex] == correctLabel)
     {
         SetupWritePixelVarsByPosition(middleCenter, x, y);
 
