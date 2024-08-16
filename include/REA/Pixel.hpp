@@ -61,6 +61,8 @@ namespace REA
 			float            TemperatureConversion        = 0.0f;
 			uint32_t         BaseCharge                   = 0;
 			float            ChargeAbsorbtionChance       = 0.0f;
+			float            Acidity                      = 0.0f;
+			float            AcidityResistance            = 0.0f;
 		};
 
 		std::string Name = "NAME_HERE";

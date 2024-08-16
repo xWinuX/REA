@@ -23,7 +23,7 @@ namespace REA
 				float IronLayerEndRelativeToCaveLayerHeight = 0.5f;
 				float LavaLayerEndRelativeToCaveLayerHeight = 0.1f;
 				float OverworldNoiseFrequency               = 0.05f;
-				float WaterLevelRelativeToTerrainRange      = 0.4f;
+				float WaterLevelRelativeToTerrainRange      = 0.5f;
 			};
 
 			struct TreeGenerationSettings

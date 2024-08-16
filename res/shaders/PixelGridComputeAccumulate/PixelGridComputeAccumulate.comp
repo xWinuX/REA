@@ -5,6 +5,13 @@
 
 SSBO_ViewportPixels(1, 5)
 
+#define SET_REGENERATE() \
+uint rigidBodyID = getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20); \
+if (rigidBodyID != 0) {  \
+    rigidBodies[rigidBodyID].NeedsRecalculation = true; \
+}  \
+regenerateChunks[middleCenterChunkMapping] = true;  \
+
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
@@ -37,9 +44,22 @@ void main()
 
     uint pixelID = middleCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu;
 
-    PixelData middleCenterPixelData = simulationData.pixelLookup[pixelID];
+    PixelData topLeftPixelData = simulationData.pixelLookup[topLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+    PixelData topCenterPixelData = simulationData.pixelLookup[topCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+    PixelData topRightPixelData = simulationData.pixelLookup[topRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
 
-    uint charge = getCharge(middleCenterPixel.PixelID16_Charge8_Flags8);
+    PixelData middleLeftPixelData = simulationData.pixelLookup[middleLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+    PixelData middleCenterPixelData = simulationData.pixelLookup[pixelID];
+    PixelData middleRightPixelData = simulationData.pixelLookup[middleRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+
+    PixelData bottomLeftPixelData = simulationData.pixelLookup[bottomLeftPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+    PixelData bottomCenterPixelData = simulationData.pixelLookup[bottomCenterPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+    PixelData bottomRightPixelData = simulationData.pixelLookup[bottomRightPixel.PixelID16_Charge8_Flags8 & 0xFFFFu];
+
+
+
+
+
     uint flags = getFlags(middleCenterPixel.PixelID16_Charge8_Flags8);
 
 /* if (charge > 0 && bitsetHas(middleCenterPixelData.Flags, ElectricityReceiver))
@@ -48,6 +68,8 @@ void main()
      }*/
 
 
+    // Charge
+    uint charge = getCharge(middleCenterPixel.PixelID16_Charge8_Flags8);
     if (bitsetHas(middleCenterPixelData.Flags, Conductive) && !bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter))
     {
         uint maxCharge0 = max(getCharge(middleRightPixel.PixelID16_Charge8_Flags8), getCharge(topCenterPixel.PixelID16_Charge8_Flags8));
@@ -59,6 +81,7 @@ void main()
 
     }
 
+    // Temperature
     float temperatureResistance = middleCenterPixelData.TemperatureResistance;
 
     float baseTemperature = middleCenterPixel.Temperature;
@@ -76,33 +99,67 @@ void main()
     temperature /= 9.0f;
 
     temperature = mix(baseTemperature, temperature, temperatureResistance);
+    if (temperature >= middleCenterPixelData.HighTemperatureLimit || temperature < middleCenterPixelData.LowerTemperatureLimit) {
+        if (temperature >= middleCenterPixelData.HighTemperatureLimit) {
+            pixelID = middleCenterPixelData.HighTemperatureLimitPixelID;
+        } else {
+            pixelID = middleCenterPixelData.LowerTemperatureLimitPixelID;
+        }
 
-    if (temperature >= middleCenterPixelData.HighTemperatureLimit) {
-        pixelID = middleCenterPixelData.HighTemperatureLimitPixelID;
         PixelData newPixelData = simulationData.pixelLookup[pixelID];
         flags &= newPixelData.FlagsCarryover;
         temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
 
-        uint rigidBodyID = getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20);
-        if (rigidBodyID != 0)
+        middleCenterPixelData = newPixelData;
+
+        SET_REGENERATE()
+    }
+
+    // Acidity
+    if (bitsetHas(flags, Solid))
+    {
+        float acidity = 0.0f;
+        acidity += topLeftPixelData.Acidity;
+        acidity += topCenterPixelData.Acidity;
+        acidity += topRightPixelData.Acidity;
+        acidity += middleLeftPixelData.Acidity;
+        acidity += middleRightPixelData.Acidity;
+        acidity += bottomLeftPixelData.Acidity;
+        acidity += bottomCenterPixelData.Acidity;
+        acidity += bottomRightPixelData.Acidity;
+
+        acidity /= 8.0f;
+
+        if (acidity > middleCenterPixelData.AcidityResistance)
         {
-            rigidBodies[rigidBodyID].NeedsRecalculation = true;
+            pixelID = 0;
+            PixelData newPixelData = simulationData.pixelLookup[pixelID];
+            flags &= newPixelData.FlagsCarryover;
+
+            SET_REGENERATE()
         }
+    }
 
-        regenerateChunks[middleCenterChunkMapping] = true;
-    } else if (temperature < middleCenterPixelData.LowerTemperatureLimit) {
-        pixelID = middleCenterPixelData.LowerTemperatureLimitPixelID;
-        PixelData newPixelData = simulationData.pixelLookup[pixelID];
-        flags &= newPixelData.FlagsCarryover;
-        temperature = mix(temperature, newPixelData.BaseTemperature, newPixelData.TemperatureConversion);
+    if (middleCenterPixelData.Acidity > 0.0f)
+    {
+        float acidity = 0.0f;
+        acidity += uint(topLeftPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(topLeftPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(topCenterPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(topCenterPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(topRightPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(topRightPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(middleLeftPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(middleLeftPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(middleRightPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(middleRightPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(bottomLeftPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(bottomLeftPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(bottomCenterPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(bottomCenterPixel.PixelID16_Charge8_Flags8), Solid));
+        acidity += uint(bottomRightPixelData.AcidityResistance < middleCenterPixelData.Acidity) * uint(bitsetHas(getFlags(bottomRightPixel.PixelID16_Charge8_Flags8), Solid));
 
-        uint rigidBodyID = getRigidBodyID(middleCenterPixel.RigidBodyID12_RigidBodyIndex20);
-        if (rigidBodyID != 0)
+        if (acidity > 0)
         {
-            rigidBodies[rigidBodyID].NeedsRecalculation = true;
-        }
+            pixelID = 0;
+            PixelData newPixelData = simulationData.pixelLookup[pixelID];
+            flags &= newPixelData.FlagsCarryover;
 
-        regenerateChunks[middleCenterChunkMapping] = true;
+            SET_REGENERATE()
+        }
     }
 
     // Clear Info

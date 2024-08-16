@@ -455,9 +455,15 @@ namespace REA::System
 				// Delete Rigidbodies
 				if (simulationData->timer % 4 == 0)
 				{
-					std::ranges::sort(pixelGrid.DeleteRigidbody);
-					pixelGrid.DeleteRigidbody.erase(std::ranges::unique(pixelGrid.DeleteRigidbody).begin(), pixelGrid.DeleteRigidbody.end());
+					if (!pixelGrid.DeleteRigidbody.empty())
+					{
+						std::ranges::sort(pixelGrid.DeleteRigidbody);
+						auto lastUnique = std::ranges::unique(pixelGrid.DeleteRigidbody);
 
+						if (lastUnique.begin() != pixelGrid.DeleteRigidbody.end()) {
+							pixelGrid.DeleteRigidbody.erase(lastUnique.begin(), pixelGrid.DeleteRigidbody.end());
+						}
+					}
 
 					for (uint32_t deleteRigidbody: pixelGrid.DeleteRigidbody)
 					{
@@ -642,10 +648,11 @@ namespace REA::System
 						if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 						{
 							glm::vec2 targetPosition = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID).Position;
+							glm::vec2 distance = targetPosition - glm::vec2(transform.Position);
 
-							bool range = glm::distance(targetPosition, glm::vec2(transform.Position.x, transform.Position.y)) > 512.0f;
+							bool outOfRange = static_cast<unsigned>(glm::abs(distance.x)) > Constants::NUM_ELEMENTS_X/2 || static_cast<unsigned>(glm::abs(distance.y)) > Constants::NUM_ELEMENTS_Y/2;
 
-							if (range) { collider.Body->SetEnabled(false); }
+							if (outOfRange) { collider.Body->SetEnabled(false); }
 							else { collider.Body->SetEnabled(true); }
 						}
 

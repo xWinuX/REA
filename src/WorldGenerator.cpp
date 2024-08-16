@@ -16,7 +16,7 @@ namespace REA
 {
 	void WorldGenerator::GenerateWorld(std::vector<Pixel::State>& world, Component::PixelGrid& pixelGrid, GenerationSettings& generationSettings)
 	{
-		int seed = 421;
+		int seed = 23082000;
 
 		auto caveNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IgAAAAA/j8J1Pg0AAwAAAB+FE0EQAM3MDEATAJqZGT8LAAAAAAAAAAAAAQAAAAQAAAAA9iicPwAfhes+AArXoz0ArkeNQQ==");
 		std::vector<float> caveNoise = std::vector<float>(world.size());
@@ -25,8 +25,10 @@ namespace REA
 		auto terrainNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IQATAClcDz4UACkAAAAAgD8AAACAPwAAAAAAAAAAAAAQAOxR+D8ZAA0AAwAAAD0KF0ApAAAAAAA/AHsUrj4AzczMPQCPwnU+AAAAAD8=");
 		std::vector<float> terrainNoise = std::vector<float>(world.size());
 		std::vector<float> caveTerrainTransitionNoise = std::vector<float>(world.size());
+		std::vector<float> lakeNoise = std::vector<float>(world.size());
 		terrainNoiseGenerator->GenUniformGrid2D(terrainNoise.data(), 0, 0, pixelGrid.WorldWidth, 1, 0.01f * generationSettings.OverworldNoiseFrequency, seed);
-		terrainNoiseGenerator->GenUniformGrid2D(caveTerrainTransitionNoise.data(), 0, 100, pixelGrid.WorldWidth, 1, 0.01f, seed);
+		terrainNoiseGenerator->GenUniformGrid2D(caveTerrainTransitionNoise.data(), 0, 0, pixelGrid.WorldWidth, 1, 0.01f, seed + 1);
+		terrainNoiseGenerator->GenUniformGrid2D(lakeNoise.data(), 0, 0, pixelGrid.WorldWidth, 1, 0.001f, seed + 2);
 
 		auto               normalNoiseGenerator = FastNoise::NewFromEncodedNodeTree("IgBxPYo/KVyPPhsAKQABFQAK16O9zcxMPylcD77//wAA");
 		std::vector<float> normalNoise          = std::vector<float>(world.size());
@@ -34,7 +36,6 @@ namespace REA
 
 		float terrainBaseline = static_cast<float>(pixelGrid.WorldHeight) * generationSettings.TerrainBaselineRelativeToWorldHeight;
 		float caveBaseLine    = (terrainBaseline - generationSettings.TerrainRange);
-		float waterHeight     = (terrainBaseline - generationSettings.TerrainRange) + ((generationSettings.TerrainRange * 2) * generationSettings.WaterLevelRelativeToTerrainRange);
 
 		FastNoise::SmartNode<FastNoise::White> whiteNoiseGenerator = FastNoise::New<FastNoise::White>();
 
@@ -55,6 +56,9 @@ namespace REA
 				              caveThreshold = glm::mix(generationSettings.CaveNoiseTreshold, generationSettings.CaveNoiseTresholdTerrain, a);
 			              }
 
+			              float terrainHeight          = terrainBaseline + (terrainNoise[x] * generationSettings.TerrainRange);
+			              float terrainHeightWithGrass = terrainHeight + static_cast<float>(generationSettings.GrassHeight);
+
 			              float caveHeight = caveBaseLine + (caveTerrainTransitionNoise[x] * generationSettings.CaveRange);
 			              if (caveNoise[i] < caveThreshold)
 			              {
@@ -65,19 +69,104 @@ namespace REA
 				              }
 				              else
 				              {
-					              float terrainHeight = terrainBaseline + (terrainNoise[x] * generationSettings.TerrainRange);
-
 					              if (y < static_cast<size_t>(terrainHeight)) { world[i] = GET_PIXEL(PixelType::Dirt); }
-					              else if (y < static_cast<size_t>(terrainHeight) + generationSettings.GrassHeight) { world[i] = GET_PIXEL(PixelType::Grass); }
-					              else if (y < waterHeight) { world[i] = GET_PIXEL(PixelType::Water); }
+					              else if (y < terrainHeightWithGrass) { world[i] = GET_PIXEL(PixelType::Grass); }
 				              }
 			              }
 			              else if (caveProgess < generationSettings.LavaLayerEndRelativeToCaveLayerHeight) { world[i] = GET_PIXEL(PixelType::Lava); }
 		              });
 
 
+		// Lakes
+		float waterHeight = (terrainBaseline - generationSettings.TerrainRange) + ((generationSettings.TerrainRange * 2) * generationSettings.WaterLevelRelativeToTerrainRange);
+		for (int y = static_cast<int>(waterHeight); y > caveBaseLine; --y)
+		{
+			PixelType previousPixelType = static_cast<PixelType>(world[y * pixelGrid.WorldWidth].PixelID);
+			size_t    previousXPos      = 0;
+			uint32_t  count             = 0;
+			for (int x = 0; x < pixelGrid.WorldWidth; ++x)
+			{
+				size_t i = y * pixelGrid.WorldWidth + x;
+
+				uint16_t pixelId = world[i].PixelID;
+				if ((previousPixelType == PixelType::Grass || previousPixelType == PixelType::Sand) && pixelId == PixelType::Air)
+				{
+					count++;
+					previousXPos = x;
+				}
+				if (previousPixelType == PixelType::Air && pixelId == PixelType::Grass) { count++; }
+				if (pixelId == PixelType::Dirt) { count = 0; }
+
+				// if we found a line that connects two sections together
+				if (count == 2)
+				{
+					// Simple fill
+					for (int fillX = static_cast<int>(previousXPos); fillX < x; ++fillX)
+					{
+						bool foundGrass = false;
+						for (int fillY = 0; fillY < 300; ++fillY)
+						{
+							size_t fillIndex = (y - fillY) * pixelGrid.WorldWidth + fillX;
+							if (fillIndex < world.size())
+							{
+								if (world[fillIndex].PixelID == PixelType::Air)
+								{
+									if (foundGrass) { break; }
+
+									world[fillIndex] = GET_PIXEL(PixelType::Water);
+								}
+								else if (world[fillIndex].PixelID == PixelType::Grass)
+								{
+									world[fillIndex] = GET_PIXEL(PixelType::Sand);
+									foundGrass       = true;
+								}
+								else { break; }
+							}
+							else { break; }
+						}
+					}
+
+					// Fill Holes that can drain the water
+					for (int fillX = static_cast<int>(previousXPos); fillX < x; ++fillX)
+					{
+						for (int fillY = 0; fillY < 300; ++fillY)
+						{
+							size_t fillIndex       = (y - fillY) * pixelGrid.WorldWidth + fillX;
+							size_t checkRightIndex = (y - fillY) * pixelGrid.WorldWidth + (fillX + 1);
+							size_t checkLeftIndex  = (y - fillY) * pixelGrid.WorldWidth + (fillX - 1);
+
+							if (fillIndex < world.size() && world[fillIndex].PixelID != PixelType::Water) { break; }
+
+							if (checkRightIndex < world.size() && world[checkRightIndex].PixelID == PixelType::Air)
+							{
+								for (int rightFillX = fillX + 1; rightFillX < pixelGrid.WorldWidth; ++rightFillX)
+								{
+									size_t rightFillIndex = (y - fillY) * pixelGrid.WorldWidth + rightFillX;
+									if (rightFillIndex < world.size() && world[rightFillIndex].PixelID == PixelType::Air) { world[rightFillIndex] = GET_PIXEL(PixelType::Dirt); }
+									else { break; }
+								}
+							}
+							if (checkLeftIndex < world.size() && world[checkLeftIndex].PixelID == PixelType::Air)
+							{
+								for (int leftFillX = fillX - 1; leftFillX > 0; --leftFillX)
+								{
+									size_t leftFillIndex = (y - fillY) * pixelGrid.WorldWidth + leftFillX;
+									if (leftFillIndex < world.size() && world[leftFillIndex].PixelID == PixelType::Air) { world[leftFillIndex] = GET_PIXEL(PixelType::Dirt); }
+									else { break; }
+								}
+							}
+						}
+					}
+
+					count = 0;
+				}
+
+				previousPixelType = static_cast<PixelType>(pixelId);
+			}
+		}
+
 		// Trees
-		float nextTreeEdge = 0;
+		/*float nextTreeEdge = 0;
 		int   treePadding  = 400;
 		for (int x = treePadding; x < pixelGrid.WorldWidth - treePadding; ++x)
 		{
@@ -136,7 +225,7 @@ namespace REA
 					}
 				}
 			}
-		}
+		}*/
 	}
 
 	glm::vec2 WorldGenerator::GenerateBranch(float                                   startX,

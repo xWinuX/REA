@@ -45,6 +45,8 @@ struct PixelData {
     float TemperatureConversion;
     uint BaseCharge;
     float ChargeAbsorbtionChance;
+    float Acidity;
+    float AcidityResistance;
 };
 
 struct Pixel {

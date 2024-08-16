@@ -54,7 +54,7 @@ int main()
 		{
 			.ID = PixelType::Air,
 			.Name = "Air",
-			.Color = Color(0x183675FF),
+			.Color = Color(0x6397FFFF),
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 10, .SpreadingFactor = 4, .TemperatureResistance = 0.3f, .BaseTemperature = airTemperature, },
 		},
 		{
@@ -114,8 +114,7 @@ int main()
 			.ID = PixelType::Oil,
 			.Name = "Oil",
 			.Color = Color(0x333333FF),
-			.Data =
-			{ .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 16, .SpreadingFactor = 2, .TemperatureResistance = 0, .BaseTemperature = airTemperature, }
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 16, .SpreadingFactor = 2, .TemperatureResistance = 0, .BaseTemperature = airTemperature, }
 		},
 		{
 			.ID = PixelType::Lava,
@@ -191,10 +190,10 @@ int main()
 		{
 			.ID = PixelType::Iron,
 			.Name = "Iron",
-			.Color = Color(0x918B87FF),
-			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive), .Density = 100, .TemperatureResistance = 1.0f, .BaseCharge = 0 }
+			.Color = Color(0x313642FF),
+			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive), .Density = 100, .TemperatureResistance = 1.0f, .BaseCharge = 0, .AcidityResistance = 200.0f }
 		},
-		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100, } },
+		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100 } },
 		{
 			.ID = PixelType::Grass,
 			.Name = "Grass",
@@ -210,15 +209,27 @@ int main()
 		},
 		{
 			.ID = PixelType::Leaf,
-			.Name = "Grass",
+			.Name = "Leaf",
 			.Color = Color(0x509229FF),
 			.Data = Pixel::Data{
 				.Flags = BitSet<uint32_t>(Pixel::Solid),
 				.Density = 100,
 				.TemperatureResistance = 1.0f,
 				.BaseTemperature = airTemperature,
-				.HighTemperatureLimit = 600,
+				.HighTemperatureLimit = 300,
 				.HighTemperatureLimitPixelID = PixelType::Fire,
+			}
+		},
+		{
+			.ID = PixelType::Acid,
+			.Name = "Acid",
+			.Color = Color(0x28F600FF),
+			.Data = Pixel::Data{
+				.Flags = BitSet<uint32_t>(Pixel::Gravity),
+				.Density = 12,
+				.SpreadingFactor = 6,
+				.BaseTemperature = airTemperature,
+				.Acidity = 100.0f,
 			}
 		},
 	};
@@ -385,13 +396,13 @@ int main()
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
 	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
 	ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
-	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
+	//ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
 
 	// Pre Rendering End
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);
 
 	// Create entities
-	uint64_t camera                                                        = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { 10.0f  });
+	uint64_t camera                                                        = ecs.CreateEntity<Component::Transform, Component::Camera>({ { 0.0f, 0.0f, 10.0f } }, { 10.0f });
 	ecs.GetContextProvider().GetContext<Context::Global>()->CameraEntityID = camera;
 
 	ecs.SetPrimaryGroup(Level::MainMenu);
