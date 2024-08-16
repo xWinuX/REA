@@ -16,7 +16,8 @@ namespace REA
 		constexpr uint32_t NUM_CHUNKS            = CHUNKS_X * CHUNKS_Y;
 		constexpr uint32_t NUM_ELEMENTS_IN_CHUNK = CHUNK_SIZE * CHUNK_SIZE;
 
-		constexpr uint32_t NUM_ELEMENTS_X = CHUNKS_X * CHUNK_SIZE;
-		constexpr uint32_t NUM_ELEMENTS_Y = CHUNKS_Y * CHUNK_SIZE;
+		constexpr uint32_t NUM_ELEMENTS_X     = CHUNKS_X * CHUNK_SIZE;
+		constexpr uint32_t NUM_ELEMENTS_Y     = CHUNKS_Y * CHUNK_SIZE;
+		constexpr uint32_t MAX_CONTOUR_POINTS = 8192;
 	}
 }

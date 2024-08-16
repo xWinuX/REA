@@ -21,6 +21,11 @@ layout (set = 1, binding = 1) uniform sampler2D texSampler;
 
 SSBO_ViewportPixels(2, 0)
 
+
+layout(set = 1, binding = 2) buffer s_si_dl_Labels {
+    int labels[MAX_ELEMENTS];
+};
+
 void main() {
     ivec2 position = ivec2(floor(v_PixelPosition));
 
@@ -41,7 +46,7 @@ void main() {
         pixelColor += vec4((charge / 255.0f) * 2.0f, (charge / 255.0f) * 0.2, 0.0f, 0.0f);
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
-        pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);
+        pixelColor = vec4(labels[index], 0.0f, 0.0f, 1.0f);
     }
 
     uvec2 offset = uvec2(gridInfo.offset);
