@@ -85,6 +85,9 @@ add_executable(
         src/ImGuiHelper.cpp
         src/System/PauseMenu.cpp
         include/REA/System/PauseMenu.hpp
+        src/System/SandboxController.cpp
+        include/REA/System/SandboxController.hpp
+        include/REA/Component/SandboxController.hpp
 )
 
 target_include_directories(REA PRIVATE include)

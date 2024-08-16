@@ -12,8 +12,10 @@
 #include <SplitEngine/Rendering/Texture2D.hpp>
 
 #include <glm/gtc/random.hpp>
+#include <REA/Component/SandboxController.hpp>
 #include <REA/System/MainMenu.hpp>
 #include <REA/System/PauseMenu.hpp>
+#include <REA/System/SandboxController.hpp>
 
 #include "REA/Assets.hpp"
 #include "REA/Component/AudioSource.hpp"
@@ -350,21 +352,27 @@ int main()
 	ecs.RegisterComponent<Component::PixelGridRenderer>();
 	ecs.RegisterComponent<Component::Collider>();
 	ecs.RegisterComponent<Component::PixelGridRigidBody>();
+	ecs.RegisterComponent<Component::SandboxController>();
 
 	ecs.RegisterContext<Context::ImGui>({});
 	ecs.RegisterContext<Context::Global>({});
 
+	// Physics System
 	ECS::Registry::SystemHandle<System::Physics> physicsHandle = ecs.AddSystem<System::Physics>({ { Stage::PrePhysicsStep, 0 }, { Stage::PhysicsManagement, 0 } }, true);
 
-	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
+	// Halted Compute Shader
 	ecs.AddSystem<System::PlayerController>(Stage::GridComputeHalted, 0);
-
 	ecs.AddSystem<System::PixelGridDrawing>(Stage::GridComputeHalted, 10, 1, PixelType::Air);
 
-	ecs.AddSystem<System::Camera>(Stage::Gameplay, 1);
+	// Gameplay
+	ecs.AddSystem<System::Debug>(Stage::Gameplay, -1);
 	ecs.AddSystem<System::MainMenu>(Stage::Gameplay, 1, pixelLookup);
 	ecs.AddSystem<System::PauseMenu>(Stage::Gameplay, 1);
 	ecs.AddSystem<System::AudioSourcePlayer>(Stage::Gameplay, 999);
+
+	// Late gameplay
+	ecs.AddSystem<System::SandboxController>(Stage::LateGameplay, 2);
+	ecs.AddSystem<System::Camera>(Stage::LateGameplay, 1);
 
 	// Simulation
 	System::PixelGridSimulation::SimulationShaders simulationShaders = {

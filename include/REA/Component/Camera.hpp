@@ -9,5 +9,6 @@ namespace REA::Component
 		float     Layer          = 0.0f;
 		uint64_t  TargetEntity   = -1ull;
 		glm::vec2 TargetPosition = { 0.0f, 0.0f };
+		float     PixelSize      = 1.0f;
 	};
 }

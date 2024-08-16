@@ -21,6 +21,8 @@ namespace REA
 
 		GridComputeBegin = 103,
 
+		LateGameplay = 120,
+
 		// BeginRendering = 150
 
 		Rendering = 175,

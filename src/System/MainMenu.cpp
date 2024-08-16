@@ -11,6 +11,7 @@
 #include <REA/Component/Collider.hpp>
 #include <REA/Component/PixelGridRenderer.hpp>
 #include <REA/Component/Player.hpp>
+#include <REA/Component/SandboxController.hpp>
 #include <REA/Component/SpriteRenderer.hpp>
 #include <REA/Component/Transform.hpp>
 #include <REA/Context/Global.hpp>
@@ -48,6 +49,8 @@ namespace REA::System
 				pixelGrid.InitialClear         = true;
 
 				Component::Camera& camera = ecs.GetComponent<Component::Camera>(pixelGrid.CameraEntityID);
+
+				ecs.AddComponent<Component::SandboxController>(pixelGrid.CameraEntityID, {});
 
 				camera.TargetPosition = glm::vec2(static_cast<float>(pixelGrid.WorldWidth) * 0.5f), (static_cast<float>(pixelGrid.WorldHeight) * 0.5f);
 

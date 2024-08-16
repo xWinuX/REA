@@ -42,8 +42,8 @@ namespace REA::System
 	                     ECS::ContextProvider&  contextProvider,
 	                     uint8_t                stage)
 	{
-		ECS::Registry& ecs = contextProvider.GetContext<EngineContext>()->Application->GetECSRegistry();
-		CameraUBO* cameraUBO = Rendering::Shader::GetGlobalProperties().GetBufferData<CameraUBO>(0);
+		ECS::Registry& ecs       = contextProvider.GetContext<EngineContext>()->Application->GetECSRegistry();
+		CameraUBO*     cameraUBO = Rendering::Shader::GetGlobalProperties().GetBufferData<CameraUBO>(0);
 		for (int i = 0; i < entities.size(); ++i)
 		{
 			Component::Transform& transformComponent = transformComponents[i];
@@ -65,15 +65,15 @@ namespace REA::System
 			const uint32_t height = renderer->GetVulkanInstance().GetPhysicalDevice().GetDevice().GetSwapchain().GetExtend().height;
 
 			float left   = 0.0f;
-			float right  = static_cast<float>(width) / (_pixelSize * _pixelsPerUnit);
-			float bottom = static_cast<float>(height) / (_pixelSize * _pixelsPerUnit);
+			float right  = static_cast<float>(width) / (cameraComponent.PixelSize * _pixelsPerUnit);
+			float bottom = static_cast<float>(height) / (cameraComponent.PixelSize * _pixelsPerUnit);
 			float top    = 0.0f;
 
 			glm::vec3 windowSize = glm::vec3(right, bottom, 0.0f);
 			cameraUBO->view      = glm::translate(glm::identity<glm::mat4>(), -transformComponent.Position + windowSize / 2.0f);
 			cameraUBO->proj      = PrepareOrthographicProjectionMatrix(left, right, bottom, top, 0.1f, 1000.0f);
 
-			cameraUBO->pixelSize     = _pixelSize;
+			cameraUBO->pixelSize     = cameraComponent.PixelSize;
 			cameraUBO->pixelsPerUnit = _pixelsPerUnit;
 		}
 	}

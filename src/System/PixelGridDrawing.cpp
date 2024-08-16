@@ -13,6 +13,7 @@
 #include "IconsFontAwesome.h"
 #include "REA/PixelType.hpp"
 #include "REA/Component/Transform.hpp"
+#include "REA/Component/Camera.hpp"
 #include "REA/Context/ImGui.hpp"
 
 
@@ -75,6 +76,7 @@ namespace REA::System
 				pixelGrid.InitialClear = false;
 			}
 
+			// Draw UI
 			ImGui::Text("Actions");
 
 			std::string viewMode = "";
@@ -139,22 +141,31 @@ namespace REA::System
 				}
 				ImGui::EndTable();
 			}
+
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar();
 			ImGui::PopStyleVar();
 			ImGui::Separator();
 
-			glm::ivec2 cursorPosition = {0,0};
+			// Get cursor position
+			glm::ivec2 cursorPosition = { 0, 0 };
 			if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 			{
-				glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
+				Component::Camera& camera = ecsRegistry.GetComponent<Component::Camera>(pixelGrid.CameraEntityID);
+
+				float pixelSize = camera.PixelSize;
+
+				glm::ivec2 windowSize    = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
 				glm::ivec2 mousePosition = Input::GetMousePosition();
 				mousePosition            = { mousePosition.x, windowSize.y - mousePosition.y };
 
+				glm::ivec2 adjustedWindowSize    = glm::ivec2(glm::floor(glm::vec2(windowSize) / pixelSize));
+				glm::ivec2 adjustedMousePosition = glm::ivec2(glm::floor(glm::vec2(mousePosition) / pixelSize));
+
 				Component::Transform& transform = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID);
 
-				glm::ivec2 cameraPosition = glm::ivec2(glm::floor(glm::vec2(transform.Position)));
-				glm::ivec2 centeredMousePosition = mousePosition - (windowSize/2);
+				glm::ivec2 cameraPosition        = glm::ivec2(glm::floor(glm::vec2(transform.Position)));
+				glm::ivec2 centeredMousePosition = adjustedMousePosition - (adjustedWindowSize / 2);
 
 				cursorPosition = (cameraPosition + centeredMousePosition) - pixelGrid.ChunkOffset * static_cast<int32_t>(Constants::CHUNK_SIZE);
 			}
@@ -166,54 +177,55 @@ namespace REA::System
 			uint32_t chunkIndex = (cursorPosition.y / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (cursorPosition.x / Constants::CHUNK_SIZE);
 			uint32_t pixelIndex = (cursorPosition.y % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (cursorPosition.x % Constants::CHUNK_SIZE);
 
-			if (chunkIndex < pixelGrid.ChunkMapping.size())
+			// Skip this frame if chunk index is somehow out of bounds
+			if (chunkIndex >= pixelGrid.ChunkMapping.size()) { continue; }
+
+			// Retrieve the chunk mapping to get the correct chunk data
+			uint32_t chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
+
+			// Access the pixel state from the pixel state array
+			Pixel::State state = (*pixelState)[chunkMapping][pixelIndex];
+
+			// Draw Pixel Info
+			ImGui::Text(std::format("Current Pixel Info:").c_str());
+			ImGui::Text(std::format("Chunk Index: {0}", chunkIndex).c_str());
+			ImGui::Text(std::format("Chunk Pixel Index: {0}", pixelIndex).c_str());
+			ImGui::Text(std::format("Pos: x {0} y {1}", cursorPosition.x, cursorPosition.y).c_str());
+			ImGui::Text(std::format("ID: {0}", state.PixelID).c_str());
+			ImGui::Text(std::format("Name: {0}", pixelGrid.PixelLookup[state.PixelID].Name).c_str());
+			ImGui::Text(std::format("Mask: {0}", std::bitset<8>(state.Flags.GetMask()).to_string()).c_str());
+			ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
+			ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
+			ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());
+
+			// Actually draw the pixels
+			if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
 			{
-				// Retrieve the chunk mapping to get the correct chunk data
-				uint32_t chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
-
-				// Access the pixel state from the pixel state array
-				Pixel::State state = (*pixelState)[chunkMapping][pixelIndex];
-
-				ImGui::Text(std::format("Current Pixel Info:").c_str());
-				ImGui::Text(std::format("Chunk Index: {0}", chunkIndex).c_str());
-				ImGui::Text(std::format("Chunk Pixel Index: {0}", pixelIndex).c_str());
-				ImGui::Text(std::format("Pos: x {0} y {1}", cursorPosition.x, cursorPosition.y).c_str());
-				ImGui::Text(std::format("ID: {0}", state.PixelID).c_str());
-				ImGui::Text(std::format("Name: {0}", pixelGrid.PixelLookup[state.PixelID].Name).c_str());
-				ImGui::Text(std::format("Mask: {0}", std::bitset<8>(state.Flags.GetMask()).to_string()).c_str());
-				ImGui::Text(std::format("Temperature: {0}", state.Temperature).c_str());
-				ImGui::Text(std::format("Charge: {0}", state.Charge).c_str());
-				ImGui::Text(std::format("RigidBodyID: {0}", static_cast<uint32_t>(state.RigidBodyID)).c_str());
-
-				if (Input::GetDown(KeyCode::MOUSE_LEFT) && !ImGui::GetIO().WantCaptureMouse)
+				Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
+				if (_radius == 1)
 				{
-					Pixel::State& drawState = pixelGrid.PixelLookup[_drawPixelID].PixelState;
-					if (_radius == 1)
+					(*pixelState)[chunkMapping][pixelIndex] = drawState;
+					pixelGrid.ChunkRegenerate[chunkMapping] = true;
+				}
+				else
+				{
+					for (int x = -_radius; x < _radius; ++x)
 					{
-						(*pixelState)[chunkMapping][pixelIndex] = drawState;
-						pixelGrid.ChunkRegenerate[chunkMapping] = true;
-					}
-					else
-					{
-						for (int x = -_radius; x < _radius; ++x)
+						for (int y = -_radius; y < _radius; ++y)
 						{
-							for (int y = -_radius; y < _radius; ++y)
+							if (x * x + y * y > _radius * _radius)  { continue; }
+
+							const int xx = std::clamp<int>(cursorPosition.x + x, 0, pixelGrid.WorldWidth - 1);
+							const int yy = std::clamp<int>(cursorPosition.y + y, 0, pixelGrid.WorldHeight - 1);
+
+							chunkIndex = (yy / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (xx / Constants::CHUNK_SIZE);
+							pixelIndex = (yy % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (xx % Constants::CHUNK_SIZE);
+
+							if (chunkIndex < pixelGrid.ChunkMapping.size())
 							{
-								//if (x * x + y * y <= _radius * _radius)
-								//{
-									const int xx = std::clamp<int>(cursorPosition.x + x, 0, pixelGrid.WorldWidth - 1);
-									const int yy = std::clamp<int>(cursorPosition.y + y, 0, pixelGrid.WorldHeight - 1);
-
-									chunkIndex = (yy / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (xx / Constants::CHUNK_SIZE);
-									pixelIndex = (yy % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (xx % Constants::CHUNK_SIZE);
-
-									if (chunkIndex < pixelGrid.ChunkMapping.size())
-									{
-										chunkMapping                            = pixelGrid.ChunkMapping[chunkIndex];
-										pixelGrid.ChunkRegenerate[chunkMapping] = true;
-										(*pixelState)[chunkMapping][pixelIndex] = drawState;
-									}
-								//}
+								chunkMapping                            = pixelGrid.ChunkMapping[chunkIndex];
+								pixelGrid.ChunkRegenerate[chunkMapping] = true;
+								(*pixelState)[chunkMapping][pixelIndex] = drawState;
 							}
 						}
 					}

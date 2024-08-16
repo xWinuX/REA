@@ -25,6 +25,7 @@ namespace REA::System
 		_ecsStageLookup[Stage::GridComputeBegin]     = "Grid Compute Begin";
 		_ecsStageLookup[Stage::GridComputeHalted]    = "Grid Compute Halted";
 		_ecsStageLookup[Stage::GridComputeEnd]       = "Grid Compute End";
+		_ecsStageLookup[Stage::LateGameplay]         = "Late Gameplay";
 	}
 
 	void Debug::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)

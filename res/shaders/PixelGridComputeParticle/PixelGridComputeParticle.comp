@@ -31,6 +31,12 @@ void main()
 
     for (int stepIndex = 0; stepIndex < floor(particle.Velocity.length()); stepIndex++)
     {
+        if (current.x >= NUM_ELEMENTS_X || current.y >= NUM_ELEMENTS_Y) {
+            availableIndices[atomicAdd(numAvailableIndices, 1)] = index;
+            enabled[index] = false;
+            break;
+        }
+
         SetupWritePixelVarsByPosition(check, current.x, current.y);
 
         if (getPixelID(checkPixel.PixelID16_Charge8_Flags8) == 0) {
