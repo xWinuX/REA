@@ -72,11 +72,11 @@ namespace REA
 			uint32_t         HighTemperatureLimitPixelID  = 0;
 			float            TemperatureConversion        = 0.0f;
 			uint32_t         BaseCharge                   = 0;
-			float            ChargeAbsorbtionChance       = 0.0f;
-			float            ChargeLowerLimit             = 0.0f;
-			uint32_t         ChargeLowerLimitPixelID      = 0;
-			float            ChargeHighLimit              = 0.0f;
-			uint32_t         ChargeHighLimitPixelID       = 0;
+			uint32_t         Pulser                       = false;
+			float            LowerChargeLimit             = -256;
+			uint32_t         LowerChargeLimitPixelID      = 0;
+			float            HighChargeLimit              = 256.0f;
+			uint32_t         HighChargeLimitPixelID       = 0;
 			float            Acidity                      = 0.0f;
 			float            AcidityResistance            = 0.0f;
 		};

@@ -46,7 +46,11 @@ struct PixelData {
     uint HighTemperatureLimitPixelID;
     float TemperatureConversion;
     uint BaseCharge;
-    float ChargeAbsorbtionChance;
+    bool Pulser;
+    float LowerChargeLimit;
+    uint LowerChargeLimitPixelID;
+    float HighChargeLimit;
+    uint HighChargeLimitPixelID;
     float Acidity;
     float AcidityResistance;
 };

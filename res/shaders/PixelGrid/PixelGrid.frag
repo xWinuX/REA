@@ -38,7 +38,7 @@ void main() {
     float temperatureScaled = temperature / 255.0f;
     if (gridInfo.renderMode == RenderMode_Normal) {
         pixelColor *= 1 + vec4(temperature / 100.0f, temperatureScaled, temperatureScaled, 1.0f);
-        pixelColor += vec4((charge / 255.0f) * 2.0f, (charge / 255.0f) * 0.2, 0.0f, 0.0f);
+        pixelColor += vec4((charge / 255.0f) * 2.0f, (charge / 255.0f) * 0.2, 0.0f, 0.0f) * 0.1f;
     }
     if (gridInfo.renderMode == RenderMode_Temperature) {
         pixelColor = vec4(temperature / 255.0f, 0.0f, 0.0f, 1.0f);

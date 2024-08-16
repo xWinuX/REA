@@ -70,10 +70,6 @@ namespace REA::System
 
 				AssetDatabase& assetDatabase = engineContext->Application->GetAssetDatabase();
 
-
-
-
-
 				std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.WorldWidth * pixelGrid.WorldHeight, pixelGrid.PixelLookup[PixelType::Air].PixelState);
 				WorldGenerator::GenerationSettings generationSettings{};
 				WorldGenerator::GenerateWorld(world, pixelGrid, generationSettings);

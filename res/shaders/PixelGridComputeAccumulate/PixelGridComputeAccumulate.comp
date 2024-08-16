@@ -86,7 +86,8 @@ void main()
 
     // Charge
     uint charge = getCharge(middleCenterPixel.PixelID16_Charge8_Flags8);
-    if (bitsetHas(middleCenterPixelData.Flags, Conductive) && !bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter))
+    bool isReceiver = bitsetHas(middleCenterPixelData.Flags, ElectricityReceiver);
+    if ((bitsetHas(middleCenterPixelData.Flags, Conductive) || isReceiver) && !bitsetHas(middleCenterPixelData.Flags, ElectricityEmitter))
     {
         uint maxCharge0 = max(getCharge(middleRightPixel.PixelID16_Charge8_Flags8), getCharge(topCenterPixel.PixelID16_Charge8_Flags8));
         uint maxCharge1 = max(getCharge(middleLeftPixel.PixelID16_Charge8_Flags8), getCharge(bottomCenterPixel.PixelID16_Charge8_Flags8));
@@ -95,6 +96,29 @@ void main()
 
         charge = uint(clamp(int(maxCharge) - 1, 0, 255));
 
+        if (isReceiver)
+        {
+
+            bool highLimit = charge >= middleCenterPixelData.HighChargeLimit;
+            bool lowLimit = charge < middleCenterPixelData.LowerChargeLimit;
+            if (highLimit || lowLimit) {
+                if (highLimit) {
+                    pixelID = middleCenterPixelData.HighChargeLimitPixelID;
+                } else {
+                    pixelID = middleCenterPixelData.LowerChargeLimitPixelID;
+                }
+
+                PixelData newPixelData = simulationData.pixelLookup[pixelID];
+                flags &= newPixelData.FlagsCarryover;
+
+                middleCenterPixelData = newPixelData;
+            }
+        }
+    }
+
+    if (middleCenterPixelData.Pulser)
+    {
+        charge = clamp(charge - 1, 0, 255);
     }
 
     // Temperature

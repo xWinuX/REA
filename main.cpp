@@ -83,7 +83,6 @@ int main()
 				.BaseTemperature = airTemperature,
 				.HighTemperatureLimit = 100,
 				.HighTemperatureLimitPixelID = PixelType::Steam,
-				.ChargeAbsorbtionChance = 0.75f,
 			}
 		},
 		{
@@ -93,7 +92,7 @@ int main()
 			.Category = Pixel::Category::Static,
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
@@ -191,7 +190,7 @@ int main()
 		{
 			.ID = PixelType::Spark,
 			.Name = "Spark",
-			.Color = Color(0xFFFA66FF),
+			.Color = Color(0xC09D55FF),
 			.Category = Pixel::Category::Electronic,
 			.Data =
 			{
@@ -230,7 +229,8 @@ int main()
 			.Name = "Leaf",
 			.Color = Color(0x509229FF),
 			.Category = Pixel::Category::Static,
-			.Data = Pixel::Data{
+			.Data = Pixel::Data
+			{
 				.Flags = BitSet<uint32_t>(Pixel::Solid),
 				.Density = 100,
 				.TemperatureResistance = 1.0f,
@@ -248,17 +248,101 @@ int main()
 		},
 		{
 			.ID = PixelType::Wood_Rigidbody,
-			.Name = "Wood",
+			.Name = "Wood Rigidbody",
 			.Color = Color(0x775937FF),
 			.Category = Pixel::Category::Rigidbody,
-			.Data = {
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
+			.Data =
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
 				.BaseTemperature = airTemperature,
 				.HighTemperatureLimit = 600,
 				.HighTemperatureLimitPixelID = PixelType::Fire,
+			},
+		},
+		{
+			.ID = PixelType::Pulser,
+			.Name = "Pulser",
+			.Color = Color(0x8735A0FF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .BaseTemperature = airTemperature, .Pulser = true, }
+		},
+		{
+			.ID = PixelType::LED_Red,
+			.Name = "LED Red",
+			.Color = Color(0xFFB3ACFF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::ElectricityReceiver),
+				.BaseTemperature = airTemperature,
+				.HighChargeLimit = 127,
+				.HighChargeLimitPixelID = PixelType::LED_Red_On
+			}
+		},
+		{
+			.ID = PixelType::LED_Red_On,
+			.Name = "LED Red On",
+			.Color = Color(0xFF3233FF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::ElectricityReceiver),
+				.BaseTemperature = airTemperature,
+				.LowerChargeLimit = 127,
+				.LowerChargeLimitPixelID = PixelType::LED_Red
+			}
+		},
+		{
+			.ID = PixelType::LED_Green,
+			.Name = "LED Green",
+			.Color = Color(0xB7FFA6FF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::ElectricityReceiver),
+				.BaseTemperature = airTemperature,
+				.HighChargeLimit = 127,
+				.HighChargeLimitPixelID = PixelType::LED_Green_On
+			}
+		},
+		{
+			.ID = PixelType::LED_Green_On,
+			.Name = "LED Green On",
+			.Color = Color(0x58FF59FF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data
+			{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::ElectricityReceiver),
+				.BaseTemperature = airTemperature,
+				.LowerChargeLimit = 127,
+				.LowerChargeLimitPixelID = PixelType::LED_Green
+			}
+		},
+		{
+			.ID = PixelType::LED_Blue,
+			.Name = "LED Blue",
+			.Color = Color(0x89B5FFFF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::ElectricityReceiver),
+				.BaseTemperature = airTemperature,
+				.HighChargeLimit = 127,
+				.HighChargeLimitPixelID = PixelType::LED_Blue_On
+			}
+		},
+		{
+			.ID = PixelType::LED_Blue_On,
+			.Name = "LED Blue On",
+			.Color = Color(0x2533FFFF),
+			.Category = Pixel::Category::Electronic,
+			.Data = Pixel::Data{
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::ElectricityReceiver),
+				.BaseTemperature = airTemperature,
+				.LowerChargeLimit = 127,
+				.LowerChargeLimitPixelID = PixelType::LED_Blue
 			}
 		},
 	};
