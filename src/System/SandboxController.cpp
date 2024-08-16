@@ -30,7 +30,7 @@ namespace REA::System
 			if (Input::GetDown(KeyCode::MOUSE_MIDDLE))
 			{
 				glm::ivec2 mouseDelta = Input::GetMouseDelta();
-				camera.TargetPosition += glm::vec2(-mouseDelta.x, mouseDelta.y);
+				camera.TargetPosition += glm::vec2(-mouseDelta.x, mouseDelta.y) / camera.PixelSize;
 			}
 		}
 	}
