@@ -158,14 +158,23 @@ namespace REA
 				if (!found) { break; }
 			}
 
+			float scale = 1.00f;
 			auto originalCenter = aabb.GetCenter();
-			aabb                = { { aabb.lowerBound.x, aabb.lowerBound.y }, { aabb.upperBound.x, aabb.upperBound.y } };
-			auto newCenter      = aabb.GetCenter();
-			for (CDT::V2d<float>& polylineVert: sortedPolyline)
+
+			float halfWidth = (aabb.upperBound.x - aabb.lowerBound.x) / 2.0f;
+			float halfHeight = (aabb.upperBound.y - aabb.lowerBound.y) / 2.0f;
+
+			halfWidth *= scale;
+			halfHeight *= scale;
+
+			aabb.lowerBound = { originalCenter.x - halfWidth, originalCenter.y - halfHeight };
+			aabb.upperBound = { originalCenter.x + halfWidth, originalCenter.y + halfHeight };
+
+			for (CDT::V2d<float>& polylineVert : sortedPolyline)
 			{
 				polylineVert = { polylineVert.x - originalCenter.x, polylineVert.y - originalCenter.y };
-				polylineVert = { polylineVert.x, polylineVert.y };
-				polylineVert = { polylineVert.x + newCenter.x, polylineVert.y + newCenter.y };
+				polylineVert = { polylineVert.x * scale, polylineVert.y * scale };
+				polylineVert = { polylineVert.x + originalCenter.x, polylineVert.y + originalCenter.y };
 			}
 
 			polylines.push_back({ aabb, endpoints.empty(), std::move(sortedPolyline) });

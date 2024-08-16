@@ -199,8 +199,8 @@ namespace REA::System
 						{
 							for (int y = -_radius; y < _radius; ++y)
 							{
-								if (x * x + y * y <= _radius * _radius)
-								{
+								//if (x * x + y * y <= _radius * _radius)
+								//{
 									const int xx = std::clamp<int>(cursorPosition.x + x, 0, pixelGrid.WorldWidth - 1);
 									const int yy = std::clamp<int>(cursorPosition.y + y, 0, pixelGrid.WorldHeight - 1);
 
@@ -213,7 +213,7 @@ namespace REA::System
 										pixelGrid.ChunkRegenerate[chunkMapping] = true;
 										(*pixelState)[chunkMapping][pixelIndex] = drawState;
 									}
-								}
+								//}
 							}
 						}
 					}

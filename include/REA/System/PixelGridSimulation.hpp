@@ -81,6 +81,11 @@ namespace REA::System
 				Pixel::Data       pixelLookup[1024];
 			};
 
+			struct SSBO_Contours
+			{
+				glm::vec2 ContourPoints[Constants::MAX_CONTOUR_POINTS*2];
+			};
+
 			struct SSBO_MarchingCubes
 			{
 				MarchingSquareWorld                                    connectedChunk;
@@ -106,7 +111,7 @@ namespace REA::System
 
 			uint32_t _fif = 1;
 
-			float _lineSimplificationTolerance = 0.5f;
+			float _lineSimplificationTolerance = 5.0f;
 
 			Rendering::Vulkan::CommandBuffer _commandBuffer;
 			vk::Fence                        _computeFence;
