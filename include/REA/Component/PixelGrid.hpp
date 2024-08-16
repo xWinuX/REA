@@ -27,8 +27,7 @@ namespace REA::Component
 		{
 			glm::uvec2 Offset;
 			glm::uvec2 Size;
-			uint32_t   ContourPointsStart;
-			uint32_t   NumContourPoints;
+			glm::uvec2 SeedPoint;
 			uint32_t   RigidBodyID;
 		};
 

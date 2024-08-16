@@ -1,27 +1,14 @@
 #version 450
 
 #include "../PixelGridComputeGlobals.glsl"
-layout (set = 1, binding = 5) buffer s_si_Contours {
-    vec2 ContourPoints[MAX_CONTOUR_POINTS * 2];
-};
-
-layout (set = 1, binding = 6) buffer s_si_dl_Labels {
-    int labels[MAX_ELEMENTS];
-};
-
-
+#include "../CCLShared.glsl"
 
 layout (push_constant) uniform PushConstant {
     uvec2 Offset;
     uvec2 Size;
-    uint PointsStart;
-    uint PointsCount;
+    uvec2 SeedPoint;
     uint RigidBodyID;
 };
-
-bool isLeft(vec2 p0, vec2 p1, vec2 p) {
-    return ((p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * (p1.y - p0.y)) > 0.0;
-}
 
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
@@ -31,49 +18,25 @@ void main()
     }
 
     uvec2 offset = Offset - (simulationData.chunkOffset * CHUNK_SIZE);
+    uvec2 seedPoint = SeedPoint - (simulationData.chunkOffset * CHUNK_SIZE);
+
+    uint correctLabel = labels[seedPoint.y * NUM_ELEMENTS_X + seedPoint.x];
+
+    if (correctLabel == -1) {
+        return;
+    }
 
     uint x = offset.x + (gl_GlobalInvocationID.x % Size.x);
     uint y = offset.y + (gl_GlobalInvocationID.x / Size.x);
 
-    SetupWritePixelVarsByPosition(middleCenter, x, y);
-
-    if (!bitsetHas(getFlags(middleCenterPixel.PixelID16_Charge8_Flags8), Connected)) {
-        return;
-    }
-
-    vec2 pixelPosition = vec2(x, y) + vec2(0.5); // Center of the pixel
-
-    int windingNumber = 0;
-
-    for (int i = 0; i < PointsCount - 1; ++i)
-    {
-        vec2 p0 = ContourPoints[PointsStart + i];
-        vec2 p1 = ContourPoints[PointsStart + (i + 1)];
-
-        if (p0.y <= pixelPosition.y) {
-            if (p1.y > pixelPosition.y && isLeft(p0, p1, pixelPosition)) {
-                windingNumber += 1;
-            }
-        } else {
-            if (p1.y <= pixelPosition.y && !isLeft(p0, p1, pixelPosition)) {
-                windingNumber -= 1;
-            }
-        }
-    }
-
     uint labelIndex = getGlobalIndex(gl_GlobalInvocationID.x, NUM_ELEMENTS_X, Size, offset);
 
-    if (windingNumber != 0)
+    if (labels[labelIndex] == correctLabel)
     {
-        labels[labelIndex] = 1;
+        SetupWritePixelVarsByPosition(middleCenter, x, y);
 
         uint localIndex = rigidBodies[RigidBodyID].DataIndex + gl_GlobalInvocationID.x;
 
         GetWritePixel(middleCenter).RigidBodyID12_RigidBodyIndex20 = RigidBodyID | (localIndex << 12u);
     }
-    else
-    {
-        labels[labelIndex] = 0;
-    }
-
 }

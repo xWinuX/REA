@@ -14,8 +14,6 @@ const vec2 GRID_SIZE_VEC = vec2(NUM_ELEMENTS_X, NUM_ELEMENTS_Y);
 const uint MAX_PIXEL_PARTICLES = 32768;
 
 const uint MAX_RIGIDBODIES = 1024;
-const uint MAX_CONTOUR_POINTS = 8192;
-
 const uint NumMarchingSquareSegments = 100000;
 
 const int MaxCharge = 255;
@@ -60,6 +58,7 @@ struct RigidBody {
     uint DataIndex;
     bool NeedsRecalculation;
     float Rotation;
+    uint NumPixels;
     vec2 Position;
     vec2 Velocity;
     ivec2 CounterVelocity;

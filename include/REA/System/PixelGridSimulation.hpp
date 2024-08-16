@@ -50,6 +50,8 @@ namespace REA::System
 				uint32_t   DataIndex          = -1u;
 				bool       NeedsRecalculation = false;
 				float      Rotation           = 0;
+				uint32_t   NumPixels          = 0;
+				uint32_t   _pad               = 0;
 				glm::vec2  Position           = { 0, 0 };
 				b2Vec2     Velocity           = { 0, 0 };
 				glm::ivec2 CounterVelocity    = { 0, 0 };
@@ -79,11 +81,6 @@ namespace REA::System
 				glm::ivec2        chunkOffset = { 0.0f, 0.0f };
 				PixelChunkMapping chunkMapping;
 				Pixel::Data       pixelLookup[1024];
-			};
-
-			struct SSBO_Contours
-			{
-				glm::vec2 ContourPoints[Constants::MAX_CONTOUR_POINTS*2];
 			};
 
 			struct SSBO_MarchingCubes
@@ -122,8 +119,8 @@ namespace REA::System
 
 			MemoryHeap _rigidBodyDataHeap = MemoryHeap(Constants::NUM_ELEMENTS_X * Constants::NUM_ELEMENTS_Y);
 
-			bool _paused        = true;
-			bool _doStep        = false;
+			bool _paused = true;
+			bool _doStep = false;
 
 			bool _firstUpdate = true;
 
