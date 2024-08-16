@@ -144,51 +144,27 @@ namespace REA::System
 			ImGui::PopStyleVar();
 			ImGui::Separator();
 
-
-			glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
-
-			glm::vec2 mousePosition = Input::GetMousePosition();
-			mousePosition           = { mousePosition.x, windowSize.y - mousePosition.y };
-
-
-			int gridX = 0;
-			int gridY = 0;
-
-			// Map normalized mouse position to grid position
+			glm::ivec2 cursorPosition = {0,0};
 			if (ecsRegistry.IsEntityValid(pixelGrid.CameraEntityID))
 			{
+				glm::ivec2 windowSize = contextProvider.GetContext<EngineContext>()->Application->GetWindow().GetSize();
+				glm::ivec2 mousePosition = Input::GetMousePosition();
+				mousePosition            = { mousePosition.x, windowSize.y - mousePosition.y };
+
 				Component::Transform& transform = ecsRegistry.GetComponent<Component::Transform>(pixelGrid.CameraEntityID);
 
-				// Precompute common terms
-				int halfChunkSize = Constants::CHUNK_SIZE / 2;
-				int gridCenterX   = (Constants::CHUNKS_X / 2) * Constants::CHUNK_SIZE;
-				int gridCenterY   = (Constants::CHUNKS_Y / 2) * Constants::CHUNK_SIZE;
+				glm::ivec2 cameraPosition = glm::ivec2(glm::floor(glm::vec2(transform.Position)));
+				glm::ivec2 centeredMousePosition = mousePosition - (windowSize/2);
 
-				// Compute gridX and gridY
-				int32_t offsetX = static_cast<int32_t>((transform.Position.x)) % Constants::CHUNK_SIZE;
-				int32_t offsetY = static_cast<int32_t>((transform.Position.y)) % Constants::CHUNK_SIZE;
-
-				gridX = gridCenterX + offsetX;
-				gridY = gridCenterY + offsetY;
-
-				// Adjust with mouse position
-				mousePosition += glm::vec2(transform.Position);
-
-				gridX += static_cast<int>(mousePosition.x) - static_cast<int>(transform.Position.x + (static_cast<float>(windowSize.x) / 2.0f));
-				gridY += static_cast<int>(mousePosition.y) - static_cast<int>(transform.Position.y + (static_cast<float>(windowSize.y) / 2.0f));
+				cursorPosition = (cameraPosition + centeredMousePosition) - pixelGrid.ChunkOffset * static_cast<int32_t>(Constants::CHUNK_SIZE);
 			}
 
-
-			// Ensure the grid position is within the bounds
-			gridX = std::clamp(gridX, 0, pixelGrid.SimulationWidth - 1);
-			gridY = std::clamp(gridY, 0, pixelGrid.SimulationHeight - 1);
-
 			// Set the pointer position for rendering
-			pixelGridRenderer.PointerPosition = { gridX, gridY };
+			pixelGridRenderer.PointerPosition = cursorPosition;
 
 			// Calculate chunk and pixel index within the chunk
-			uint32_t chunkIndex = (gridY / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (gridX / Constants::CHUNK_SIZE);
-			uint32_t pixelIndex = (gridY % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (gridX % Constants::CHUNK_SIZE);
+			uint32_t chunkIndex = (cursorPosition.y / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (cursorPosition.x / Constants::CHUNK_SIZE);
+			uint32_t pixelIndex = (cursorPosition.y % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (cursorPosition.x % Constants::CHUNK_SIZE);
 
 			if (chunkIndex < pixelGrid.ChunkMapping.size())
 			{
@@ -201,7 +177,7 @@ namespace REA::System
 				ImGui::Text(std::format("Current Pixel Info:").c_str());
 				ImGui::Text(std::format("Chunk Index: {0}", chunkIndex).c_str());
 				ImGui::Text(std::format("Chunk Pixel Index: {0}", pixelIndex).c_str());
-				ImGui::Text(std::format("Pos: x {0} y {1}", gridX, gridY).c_str());
+				ImGui::Text(std::format("Pos: x {0} y {1}", cursorPosition.x, cursorPosition.y).c_str());
 				ImGui::Text(std::format("ID: {0}", state.PixelID).c_str());
 				ImGui::Text(std::format("Name: {0}", pixelGrid.PixelLookup[state.PixelID].Name).c_str());
 				ImGui::Text(std::format("Mask: {0}", std::bitset<8>(state.Flags.GetMask()).to_string()).c_str());
@@ -223,17 +199,20 @@ namespace REA::System
 						{
 							for (int y = -_radius; y < _radius; ++y)
 							{
-								const int xx = std::clamp<int>(gridX + x, 0, pixelGrid.WorldWidth - 1);
-								const int yy = std::clamp<int>(gridY + y, 0, pixelGrid.WorldHeight - 1);
-
-								chunkIndex = (yy / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (xx / Constants::CHUNK_SIZE);
-								pixelIndex = (yy % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (xx % Constants::CHUNK_SIZE);
-
-								if (chunkIndex < pixelGrid.ChunkMapping.size())
+								if (x * x + y * y <= _radius * _radius)
 								{
-									chunkMapping                            = pixelGrid.ChunkMapping[chunkIndex];
-									pixelGrid.ChunkRegenerate[chunkMapping] = true;
-									(*pixelState)[chunkMapping][pixelIndex] = drawState;
+									const int xx = std::clamp<int>(cursorPosition.x + x, 0, pixelGrid.WorldWidth - 1);
+									const int yy = std::clamp<int>(cursorPosition.y + y, 0, pixelGrid.WorldHeight - 1);
+
+									chunkIndex = (yy / Constants::CHUNK_SIZE) * Constants::CHUNKS_X + (xx / Constants::CHUNK_SIZE);
+									pixelIndex = (yy % Constants::CHUNK_SIZE) * Constants::CHUNK_SIZE + (xx % Constants::CHUNK_SIZE);
+
+									if (chunkIndex < pixelGrid.ChunkMapping.size())
+									{
+										chunkMapping                            = pixelGrid.ChunkMapping[chunkIndex];
+										pixelGrid.ChunkRegenerate[chunkMapping] = true;
+										(*pixelState)[chunkMapping][pixelIndex] = drawState;
+									}
 								}
 							}
 						}

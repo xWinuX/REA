@@ -2,24 +2,25 @@
 
 #include <SplitEngine/ErrorHandler.hpp>
 #include <iterator>
+#include <SplitEngine/Debug/Log.hpp>
 
 namespace REA
 {
-	MemoryHeap::MemoryHeap(size_t totalSize) :
+	MemoryHeap::MemoryHeap(uint32_t totalSize) :
 		_totalSize(totalSize),
 		_nextId(0)
 	{
 		_freeBlocks.insert({ 0, totalSize });
 	}
 
-	size_t MemoryHeap::Allocate(size_t size)
+	uint32_t MemoryHeap::Allocate(uint32_t size)
 	{
 		for (auto it = _freeBlocks.begin(); it != _freeBlocks.end(); ++it)
 		{
 			if (it->second >= size)
 			{
-				size_t offset = it->first;
-				size_t blockSize = it->second;
+				uint32_t offset = it->first;
+				uint32_t blockSize = it->second;
 				_freeBlocks.erase(it);
 				if (blockSize > size) {
 					_freeBlocks.insert({ offset + size, blockSize - size });
@@ -29,22 +30,23 @@ namespace REA
 			}
 		}
 
-		ErrorHandler::ThrowRuntimeError("HeapAllocator: Not enough memory to allocate.");
-		return static_cast<size_t>(-1);
+		return std::numeric_limits<uint32_t>::max();
 	}
 
-	MemoryHeap::Allocation MemoryHeap::GetAllocationInfo(size_t id) const
+	MemoryHeap::Allocation MemoryHeap::GetAllocationInfo(uint32_t id) const
 	{
 		if (!_allocations.contains(id)) {
+			LOG("get allocation id {0}", id);
 			ErrorHandler::ThrowRuntimeError("HeapAllocator: Invalid allocation id.");
 		}
 		return _allocations.at(id);
 	}
 
-	void MemoryHeap::Deallocate(size_t id)
+	void MemoryHeap::Deallocate(uint32_t id)
 	{
 		auto it = _allocations.find(id);
 		if (it == _allocations.end()) {
+			LOG("deallocate id {0}", id);
 			ErrorHandler::ThrowRuntimeError("HeapAllocator: Invalid allocation id.");
 		}
 

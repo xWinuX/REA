@@ -27,5 +27,6 @@ namespace REA::System
 			float _counter = 0.0f;
 
 			static bool CheckCollisionForCircle(glm::vec2 center, int radius, Component::PixelGrid& pixelGrid);
+			static float GetAverageDensity(glm::vec2 center, int radius, Component::PixelGrid& pixelGrid);
 	};
 }

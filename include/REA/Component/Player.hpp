@@ -8,6 +8,10 @@ namespace REA::Component
 		glm::vec2 Velocity{ 0.0f, 0.0f };
 		bool      CanJump        = true;
 		int       ColliderRadius = 8;
-		bool      NoClip         = true;
+		bool      NoClip         = false;
+		float     Acceleration   = 2000.0f;
+		float     MaxSpeed       = 200.0f;
+		float     Gravity        = -700.0f;
+		float     JumpStrength   = 400.0f;
 	};
 }

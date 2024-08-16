@@ -115,7 +115,7 @@ namespace REA::System
 
 			std::ranges::iota_view<size_t, size_t> _indexes;
 
-			MemoryHeap _rigidBodyDataHeap = MemoryHeap(1048576);
+			MemoryHeap _rigidBodyDataHeap = MemoryHeap(Constants::NUM_ELEMENTS_X * Constants::NUM_ELEMENTS_Y);
 
 			bool _paused        = true;
 			bool _doStep        = false;

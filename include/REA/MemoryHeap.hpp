@@ -15,23 +15,23 @@ namespace REA
 		public:
 			struct Allocation
 			{
-				size_t Offset;
-				size_t Size;
+				uint32_t Offset;
+				uint32_t Size;
 			};
 
-			explicit MemoryHeap(size_t totalSize);
+			explicit MemoryHeap(uint32_t totalSize);
 
-			size_t Allocate(size_t size);
+			uint32_t Allocate(uint32_t size);
 
-			[[nodiscard]] Allocation GetAllocationInfo(size_t id) const;
+			[[nodiscard]] Allocation GetAllocationInfo(uint32_t id) const;
 
-			void Deallocate(size_t id);
+			void Deallocate(uint32_t id);
 
 		private:
-			size_t                                 _totalSize;
-			size_t                                 _nextId;
-			std::unordered_map<size_t, Allocation> _allocations {};
-			std::set<std::pair<size_t, size_t>>    _freeBlocks {};
+			uint32_t                                 _totalSize;
+			uint32_t                                 _nextId;
+			std::unordered_map<uint32_t, Allocation> _allocations{};
+			std::set<std::pair<uint32_t, uint32_t>>  _freeBlocks{};
 
 			void CoalesceFreeBlocks();
 	};

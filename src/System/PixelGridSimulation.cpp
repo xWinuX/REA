@@ -208,6 +208,10 @@ namespace REA::System
 							       Constants::NUM_ELEMENTS_IN_CHUNK * sizeof(Pixel::State));
 						}
 					}
+
+					simulationData->timer = 0;
+
+					_rigidBodyDataHeap = MemoryHeap(Constants::NUM_ELEMENTS_X * Constants::NUM_ELEMENTS_Y);
 				}
 			}
 
@@ -342,7 +346,6 @@ namespace REA::System
 						// Calculate size needed
 						b2Vec2     extends  = b2Aabb.GetExtents();
 						glm::uvec2 aabbSize = { glm::round(extends.x * 2), glm::round(extends.y * 2) };
-						size_t     dataSize = aabbSize.x * aabbSize.y;
 
 						_cclRange = b2AABB({ glm::min(_cclRange.lowerBound.x, b2Aabb.lowerBound.x), glm::min(_cclRange.lowerBound.y, b2Aabb.lowerBound.y) },
 						                   { glm::max(_cclRange.upperBound.x, b2Aabb.upperBound.x), glm::max(_cclRange.upperBound.y, b2Aabb.upperBound.y) });
@@ -350,6 +353,10 @@ namespace REA::System
 						Component::Transform          transform{};
 						Component::PixelGridRigidBody pixelGridRigidBody{};
 						Component::Collider           collider{};
+
+						pixelGridRigidBody.AllocationID = _rigidBodyDataHeap.Allocate(aabbSize.x * aabbSize.y);
+
+						if (pixelGridRigidBody.AllocationID == std::numeric_limits<uint32_t>::max()) { continue; }
 
 						// Setup Transform
 						b2Vec2 center      = b2Aabb.GetCenter();
@@ -365,7 +372,6 @@ namespace REA::System
 						else { shaderID = pixelGrid.AvailableRigidBodyIDs.Pop(); }
 
 						pixelGridRigidBody.ShaderRigidBodyID = shaderID;
-						pixelGridRigidBody.AllocationID      = _rigidBodyDataHeap.Allocate(dataSize);
 						pixelGridRigidBody.DataIndex         = _rigidBodyDataHeap.GetAllocationInfo(pixelGridRigidBody.AllocationID).Offset;
 
 						pixelGridRigidBody.Size = aabbSize;
