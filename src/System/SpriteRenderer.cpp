@@ -68,6 +68,10 @@ namespace REA::System
 
 	void SpriteRenderer::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)
 	{
+		RenderingContext* renderingContext = contextProvider.GetContext<RenderingContext>();
+
+		if (renderingContext->Renderer->WasSkipped()) { return; }
+
 		size_t numEntities = 0;
 
 		ObjectBuffer* objectBuffer = _material->GetProperties().GetBufferData<ObjectBuffer>(0);

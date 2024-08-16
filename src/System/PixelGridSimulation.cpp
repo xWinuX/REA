@@ -224,6 +224,7 @@ namespace REA::System
 					std::vector<std::vector<MarchingSquareMesherUtils::Polyline>> solidPolylineCollection = std::vector<std::vector<
 						MarchingSquareMesherUtils::Polyline>>(Constants::NUM_CHUNKS, {});
 
+					// Create polylines foreach chunk in parallel
 					_indexes = std::ranges::iota_view(0ull, static_cast<size_t>(Constants::NUM_CHUNKS));
 					std::for_each(std::execution::par_unseq,
 					              _indexes.begin(),
@@ -253,6 +254,7 @@ namespace REA::System
 					              });
 
 
+					// Generate environmental collision meshes
 					for (int chunkIndex = 0; chunkIndex < Constants::NUM_CHUNKS; ++chunkIndex)
 					{
 						uint32_t             chunkMapping = pixelGrid.ChunkMapping[chunkIndex];
@@ -331,6 +333,7 @@ namespace REA::System
 
 					for (MarchingSquareMesherUtils::Polyline& polyline: polylines)
 					{
+						// Find seed point (quite brute force but it usually finds it in less than 3 iterations)
 						glm::ivec2 seedPoint      = { 0, 0 };
 						bool       foundSeedPoint = false;
 						uint32_t   numIterations  = 0;
@@ -351,7 +354,7 @@ namespace REA::System
 										break;
 									}
 								}
-								if (foundSeedPoint) { break; }
+								if (foundSeedPoint) { break; } // I could use a goto, BUT I REFUSE
 							}
 							if (foundSeedPoint) { break; }
 						}

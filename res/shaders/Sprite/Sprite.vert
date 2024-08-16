@@ -18,8 +18,8 @@ layout(std140, set = 1, binding = 0) readonly buffer si_TextureStore {
 } textureStore;
 
 layout(std430, set = 2, binding = 0) readonly buffer ObjectBuffer {
-    vec4 positions[2048000];
-    uint textureIDs[2048000];
+    vec4 positions[10240];
+    uint textureIDs[10240];
     uint numObjects;
 } objectBuffer;
 

@@ -9,6 +9,7 @@ namespace REA
 		Sand,
 		Water,
 		Wood,
+		Wood_Rigidbody,
 		Steam,
 		Oil,
 		Lava,

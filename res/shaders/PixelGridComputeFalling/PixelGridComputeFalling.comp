@@ -79,6 +79,9 @@ void main()
     {
         if (topLeftDensity > bottomLeftDensity)
         {
+            bottomLeftPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+            topLeftPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+
             GetReadPixel(topLeft) = bottomLeftPixel;
             GetReadPixel(bottomLeft) = topLeftPixel;
 
@@ -111,6 +114,9 @@ void main()
     {
         if (topRightDensity > bottomRightDensity)
         {
+            bottomRightPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+            topRightPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+
             GetReadPixel(topRight) = bottomRightPixel;
             GetReadPixel(bottomRight) = topRightPixel;
 
@@ -142,6 +148,9 @@ void main()
     {
         if (topLeftGravity && bottomRightGravity && (topLeftCanFlow || !bottomRightPixelSolid) && topLeftDensity > bottomRightDensity)
         {
+            topLeftPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+            bottomRightPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+
             GetReadPixel(topLeft) = bottomRightPixel;
             GetReadPixel(bottomRight) = topLeftPixel;
 
@@ -165,6 +174,9 @@ void main()
         }
         else if (topRightGravity && bottomLeftGravity && (topRightCanFlow || !bottomLeftPixelSolid) && topRightDensity > bottomLeftDensity)
         {
+            topRightPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+            bottomLeftPixel.PixelID16_Charge8_Flags8 |= Moving << 24u;
+
             GetReadPixel(topRight) = bottomLeftPixel;
             GetReadPixel(bottomLeft) = topRightPixel;
 
@@ -177,7 +189,6 @@ void main()
             Pixel tmpPixel = topRightPixel;
             PixelData tmpPixelData = topRightPixelData;
             float tmpPixelDensity = topRightDensity;
-
 
             topRightPixel = bottomLeftPixel;
             topRightPixelData = bottomLeftPixelData;

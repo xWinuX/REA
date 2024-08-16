@@ -10,10 +10,11 @@ namespace REA
 
 			struct PixelCreateInfo
 			{
-				Pixel::ID   ID   = -1u;
-				std::string Name = "NAME_HERE";
-				Color       Color{};
-				Pixel::Data Data{};
+				Pixel::ID       ID   = -1u;
+				std::string     Name = "NAME_HERE";
+				Color           Color{};
+				Pixel::Category Category = Pixel::Category::Static;
+				Pixel::Data     Data{};
 			};
 
 			PixelGridBuilder&    WithSize(glm::ivec2 worldChunkSize, glm::ivec2 simulationChunkSize);

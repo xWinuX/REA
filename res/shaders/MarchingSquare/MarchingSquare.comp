@@ -189,6 +189,12 @@ void main()
         bool bottomLeftPixelConnected = bitsetHas(bottomLeftPixelFlags, Connected);
         bool bottomRightPixelConnected = bitsetHas(bottomRightPixelFlags, Connected);
 
+
+        bool topLeftPixelMoved = bitsetHas(topLeftPixelFlags, Moved);
+        bool topRightPixelMoved = bitsetHas(topRightPixelFlags, Moved);
+        bool bottomLeftPixelMoved = bitsetHas(bottomLeftPixelFlags, Moved);
+        bool bottomRightPixelMoved = bitsetHas(bottomRightPixelFlags, Moved);
+
         bool notInValidChunks = !regenerateChunks[topLeftChunkMapping] &&
                                 !regenerateChunks[topRightChunkMapping] &&
                                 !regenerateChunks[bottomLeftChunkMapping] &&
@@ -208,10 +214,10 @@ void main()
             }
             else
             {
-                caseNumber = (uint(topLeftPixelSolid && !topLeftPixelConnected) << 3u) |
-                             (uint(topRightPixelSolid && !topRightPixelConnected) << 2u) |
-                             (uint(bottomRightPixelSolid && !bottomRightPixelConnected) << 1u) |
-                             uint(bottomLeftPixelSolid && !bottomLeftPixelConnected);
+                caseNumber = (uint(topLeftPixelSolid && !topLeftPixelMoved && !topLeftPixelConnected) << 3u) |
+                             (uint(topRightPixelSolid && !topRightPixelMoved && !topRightPixelConnected) << 2u) |
+                             (uint(bottomRightPixelSolid && !bottomRightPixelMoved && !bottomRightPixelConnected) << 1u) |
+                             uint(bottomLeftPixelSolid && !bottomLeftPixelMoved && !bottomLeftPixelConnected);
 
                 if (previousChunkMapping != -1u && previousChunkMapping != topLeftChunkMapping)
                 {

@@ -15,6 +15,7 @@
 #include <REA/Component/SandboxController.hpp>
 #include <REA/System/MainMenu.hpp>
 #include <REA/System/PauseMenu.hpp>
+#include <REA/System/PlayerAnimation.hpp>
 #include <REA/System/SandboxController.hpp>
 
 #include "REA/Assets.hpp"
@@ -56,13 +57,15 @@ int main()
 		{
 			.ID = PixelType::Air,
 			.Name = "Air",
-			.Color = Color(0x6397FFFF),
+			.Color = Color(0x183675FF),
+			.Category = Pixel::Category::Liquid,
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 10, .SpreadingFactor = 4, .TemperatureResistance = 0.3f, .BaseTemperature = airTemperature, },
 		},
 		{
 			.ID = PixelType::Sand,
 			.Name = "Sand",
 			.Color = Color(0x9F944BFF),
+			.Category = Pixel::Category::Sand,
 			.Data =
 			{ .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Gravity), .Density = 14, .SpreadingFactor = 0, .TemperatureResistance = 1.0f, .BaseTemperature = airTemperature, }
 		},
@@ -70,6 +73,7 @@ int main()
 			.ID = PixelType::Water,
 			.Name = "Water",
 			.Color = Color(0x84BCFFFF),
+			.Category = Pixel::Category::Liquid,
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Conductive),
@@ -86,9 +90,10 @@ int main()
 			.ID = PixelType::Wood,
 			.Name = "Wood",
 			.Color = Color(0x775937FF),
+			.Category = Pixel::Category::Static,
 			.Data =
 			{
-				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive | Pixel::ElectricityReceiver),
 				.Density = 0,
 				.SpreadingFactor = 0,
 				.TemperatureResistance = 1.0f,
@@ -101,6 +106,7 @@ int main()
 			.ID = PixelType::Steam,
 			.Name = "Steam",
 			.Color = Color(0xAAAAAAFF),
+			.Category = Pixel::Category::Liquid,
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
@@ -116,24 +122,28 @@ int main()
 			.ID = PixelType::Oil,
 			.Name = "Oil",
 			.Color = Color(0x333333FF),
+			.Category = Pixel::Category::Liquid,
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 16, .SpreadingFactor = 2, .TemperatureResistance = 0, .BaseTemperature = airTemperature, }
 		},
 		{
 			.ID = PixelType::Lava,
 			.Name = "Lava",
 			.Color = Color(0xFF8619FF),
+			.Category = Pixel::Category::Liquid,
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 20, .SpreadingFactor = 2, .TemperatureResistance = 0.00f, .BaseTemperature = 1600, }
 		},
 		{
 			.ID = PixelType::Stone,
 			.Name = "Stone",
 			.Color = Color(0x465466FF),
+			.Category = Pixel::Category::Static,
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 18, .TemperatureResistance = 0.01f, }
 		},
 		{
 			.ID = PixelType::Gravel,
 			.Name = "Gravel",
 			.Color = Color(0x708D91FF),
+			.Category = Pixel::Category::Sand,
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Solid),
@@ -149,6 +159,7 @@ int main()
 			.ID = PixelType::Fire,
 			.Name = "Fire",
 			.Color = Color(0xFF8331FF),
+			.Category = Pixel::Category::Liquid,
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
@@ -165,6 +176,7 @@ int main()
 			.ID = PixelType::Smoke,
 			.Name = "Smoke",
 			.Color = Color(0x525252FF),
+			.Category = Pixel::Category::Liquid,
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity),
@@ -180,6 +192,7 @@ int main()
 			.ID = PixelType::Spark,
 			.Name = "Spark",
 			.Color = Color(0xFFFA66FF),
+			.Category = Pixel::Category::Electronic,
 			.Data =
 			{
 				.Flags = BitSet<uint32_t>(Pixel::Gravity | Pixel::Conductive | Pixel::ElectricityEmitter),
@@ -193,6 +206,7 @@ int main()
 			.ID = PixelType::Iron,
 			.Name = "Iron",
 			.Color = Color(0x313642FF),
+			.Category = Pixel::Category::Static,
 			.Data = { .Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Conductive), .Density = 100, .TemperatureResistance = 1.0f, .BaseCharge = 0, .AcidityResistance = 200.0f }
 		},
 		{ .ID = PixelType::Dirt, .Name = "Dirt", .Color = Color(0x916B4AFF), .Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Solid), .Density = 100 } },
@@ -200,7 +214,9 @@ int main()
 			.ID = PixelType::Grass,
 			.Name = "Grass",
 			.Color = Color(0x2E922EFF),
-			.Data = Pixel::Data{
+			.Category = Pixel::Category::Static,
+			.Data = Pixel::Data
+			{
 				.Flags = BitSet<uint32_t>(Pixel::Solid),
 				.Density = 100,
 				.TemperatureResistance = 1.0f,
@@ -213,6 +229,7 @@ int main()
 			.ID = PixelType::Leaf,
 			.Name = "Leaf",
 			.Color = Color(0x509229FF),
+			.Category = Pixel::Category::Static,
 			.Data = Pixel::Data{
 				.Flags = BitSet<uint32_t>(Pixel::Solid),
 				.Density = 100,
@@ -226,12 +243,22 @@ int main()
 			.ID = PixelType::Acid,
 			.Name = "Acid",
 			.Color = Color(0x28F600FF),
-			.Data = Pixel::Data{
-				.Flags = BitSet<uint32_t>(Pixel::Gravity),
-				.Density = 12,
-				.SpreadingFactor = 6,
+			.Category = Pixel::Category::Liquid,
+			.Data = Pixel::Data{ .Flags = BitSet<uint32_t>(Pixel::Gravity), .Density = 13, .SpreadingFactor = 6, .BaseTemperature = airTemperature, .Acidity = 100.0f, }
+		},
+		{
+			.ID = PixelType::Wood_Rigidbody,
+			.Name = "Wood",
+			.Color = Color(0x775937FF),
+			.Category = Pixel::Category::Rigidbody,
+			.Data = {
+				.Flags = BitSet<uint32_t>(Pixel::Solid | Pixel::Connected | Pixel::Conductive | Pixel::ElectricityReceiver),
+				.Density = 0,
+				.SpreadingFactor = 0,
+				.TemperatureResistance = 1.0f,
 				.BaseTemperature = airTemperature,
-				.Acidity = 100.0f,
+				.HighTemperatureLimit = 600,
+				.HighTemperatureLimitPixelID = PixelType::Fire,
 			}
 		},
 	};
@@ -240,7 +267,7 @@ int main()
 		                                      {},
 		                                      { .RootExecutionStages = { Stage::PrePhysicsStep, Stage::Physics } },
 		                                      {},
-		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x183675FF) }
+		                                      { .UseVulkanValidationLayers = false, .ViewportStyle = Rendering::Vulkan::ViewportStyle::Flipped, .ClearColor = Color(0x000000FF) }
 	                                      });
 
 	application.GetWindow().SetSize(1024, 1024);
@@ -301,13 +328,19 @@ int main()
 
 	uint64_t floppaPackerID     = texturePacker.AddImage("res/textures/Floppa.png");
 	uint64_t blueBulletPackerID = texturePacker.AddRelatedImages(Tools::ImageSlicer::Slice("res/textures/BlueBullet.png", { 3 }));
-	uint64_t reaIdleRPackerID   = texturePacker.AddImage("res/textures/Rea_Idle_r.png");
+	uint64_t reaIdleRPackerID   = texturePacker.AddImage("res/textures/Rea_Idle_R.png");
+	uint64_t reaIdleLPackerID   = texturePacker.AddImage("res/textures/Rea_Idle_L.png");
+	uint64_t reaWalkRPackerID   = texturePacker.AddRelatedImages(Tools::ImageSlicer::Slice("res/textures/Rea_Walk_R.png", { 10 }));
+	uint64_t reaWalkLPackerID   = texturePacker.AddRelatedImages(Tools::ImageSlicer::Slice("res/textures/Rea_Walk_L.png", { 10 }));
 
 	Tools::ImagePacker::PackingData packingData = texturePacker.Pack(2048);
 
 	AssetHandle<Sprite> floppaSprite     = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Floppa, { floppaPackerID, packingData });
 	AssetHandle<Sprite> blueBulletSprite = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::BlueBullet, { blueBulletPackerID, packingData });
 	AssetHandle<Sprite> reaIdleRSprite   = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Rea_Idle_R, { reaIdleRPackerID, packingData });
+	AssetHandle<Sprite> reaWalkRSprite   = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Rea_Walk_R, { reaWalkRPackerID, packingData });
+	AssetHandle<Sprite> reaIdleLSprite   = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Rea_Idle_L, { reaIdleLPackerID, packingData });
+	AssetHandle<Sprite> reaWalkLSprite   = assetDatabase.CreateAsset<Sprite>(Asset::Sprite::Rea_Walk_L, { reaWalkLPackerID, packingData });
 
 	auto pixelGridComputeIdle = assetDatabase.CreateAsset<Rendering::Shader>(Asset::Shader::Comp_PixelGrid_Idle,
 	                                                                         { { "res/shaders/PixelGridComputeIdle/PixelGridComputeIdle.comp" } });
@@ -372,6 +405,7 @@ int main()
 
 	// Late gameplay
 	ecs.AddSystem<System::SandboxController>(Stage::LateGameplay, 2);
+	ecs.AddSystem<System::PlayerAnimation>(Stage::LateGameplay, 1);
 	ecs.AddSystem<System::Camera>(Stage::LateGameplay, 1);
 
 	// Simulation
@@ -404,7 +438,7 @@ int main()
 	ecs.AddSystem<System::RenderingPreparation>(Stage::Rendering, 0);
 	ecs.AddSystem<System::PixelGridRenderer>(Stage::Rendering, 1, pixelGridMaterial);
 	ecs.AddSystem<System::SpriteRenderer>(Stage::Rendering, 2, spriteMaterial, packingData);
-	//ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
+	ecs.AddSystem<System::PhysicsDebugRenderer>({ { Stage::Physics, 1000 }, { Stage::Rendering, 3 } }, physicsDebugMaterial, marchingSqaureDebugMaterial, physicsHandle);
 
 	// Pre Rendering End
 	ecs.AddSystem<System::ImGuiManager>(EngineStage::EndRendering, EngineStageOrder::EndRendering_RenderingSystem - 1);

@@ -37,8 +37,8 @@ namespace REA::System
 
 			struct ObjectBuffer
 			{
-				std::array<glm::vec4, 2'048'000> positions;
-				std::array<uint32_t, 2'048'000>  textureIDs;
+				std::array<glm::vec4, 10240> positions;
+				std::array<uint32_t, 10240>  textureIDs;
 				uint32_t                         numObjects;
 			};
 

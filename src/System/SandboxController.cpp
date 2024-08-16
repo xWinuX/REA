@@ -16,16 +16,9 @@ namespace REA::System
 			Component::Camera&            camera            = cameras[i];
 			Component::SandboxController& sandboxController = sandboxControllers[i];
 
-			LOG("controller speed {0}", sandboxController.ZoomSpeed);
-
 			float mouseWheel = static_cast<float>(Input::GetMouseWheel().y) * sandboxController.ZoomSpeed;
 
-			std::cout << &sandboxController << std::endl;
-
-			LOG("mouse wheel {0}", mouseWheel);
-			camera.PixelSize          = glm::clamp(camera.PixelSize + mouseWheel, 0.1f, 50.0f);
-
-			LOG("camera pixel size {0}", camera.PixelSize);
+			camera.PixelSize = glm::clamp(camera.PixelSize + mouseWheel, 0.1f, 50.0f);
 
 			if (Input::GetDown(KeyCode::MOUSE_MIDDLE))
 			{

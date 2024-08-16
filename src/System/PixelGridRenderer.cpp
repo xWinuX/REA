@@ -34,7 +34,11 @@ namespace REA::System
 	                                ECS::ContextProvider&         contextProvider,
 	                                uint8_t                       stage)
 	{
-		vk::CommandBuffer commandBuffer = contextProvider.GetContext<RenderingContext>()->Renderer->GetCommandBuffer().GetVkCommandBuffer();
+		RenderingContext* renderingContext = contextProvider.GetContext<RenderingContext>();
+
+		if (renderingContext->Renderer->WasSkipped()) { return; }
+
+		vk::CommandBuffer commandBuffer = renderingContext->Renderer->GetCommandBuffer().GetVkCommandBuffer();
 		_material->GetShader()->BindGlobal(commandBuffer);
 
 		_material->GetShader()->Update();

@@ -88,6 +88,8 @@ add_executable(
         src/System/SandboxController.cpp
         include/REA/System/SandboxController.hpp
         include/REA/Component/SandboxController.hpp
+        src/System/PlayerAnimation.cpp
+        include/REA/System/PlayerAnimation.hpp
 )
 
 target_include_directories(REA PRIVATE include)

@@ -14,7 +14,7 @@
 namespace REA::System
 {
 	Physics::Physics(bool enableDebugDraw):
-		_world(b2Vec2(0.0f, -3.0f)),
+		_world(b2Vec2(0.0f, -30.0f)),
 		_enableDebugDraw(enableDebugDraw) {}
 
 	void Physics::ExecuteArchetypes(std::vector<ECS::Archetype*>& archetypes, ECS::ContextProvider& contextProvider, uint8_t stage)

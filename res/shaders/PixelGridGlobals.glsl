@@ -21,6 +21,8 @@ const int MaxCharge = 255;
 // Flag Enum
 const uint Solid = 1u << 0u;
 const uint Connected = 1u << 1u;
+const uint Moving = 1u << 2u;
+const uint Moved = 1u << 3u;
 const uint Gravity = 1u << 8u;
 const uint Conductive = 1u << 9u;
 const uint ElectricityEmitter = 1u << 10u;

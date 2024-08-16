@@ -21,7 +21,14 @@ namespace REA::System
 {
 	PixelGridDrawing::PixelGridDrawing(int radius, Pixel::ID clearPixelID):
 		_radius(radius),
-		_clearPixelID(clearPixelID) {}
+		_clearPixelID(clearPixelID)
+	{
+		_pixelCategories[Pixel::Category::Static]     = "Static";
+		_pixelCategories[Pixel::Category::Sand]       = "Sand Like";
+		_pixelCategories[Pixel::Category::Liquid]     = "Liquid";
+		_pixelCategories[Pixel::Category::Electronic] = "Electronics";
+		_pixelCategories[Pixel::Category::Rigidbody]  = "Rigidbody (EXPERIMENTAL CAN CAUSE FREEZES)";
+	}
 
 
 	void PixelGridDrawing::ClearGrid(const Component::PixelGrid& pixelGrid)
@@ -109,38 +116,48 @@ namespace REA::System
 			ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
 			ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(3.0f, 3.0f));
 
-			if (ImGui::BeginTable("Pixel Selection", 5))
+			for (int category = 0; category < _pixelCategories.size(); ++category)
 			{
-				for (int i = 0; i < pixelGrid.PixelLookup.size(); ++i)
+				std::string& pixelCategory = _pixelCategories[category];
+
+				ImGui::Text(pixelCategory.c_str());
+				ImGui::Separator();
+				if (ImGui::BeginTable(pixelCategory.c_str(), 5))
 				{
-					Pixel& pixel      = pixelGrid.PixelLookup[i];
-					Color& pixelColor = pixelGrid.PixelColorLookup[i];
+					for (int i = 0; i < pixelGrid.PixelLookup.size(); ++i)
+					{
+						Pixel&      pixel      = pixelGrid.PixelLookup[i];
+						Pixel::Data pixelData  = pixelGrid.PixelDataLookup[i];
+						Color&      pixelColor = pixelGrid.PixelColorLookup[i];
 
-					ImGui::TableNextColumn();
+						if (pixel.Cat != category) { continue; }
 
-					ImU32 color    = IM_COL32(pixelColor.R * 255, pixelColor.G * 255, pixelColor.B * 255, pixelColor.A * 255);
-					bool  selected = _drawPixelID == pixel.PixelState.PixelID;
+						ImGui::TableNextColumn();
 
-					ImGui::GetWindowDrawList()->ChannelsSplit(2);
-					ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
+						ImU32 color    = IM_COL32(pixelColor.R * 255, pixelColor.G * 255, pixelColor.B * 255, pixelColor.A * 255);
+						bool  selected = _drawPixelID == pixel.PixelState.PixelID;
 
+						ImGui::GetWindowDrawList()->ChannelsSplit(2);
+						ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
 
-					ImVec2 availableSize = ImGui::GetContentRegionAvail();
+						ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-					if (ImGui::Button(std::format("{0}", pixel.Name).c_str(), { availableSize.x, 50 })) { _drawPixelID = pixel.PixelState.PixelID; }
+						if (ImGui::Button(std::format("{0}", pixel.Name).c_str(), { availableSize.x, 50 })) { _drawPixelID = pixel.PixelState.PixelID; }
 
-					ImVec2 p_min = ImGui::GetItemRectMin();
-					ImVec2 p_max = ImGui::GetItemRectMax();
+						ImVec2 p_min = ImGui::GetItemRectMin();
+						ImVec2 p_max = ImGui::GetItemRectMax();
 
-					if (selected) { ImGui::GetWindowDrawList()->AddRect(p_min, p_max, 0xFFFFFFFF, 3.0f, 0, 3.0f); }
+						if (selected) { ImGui::GetWindowDrawList()->AddRect(p_min, p_max, 0xFFFFFFFF, 3.0f, 0, 3.0f); }
 
-					// Render background behind Selectable().
-					ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
-					ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, color, 3.0f);
-					ImGui::GetWindowDrawList()->ChannelsMerge();
+						// Render background behind Selectable().
+						ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
+						ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, color, 3.0f);
+						ImGui::GetWindowDrawList()->ChannelsMerge();
+					}
+					ImGui::EndTable();
 				}
-				ImGui::EndTable();
 			}
+
 
 			ImGui::PopStyleColor();
 			ImGui::PopStyleVar();
@@ -213,7 +230,7 @@ namespace REA::System
 					{
 						for (int y = -_radius; y < _radius; ++y)
 						{
-							if (x * x + y * y > _radius * _radius)  { continue; }
+							if (x * x + y * y > _radius * _radius) { continue; }
 
 							const int xx = std::clamp<int>(cursorPosition.x + x, 0, pixelGrid.WorldWidth - 1);
 							const int yy = std::clamp<int>(cursorPosition.y + y, 0, pixelGrid.WorldHeight - 1);

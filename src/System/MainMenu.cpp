@@ -70,18 +70,9 @@ namespace REA::System
 
 				AssetDatabase& assetDatabase = engineContext->Application->GetAssetDatabase();
 
-				b2PolygonShape boxShape{};
-				boxShape.SetAsBox(1.0f, 1.0f);
 
-				AssetHandle<Sprite> sprite = assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Idle_R);
-				LOG("sprite {0}", sprite.GetID());
 
-				uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { 20.0f, 20.0f, -10.0f } },
-					{ assetDatabase.GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut), b2BodyType::b2_kinematicBody, { boxShape } },
-					{},
-					{ assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Idle_R), 1.0f, 0 });
 
-				camera.TargetEntity = playerEntity;
 
 				std::vector<Pixel::State> world = std::vector<Pixel::State>(pixelGrid.WorldWidth * pixelGrid.WorldHeight, pixelGrid.PixelLookup[PixelType::Air].PixelState);
 				WorldGenerator::GenerationSettings generationSettings{};
@@ -111,6 +102,20 @@ namespace REA::System
 						}
 					}
 				}
+
+				b2PolygonShape boxShape{};
+				boxShape.SetAsBox(10.0f, 10.0f);
+				uint64_t playerEntity = ecs.CreateEntity<Component::Transform, Component::Collider, Component::Player, Component::SpriteRenderer>({ { pixelGrid.WorldWidth/2, pixelGrid.WorldHeight - 50.0f, -10.0f } },
+					{ assetDatabase.GetAsset<PhysicsMaterial>(Asset::PhysicsMaterial::Defaut), b2BodyType::b2_kinematicBody, { boxShape } },
+					{
+						.IdleSpriteR = assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Idle_R),
+						.WalkSpriteR = assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Walk_R),
+						.IdleSpriteL = assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Idle_L),
+						.WalkSpriteL = assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Walk_L)
+					},
+					{ assetDatabase.GetAsset<Sprite>(Asset::Sprite::Rea_Idle_R), 10.0f, 0 });
+
+				camera.TargetEntity = playerEntity;
 
 				uint64_t pixelGridEntityID = ecs.CreateEntity<Component::Transform, Component::PixelGrid, Component::PixelGridRenderer>({}, std::move(pixelGrid), {});
 

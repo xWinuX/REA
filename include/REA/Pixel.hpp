@@ -16,12 +16,24 @@ namespace REA
 
 		enum Flags : uint32_t
 		{
-			Solid               = 1 << 0,  // Non Solids can pass through eachother for example water can pass trough air but can't pass through sand
-			Connected           = 1 << 1,  // Pixels with this set connect to each other and form rigidbodies
-			Gravity             = 1 << 8,  // Pixels with gravity will fall
-			Conductive          = 1 << 9,  // Can conduct Electricity
-			ElectricityEmitter  = 1 << 10, // Does not loose charge
+			Solid = 1 << 0, // Non Solids can pass through eachother for example water can pass trough air but can't pass through sand
+			Connected = 1 << 1, // Pixels with this set connect to each other and form rigidbodies
+			Moving = 1 << 2, // Pixels with this set will not generate environment collisions when they are solid, this flag is managed by the shader and shouldn't be used
+			Moved = 1 << 3, // Pixels with this set will not generate environment collisions when they are solid, this flag is managed by the shader and shouldn't be used
+			Gravity = 1 << 8, // Pixels with gravity will fall
+			Conductive = 1 << 9, // Can conduct Electricity
+			ElectricityEmitter = 1 << 10, // Does not loose charge
 			ElectricityReceiver = 1 << 11, // Consumes charge
+		};
+
+		enum Category
+		{
+			Static,
+			Sand,
+			Liquid,
+			Electronic,
+			Rigidbody,
+			MAX_VALUE
 		};
 
 		/**
@@ -61,12 +73,17 @@ namespace REA
 			float            TemperatureConversion        = 0.0f;
 			uint32_t         BaseCharge                   = 0;
 			float            ChargeAbsorbtionChance       = 0.0f;
+			float            ChargeLowerLimit             = 0.0f;
+			uint32_t         ChargeLowerLimitPixelID      = 0;
+			float            ChargeHighLimit              = 0.0f;
+			uint32_t         ChargeHighLimitPixelID       = 0;
 			float            Acidity                      = 0.0f;
 			float            AcidityResistance            = 0.0f;
 		};
 
 		std::string Name = "NAME_HERE";
 		State       PixelState{};
+		Category    Cat = Category::Static;
 	};
 
 	typedef std::array<Pixel::State, Constants::NUM_ELEMENTS_IN_CHUNK> PixelChunk;

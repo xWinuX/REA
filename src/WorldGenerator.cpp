@@ -166,7 +166,7 @@ namespace REA
 		}
 
 		// Trees
-		/*float nextTreeEdge = 0;
+		float nextTreeEdge = 0;
 		int   treePadding  = 400;
 		for (int x = treePadding; x < pixelGrid.WorldWidth - treePadding; ++x)
 		{
@@ -225,7 +225,7 @@ namespace REA
 					}
 				}
 			}
-		}*/
+		}
 	}
 
 	glm::vec2 WorldGenerator::GenerateBranch(float                                   startX,
