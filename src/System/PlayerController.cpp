@@ -177,8 +177,6 @@ namespace REA::System
 
 			playerPosition += player.Velocity * deltaTime;
 
-			LOG("player postion x {0} y {1}", playerPosition.x, playerPosition.y);
-
 			transform.Position = glm::vec3(playerPosition, 0.0f);
 		}
 		//		BENCHMARK_END("Player collisions")
